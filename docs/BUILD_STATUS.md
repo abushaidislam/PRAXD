@@ -1,7 +1,7 @@
 # PRAXD Build Status
 
 **Last updated:** 2026-10-30  
-**Current phase:** Phase 2 — Webhook Automation & Real-time Reconciliation  
+**Current phase:** Phase 2 — Webhooks & Live Synchronization Complete  
 **Build status:** Phase 0, Phase 1 & Phase 2 Complete & Verified (Ready for Phase 3)
 
 ## Completed in Phase 0
@@ -56,37 +56,40 @@
 
 ## Completed in Phase 2
 
-- [x] HMAC-SHA256 GitHub Webhook signature verification (`lib/github/webhook-verify.ts`):
-  - Validates `X-Hub-Signature-256` header against raw payload body
-  - Timing-safe comparison to prevent timing attacks
-- [x] Webhook route & delivery deduplication (`app/api/webhooks/github/route.ts`):
-  - Ingestion endpoint with strict raw body buffering
-  - `X-GitHub-Delivery` delivery tracking and idempotency check
-  - Fast HTTP 202 response and async background event dispatch
-- [x] Granular Webhook Event Handlers (`lib/github/webhook-handlers.ts`):
-  - `pull_request` (`opened`, `synchronize`, `closed`, `reopened`, `edited`)
-  - `pull_request_review` (`submitted`, `dismissed`)
-  - `pull_request_review_comment` (`created`, `edited`, `deleted`)
-  - `issue_comment` (`created`, `edited`, `deleted`)
-  - `check_run` (`completed`, `created`, `rerequested`)
-  - `installation` (`created`, `deleted`, `suspend`, `unsuspend`)
-  - `installation_repositories` (`added`, `removed`)
-- [x] Self-healing Reconciler (`lib/github/reconciler.ts`) for missing parent records and periodic sync
+- [x] Public webhook route (`/api/webhooks/github`) using Node.js runtime and raw request bytes (`export const runtime = 'nodejs'`)
+- [x] HMAC SHA-256 verification using `X-Hub-Signature-256` and constant-time buffer comparison (`lib/github/webhook-verify.ts`)
+- [x] Validated against official GitHub published test vector (`It's a Secret to Everybody` / `Hello, World!`)
+- [x] Payload size cap (24 MB) and required header enforcement (`x-github-delivery`, `x-github-event`, `content-type`)
+- [x] Durable delivery ingestion into `webhook_deliveries` with unique `delivery_id` and SHA-256 payload digest (no raw payload storage)
+- [x] Webhook delivery deduplication (re-delivered GUIDs return acknowledgement without re-executing duplicate work)
+- [x] Event handlers (`lib/github/webhook-handlers.ts`):
+  - `pull_request` (opened, synchronize, closed, reopened, edited)
+  - PR head SHA forward-only invariant: out-of-order events cannot roll head SHA backward
+  - `pull_request_review` (submitted, edited, dismissed)
+  - `pull_request_review_comment` (diff line comments)
+  - `issue_comment` (PR conversation comments only; ordinary issue comments marked `ignored`)
+  - `check_run` (upserted by `(repository_id, github_check_id)`)
+  - `installation` (created, deleted, suspend, unsuspend)
+  - `installation_repositories` (additions synced; removed repositories marked `is_accessible: false`)
+- [x] Reconciliation and dead-letter recovery engine (`lib/github/reconciler.ts`) with bounded retries and safe error codes
 
 ## Quality Checks & Verification
 
 - `typecheck` (`npm run typecheck`): Passed (0 errors).
 - `test` (`npm run test`): Passed 38/38 acceptance tests across 5 test suites:
-  - `tests/phase0-workspace.test.tsx` (9 tests)
-  - `tests/phase1-state.test.ts` (5 tests)
-  - `tests/phase1-github-sync.test.ts` (11 tests)
-  - `tests/phase1-workspace-isolation.test.ts` (2 tests)
-  - `tests/phase2-webhooks.test.ts` (11 tests)
+  - `tests/phase0-workspace.test.tsx` (9 tests: shell, tabs, search, selection, split/unified diffs, keyboard shortcut `Ctrl+B`, binary fallback, merge guardrail)
+  - `tests/phase1-state.test.ts` (5 tests: P1-01 valid state token, P1-02 omitted/tampered/expired/reused state rejection)
+  - `tests/phase1-github-sync.test.ts` (11 tests: P1-05 canonical PR state mapping, P1-06 Link pagination, P1-07 binary honesty, P1-08 comment segregation, P1-09 head SHA check run isolation, P1-10 403 & 429 rate limit parsing)
+  - `tests/phase1-workspace-isolation.test.ts` (2 tests: P1-11 tenant isolation, P1-12 installation suspension/revocation)
+  - `tests/phase2-webhooks.test.ts` (11 tests: P2-01 canonical test vector, P2-02 byte tampering/whitespace mutation rejection, P2-03 header prefix/secret validation, P2-04 delivery deduplication, P2-06 out-of-order forward-only SHA invariant, P2-07 repo removal access revocation, P2-09 check run idempotency, P2-11 bounded retries and safe error code)
 - `lint` (`npm run lint`): Passed (0 errors, 0 warnings).
+- `build` (`npm run build`): Passed (16 dynamic API routes + static pages compiled successfully).
 
 ## Next Task
 
-Begin **Phase 3 — AI Review Engine & Guardrails**:
-1. Implement provider-agnostic LLM interface with fallback and token budgeting.
-2. Build diff chunking and context window packing.
-3. Validate structured AI review findings (file, line range, severity, category, recommendation) using Zod.
+Begin **Phase 3 — AI Review Engine & User Actions**:
+1. Manual **Run AI Review** button and state machine (`queued` -> `running` -> `completed` / `failed` / `stale`).
+2. Per-PR concurrency guard and immutable head SHA binding.
+3. Bounded diff and patch context builder.
+4. AI Review Provider adapter with structured JSON Schema output validation (`docs/AI_REVIEW_SPEC.md`).
+5. Persisting to `ai_review_runs` and `ai_findings` with diff anchor deep-linking.
