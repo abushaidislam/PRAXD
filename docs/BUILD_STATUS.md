@@ -1,8 +1,8 @@
 # PRAXD Build Status
 
 **Last updated:** 2026-10-30  
-**Current phase:** Phase 3 — AI Review Engine & User Actions Complete  
-**Build status:** Phase 0, Phase 1, Phase 2 & Phase 3 Complete & Verified (Ready for Phase 4)
+**Current phase:** Phase 4 — Publishing, Audit Logs & Production Hardening Complete  
+**Build status:** All Phases (0, 1, 2, 3, and 4) 100% Complete & Verified
 
 ## Completed in Phase 0
 
@@ -119,22 +119,47 @@
   - P3-08: Advisory review constraint (never auto-merges or publishes to GitHub)
   - P3-09: User finding lifecycle transitions (`open` -> `accepted` / `dismissed`)
 
+## Completed in Phase 4
+
+- [x] Immutable Workspace Audit Logging System (`lib/audit/logger.ts`):
+  - Structured audit trail recorded into `audit_logs` table
+  - Automatic credential and token redaction (`[REDACTED]`) from all event metadata
+  - Safe error handling that never crashes or leaks secrets
+  - Event coverage: `ai_review.requested`, `ai_review.completed`, `ai_review.failed`, `ai_finding.status_updated`, `ai_finding.published_to_github`
+- [x] Workspace Audit Logs Endpoint:
+  - `GET /api/workspaces/current/audit-logs`
+  - Scoped strictly to authenticated workspace
+  - Bounded pagination parameters (`limit` 1..100, `offset` >= 0)
+- [x] Opt-In User-Confirmed GitHub Finding Publication:
+  - `POST /api/ai-findings/[findingId]/publish`
+  - Enforces explicit `confirmed: true` confirmation
+  - Verifies target PR is currently open
+  - Uses server-side GitHub App installation access token
+  - Preserves local finding record intact even if GitHub publish fails
+  - Fully integrated with interactive UI confirmation in `components/ai-review-panel.tsx`
+- [x] System Health & Readiness Endpoint:
+  - `GET /api/health`
+  - Verifies PostgreSQL database connectivity, latency, and system environment
+  - Returns HTTP 200 (`healthy`) / HTTP 503 (`degraded`)
+- [x] Phase 4 Acceptance Test Suite (`tests/phase4-audit-hardening.test.ts`):
+  - P4-01: Secret and sensitive token sanitization in audit metadata
+  - P4-02: Safe error handling without throwing unhandled exceptions
+  - P4-03: Explicit confirmation requirement enforcement
+  - P4-04: Rejection of closed or merged pull requests
+  - P4-05: Non-destructive failure preservation of findings
+  - P4-06: Strictly bounded audit pagination parameters
+  - P4-07: Conforming system health response structure
+
 ## Quality Checks & Verification
 
 - `typecheck` (`npm run typecheck`): Passed (0 errors).
-- `test` (`npm run test`): Passed 47/47 acceptance tests across 6 test suites:
+- `test` (`npm run test`): Passed 54/54 acceptance tests across 7 test suites:
   - `tests/phase0-workspace.test.tsx` (9 tests: shell, tabs, search, selection, split/unified diffs, keyboard shortcut `Ctrl+B`, binary fallback, merge guardrail)
   - `tests/phase1-state.test.ts` (5 tests: P1-01 valid state token, P1-02 omitted/tampered/expired/reused state rejection)
   - `tests/phase1-github-sync.test.ts` (11 tests: P1-05 canonical PR state mapping, P1-06 Link pagination, P1-07 binary honesty, P1-08 comment segregation, P1-09 head SHA check run isolation, P1-10 403 & 429 rate limit parsing)
   - `tests/phase1-workspace-isolation.test.ts` (2 tests: P1-11 tenant isolation, P1-12 installation suspension/revocation)
   - `tests/phase2-webhooks.test.ts` (11 tests: P2-01 canonical test vector, P2-02 byte tampering/whitespace mutation rejection, P2-03 header prefix/secret validation, P2-04 delivery deduplication, P2-06 out-of-order forward-only SHA invariant, P2-07 repo removal access revocation, P2-09 check run idempotency, P2-11 bounded retries and safe error code)
   - `tests/phase3-ai-review.test.ts` (9 tests: P3-01 schema validation, P3-02 secret redaction, P3-03 context byte cap, P3-04 deterministic fingerprinting, P3-05 semantic evidence grounding, P3-06 concurrency guard, P3-07 stale head SHA invalidation, P3-08 advisory boundary, P3-09 finding lifecycle status transitions)
+  - `tests/phase4-audit-hardening.test.ts` (7 tests: P4-01 audit metadata token sanitization, P4-02 database error resilience, P4-03 confirmation requirement, P4-04 closed PR rejection, P4-05 non-destructive failure preservation, P4-06 bounded pagination, P4-07 health status schema)
 - `lint` (`npm run lint`): Passed (0 errors, 0 warnings).
-- `build` (`npm run build`): Passed (19 dynamic API routes + static pages compiled successfully).
-
-## Next Task
-
-Begin **Phase 4 — Publishing, Audit Logs & Production Hardening**:
-1. User-initiated GitHub publication of accepted AI comments via GitHub Review comments API.
-2. Comprehensive workspace audit logging for all actions (review triggered, finding status changed, comment published).
-3. Production environment verification, health check endpoints, and telemetry.
+- `build` (`npm run build`): Passed (22 dynamic API routes + static pages compiled successfully).

@@ -12,6 +12,7 @@ import {
   Copy,
   Check,
   RefreshCw,
+  Send,
 } from "lucide-react";
 import { FindingRecord, OverallRisk, FindingSeverity } from "@/types/ai-review";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,9 @@ export function AIReviewPanel({
   );
   const [localFindings, setLocalFindings] = useState<FindingRecord[]>(findings);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [publishedIds, setPublishedIds] = useState<Set<string>>(new Set());
+  const [confirmPublishId, setConfirmPublishId] = useState<string | null>(null);
 
   const filteredFindings = localFindings.filter((f) => {
     if (selectedSeverity === "all") return true;
@@ -47,6 +51,25 @@ export function AIReviewPanel({
     setLocalFindings((prev) =>
       prev.map((f) => (f.id === findingId ? { ...f, status: newStatus } : f))
     );
+  };
+
+  const handlePublishFinding = async (findingId: string) => {
+    setPublishingId(findingId);
+    try {
+      const res = await fetch(`/api/ai-findings/${findingId}/publish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmed: true }),
+      });
+      if (res.ok) {
+        setPublishedIds((prev) => new Set([...prev, findingId]));
+        setConfirmPublishId(null);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setPublishingId(null);
+    }
   };
 
   const handleCopyRecommendation = (findingId: string, text: string) => {
@@ -234,24 +257,63 @@ export function AIReviewPanel({
                         </div>
                       )}
 
-                      {/* User Actions: Accept / Dismiss (Advisory only) */}
-                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-praxd-border-soft">
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateStatus(finding.id, "dismissed")}
-                          className="flex items-center gap-1 px-2.5 py-1 rounded text-[11px] text-praxd-text-muted hover:text-praxd-text hover:bg-[#252525] transition-colors"
-                        >
-                          <XCircle className="w-3.5 h-3.5" />
-                          <span>Dismiss</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateStatus(finding.id, "accepted")}
-                          className="flex items-center gap-1 px-2.5 py-1 rounded bg-[#252525] hover:bg-[#303030] text-[11px] text-praxd-green font-medium transition-colors"
-                        >
-                          <CheckCircle className="w-3.5 h-3.5 text-praxd-green" />
-                          <span>Mark Accepted</span>
-                        </button>
+                      {/* User Actions: Accept / Dismiss / Publish (Advisory only) */}
+                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-praxd-border-soft">
+                        <div className="flex items-center gap-2">
+                          {publishedIds.has(finding.id) ? (
+                            <span className="flex items-center gap-1 text-[11px] text-praxd-green font-medium">
+                              <Check className="w-3.5 h-3.5" />
+                              <span>Published to GitHub</span>
+                            </span>
+                          ) : confirmPublishId === finding.id ? (
+                            <div className="flex items-center gap-2 text-[11px]">
+                              <span className="text-praxd-amber font-medium">Publish advisory comment?</span>
+                              <button
+                                type="button"
+                                onClick={() => handlePublishFinding(finding.id)}
+                                disabled={publishingId === finding.id}
+                                className="px-2 py-0.5 rounded bg-praxd-blue hover:bg-blue-600 text-white font-medium disabled:opacity-50 transition-colors"
+                              >
+                                {publishingId === finding.id ? "Publishing..." : "Confirm"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmPublishId(null)}
+                                className="px-2 py-0.5 rounded bg-[#252525] text-praxd-text-muted hover:text-praxd-text transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : finding.status === "accepted" ? (
+                            <button
+                              type="button"
+                              onClick={() => setConfirmPublishId(finding.id)}
+                              className="flex items-center gap-1 px-2.5 py-1 rounded bg-praxd-blue/15 hover:bg-praxd-blue/25 text-[11px] text-praxd-blue font-medium border border-praxd-blue/30 transition-colors"
+                            >
+                              <Send className="w-3.5 h-3.5" />
+                              <span>Publish to GitHub</span>
+                            </button>
+                          ) : null}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateStatus(finding.id, "dismissed")}
+                            className="flex items-center gap-1 px-2.5 py-1 rounded text-[11px] text-praxd-text-muted hover:text-praxd-text hover:bg-[#252525] transition-colors"
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                            <span>Dismiss</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateStatus(finding.id, "accepted")}
+                            className="flex items-center gap-1 px-2.5 py-1 rounded bg-[#252525] hover:bg-[#303030] text-[11px] text-praxd-green font-medium transition-colors"
+                          >
+                            <CheckCircle className="w-3.5 h-3.5 text-praxd-green" />
+                            <span>Mark Accepted</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}

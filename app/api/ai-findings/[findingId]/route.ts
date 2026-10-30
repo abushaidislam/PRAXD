@@ -3,6 +3,7 @@ import { getAuthenticatedContext } from "@/lib/supabase/auth";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { FindingStatusEnum } from "@/types/ai-review";
 import { apiSuccess, apiError } from "@/lib/api-response";
+import { logAuditEvent } from "@/lib/audit/logger";
 
 export async function PATCH(
   req: NextRequest,
@@ -46,6 +47,20 @@ export async function PATCH(
   if (error || !updated) {
     return apiError("NOT_FOUND", "Finding not found or access denied.", 404);
   }
+
+  // Record audit log for status change
+  await logAuditEvent(supabase, {
+    workspaceId: auth.workspaceId,
+    actorUserId: auth.userId,
+    action: "ai_finding.status_updated",
+    resourceType: "ai_finding",
+    resourceId: findingId,
+    metadata: {
+      newStatus: parsedStatus.data,
+      findingTitle: updated.title,
+      severity: updated.severity,
+    },
+  });
 
   return apiSuccess({ finding: updated });
 }

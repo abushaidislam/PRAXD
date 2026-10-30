@@ -4,6 +4,7 @@ import { buildReviewContext } from "./context-builder";
 import { getAIReviewer, PROMPT_VERSION } from "./reviewer";
 import { validateAiReviewOutput } from "./validator";
 import { deriveFindingFingerprint } from "./fingerprint";
+import { logAuditEvent } from "../audit/logger";
 
 export interface TriggerReviewParams {
   workspaceId: string;
@@ -119,6 +120,16 @@ export async function triggerAiReview(
 
   const runId = newRun?.id || `run-${Date.now()}`;
 
+  // Log audit event for review request
+  await logAuditEvent(supabase, {
+    workspaceId: params.workspaceId,
+    actorUserId: params.userId,
+    action: "ai_review.requested",
+    resourceType: "ai_review_run",
+    resourceId: runId,
+    metadata: { pullRequestId: pr.id, headSha: currentHeadSha, model: modelId },
+  });
+
   // 5. Transition to 'running'
   if (newRun?.id) {
     await supabase
@@ -227,6 +238,20 @@ export async function triggerAiReview(
           findings_count: validation.validatedFindings.length,
         })
         .eq("id", runId);
+
+      await logAuditEvent(supabase, {
+        workspaceId: params.workspaceId,
+        actorUserId: params.userId,
+        action: "ai_review.completed",
+        resourceType: "ai_review_run",
+        resourceId: runId,
+        metadata: {
+          pullRequestId: pr.id,
+          headSha: currentHeadSha,
+          findingsCount: validation.validatedFindings.length,
+          overallRisk: result.overall_risk,
+        },
+      });
     }
 
     return {
@@ -245,6 +270,19 @@ export async function triggerAiReview(
           error_message_safe: err.message || "An unexpected error occurred during AI review.",
         })
         .eq("id", runId);
+
+      await logAuditEvent(supabase, {
+        workspaceId: params.workspaceId,
+        actorUserId: params.userId,
+        action: "ai_review.failed",
+        resourceType: "ai_review_run",
+        resourceId: runId,
+        metadata: {
+          pullRequestId: pr.id,
+          headSha: currentHeadSha,
+          errorMessage: err.message,
+        },
+      });
     }
 
     return {
