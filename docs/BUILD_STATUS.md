@@ -150,6 +150,20 @@
   - P4-06: Strictly bounded audit pagination parameters
   - P4-07: Conforming system health response structure
 
+## UI Polish & Ergonomic Improvements
+
+- [x] Header Centering: Centered `Summary | Code` segmented tabs in main content header.
+- [x] Sidebar Tabs Centering: Centered `All | Reviewing | Authored` tab list in sidebar header.
+- [x] Resizable Inbox Sidebar: Linear-style grab handle with magnetic snap points (340px, 420px, 540px), boundary clamping (280px - 720px), persistent localStorage, live HUD dimension badge, and double-click reset.
+- [x] Author Avatars: Display author profile images with fallback monogram badges across all PR list items.
+- [x] Diff Alignment: Unified split diff rows (`lib/diff-parser.ts`) preventing vertical height desynchronization, line wrap toggle, and synchronized inline annotation containers.
+- [x] Synchronized Dual-Pane Horizontal Scroll:
+  - Synchronized horizontal scroll (`scrollX`) lockstep across both Old Revision (Base) and New Revision (Head) code columns.
+  - Pinned line numbers (gutters) and fixed column dividers preventing gutter scroll-off.
+  - Multi-input support: trackpad horizontal swipe (`deltaX`), mouse wheel with Shift (`deltaY`), keyboard arrow keys (`ArrowLeft`, `ArrowRight`, `Home`, `End`).
+  - Interactive bottom synchronized scrollbar with draggable thumb, click-to-jump track, step nudge buttons (`<` and `>`), and instant "Reset to start" affordance.
+  - Subheader indicator with clear Base (Old) and Head (New) column badges, plus a `Sync Scroll` status badge in the toolbar.
+
 ## Quality Checks & Verification
 
 - `typecheck` (`npm run typecheck`): Passed (0 errors).
