@@ -15,12 +15,12 @@ export async function GET(
   }
 
   // Handle live PR files
-  if (pullRequestId.startsWith("live-")) {
-    const parts = pullRequestId.replace("live-", "").split("-");
-    if (parts.length >= 3) {
-      const pullNumber = parseInt(parts[parts.length - 1], 10);
-      const repo = parts[parts.length - 2];
-      const owner = parts.slice(0, parts.length - 2).join("-");
+  if (pullRequestId.startsWith("live__")) {
+    const parts = pullRequestId.split("__");
+    if (parts.length === 4) {
+      const owner = parts[1];
+      const repo = parts[2];
+      const pullNumber = parseInt(parts[3], 10);
       if (!isNaN(pullNumber) && owner && repo) {
         const livePr = await fetchLivePullRequestDetails(owner, repo, pullNumber);
         if (livePr) {

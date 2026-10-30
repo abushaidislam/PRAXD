@@ -208,7 +208,7 @@ export async function fetchLivePullRequests(options?: {
       const files = idx === 0 ? firstPrFiles : [];
 
       return {
-        id: `live-${owner}-${repo}-${item.number}`,
+        id: `live__${owner}__${repo}__${item.number}`,
         number: item.number,
         title: item.title,
         body: item.body || "",
@@ -316,7 +316,7 @@ export async function fetchLivePullRequestDetails(
     }));
 
     return {
-      id: `live-${owner}-${repo}-${pr.number}`,
+      id: `live__${owner}__${repo}__${pr.number}`,
       number: pr.number,
       title: pr.title,
       body: pr.body || "",
