@@ -1,12 +1,14 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   Plus,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   FileX,
   CornerDownRight,
   MessageSquare,
   Check,
+  ArrowLeftRight,
 } from "lucide-react";
 import { ChangedFile, PRComment, AIFinding, DiffLine } from "@/types/pr";
 import { AIReviewCard } from "./ai-review-card";
@@ -35,6 +37,17 @@ export function DiffViewer({
     comments.filter((c) => c.commentType === "review" && c.path === file.filename)
   );
 
+  // Synchronized Dual-Pane Horizontal Scroll State
+  const [scrollX, setScrollX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [containerWidth, setContainerWidth] = useState(960);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const dragStartRef = useRef<{ startX: number; startScrollX: number }>({
+    startX: 0,
+    startScrollX: 0,
+  });
+
   // Compute effective diff lines: uses file.lines or parses file.patch on the fly
   const effectiveLines: DiffLine[] = useMemo(() => {
     if (file.lines && file.lines.length > 0) {
@@ -50,6 +63,150 @@ export function DiffViewer({
   const splitRows: SplitRow[] = useMemo(() => {
     return buildSplitRows(effectiveLines);
   }, [effectiveLines]);
+
+  // Dynamic horizontal scroll boundaries based on the longest diff line
+  const maxLineLength = useMemo(() => {
+    if (effectiveLines.length === 0) return 60;
+    return Math.max(...effectiveLines.map((l) => (l.content ? l.content.length : 0)), 60);
+  }, [effectiveLines]);
+
+  // Monitor container width dynamically with ResizeObserver (with JSDOM / Node test fallback)
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const updateWidth = () => {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.clientWidth || 960);
+      }
+    };
+    updateWidth();
+
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(updateWidth);
+      observer.observe(containerRef.current);
+      return () => observer.disconnect();
+    }
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("resize", updateWidth);
+      return () => window.removeEventListener("resize", updateWidth);
+    }
+  }, []);
+
+  // Compute column visible width & max scroll range
+  // In split mode, each column is 50% minus gutter (48px) and internal padding (24px)
+  const columnWidth = useMemo(() => {
+    if (diffMode === "split") {
+      return Math.max(300, containerWidth / 2 - 72);
+    }
+    return Math.max(400, containerWidth - 120);
+  }, [diffMode, containerWidth]);
+
+  const maxScrollX = useMemo(() => {
+    if (wrapLines) return 0;
+    const contentWidth = Math.max(columnWidth, maxLineLength * 7.6 + 60);
+    return Math.max(0, contentWidth - columnWidth);
+  }, [wrapLines, maxLineLength, columnWidth]);
+
+  // Reset scroll whenever the file changes or line wrap is toggled
+  useEffect(() => {
+    setScrollX(0);
+  }, [file.filename, wrapLines]);
+
+  // Synchronized Wheel Event Listener (Trackpad swipe deltaX & Shift + Mouse wheel deltaY)
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (wrapLines || maxScrollX <= 0) return;
+
+      const isHorizontal =
+        Math.abs(e.deltaX) > Math.abs(e.deltaY) || (e.shiftKey && e.deltaY !== 0);
+
+      if (isHorizontal) {
+        e.preventDefault();
+        const delta = Math.abs(e.deltaX) > 0 ? e.deltaX : e.shiftKey ? e.deltaY : 0;
+        setScrollX((prev) => Math.max(0, Math.min(maxScrollX, prev + delta)));
+      }
+    };
+
+    container.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      container.removeEventListener("wheel", handleWheel);
+    };
+  }, [wrapLines, maxScrollX]);
+
+  // Keyboard navigation for horizontal scroll (ArrowLeft, ArrowRight, Home, End)
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (wrapLines || maxScrollX <= 0) return;
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      setScrollX((prev) => Math.max(0, prev - 50));
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      setScrollX((prev) => Math.min(maxScrollX, prev + 50));
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      setScrollX(0);
+    } else if (e.key === "End") {
+      e.preventDefault();
+      setScrollX(maxScrollX);
+    }
+  };
+
+  // Draggable Scrollbar Thumb Handling
+  const handleThumbMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+    dragStartRef.current = {
+      startX: e.clientX,
+      startScrollX: scrollX,
+    };
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!trackRef.current || maxScrollX <= 0) return;
+      const trackRect = trackRef.current.getBoundingClientRect();
+      const trackWidth = trackRect.width;
+      const deltaMouseX = e.clientX - dragStartRef.current.startX;
+      const scrollDelta = (deltaMouseX / trackWidth) * maxScrollX;
+      const newScrollX = Math.max(
+        0,
+        Math.min(maxScrollX, dragStartRef.current.startScrollX + scrollDelta)
+      );
+      setScrollX(newScrollX);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDragging, maxScrollX]);
+
+  const handleTrackClick = (e: React.MouseEvent) => {
+    if (!trackRef.current || maxScrollX <= 0) return;
+    const trackRect = trackRef.current.getBoundingClientRect();
+    const clickX = e.clientX - trackRect.left;
+    const ratio = Math.max(0, Math.min(1, clickX / trackRect.width));
+    setScrollX(ratio * maxScrollX);
+  };
+
+  // Scrollbar dimensions
+  const visibleRatio = Math.min(1, columnWidth / (columnWidth + maxScrollX));
+  const thumbWidthPercent = Math.max(16, Math.min(80, visibleRatio * 100));
+  const availableThumbTrack = 100 - thumbWidthPercent;
+  const scrollRatio = maxScrollX > 0 ? scrollX / maxScrollX : 0;
+  const thumbLeftPercent = scrollRatio * availableThumbTrack;
 
   // Scenario P0-06: File without patch or binary file
   if (effectiveLines.length === 0) {
@@ -202,6 +359,41 @@ export function DiffViewer({
         </div>
       </div>
 
+      {/* Split Column Subheader Bar */}
+      {diffMode === "split" && (
+        <div className="flex border-b border-praxd-border-soft bg-[#131313] text-[11px] font-mono text-praxd-text-muted select-none shrink-0">
+          {/* Left Column Label (Base / Old) */}
+          <div className="w-1/2 flex items-center justify-between px-3 py-1.5 border-r border-praxd-border-soft/60">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-red-500/80" />
+              <span className="font-semibold text-neutral-300">Base</span>
+              <span className="text-[10px] text-neutral-500 font-sans">(Original revision)</span>
+            </div>
+            <span className="text-[10px] text-neutral-500 uppercase tracking-wider font-semibold">
+              Old
+            </span>
+          </div>
+
+          {/* Right Column Label (Head / New) */}
+          <div className="w-1/2 flex items-center justify-between px-3 py-1.5">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500/80" />
+              <span className="font-semibold text-neutral-300">Head</span>
+              <span className="text-[10px] text-neutral-500 font-sans">(Modified revision)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1 text-[10px] text-praxd-blue font-sans">
+                <ArrowLeftRight className="w-3 h-3" />
+                <span>Synced</span>
+              </span>
+              <span className="text-[10px] text-emerald-400 uppercase tracking-wider font-semibold">
+                New
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Unmodified Lines Bar */}
       {file.unmodifiedLinesBefore && (
         <div className="flex flex-col bg-[#141414] border-b border-praxd-border-soft text-[11px] font-mono select-none">
@@ -233,8 +425,16 @@ export function DiffViewer({
                   <div className="w-12 px-2 text-right select-none text-[11px] text-neutral-600 border-r border-praxd-border-soft tabular-nums">
                     {ctx.newNum}
                   </div>
-                  <div className="flex-1 px-3 text-neutral-400 whitespace-pre">
-                    {ctx.text}
+                  <div className="flex-1 min-w-0 overflow-hidden relative">
+                    <div
+                      style={{
+                        transform: !wrapLines ? `translateX(-${scrollX}px)` : undefined,
+                        transition: isDragging ? "none" : "transform 50ms ease-out",
+                      }}
+                      className="px-3 text-neutral-400 whitespace-pre"
+                    >
+                      {ctx.text}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -244,10 +444,15 @@ export function DiffViewer({
       )}
 
       {/* Main Diff Content Container */}
-      <div className="flex-1 overflow-auto font-code text-[12px] leading-5 bg-[#0e0e0e]">
+      <div
+        ref={containerRef}
+        tabIndex={0}
+        onKeyDown={handleKeyDown}
+        className="flex-1 overflow-y-auto overflow-x-hidden font-code text-[12px] leading-5 bg-[#0e0e0e] outline-none"
+      >
         {diffMode === "split" ? (
           /* ================= SYNCHRONIZED SPLIT DIFF ================= */
-          <div className="min-w-[960px] divide-y divide-praxd-border-soft/20">
+          <div className="w-full divide-y divide-praxd-border-soft/20">
             {splitRows.map((row) => {
               const rightLineNum = row.right?.lineNumber;
               const leftLineNum = row.left?.lineNumber;
@@ -261,7 +466,10 @@ export function DiffViewer({
                     (f) => f.filePath === file.filename && f.line === rightLineNum
                   )
                 : [];
-              const hasAnnotation = lineComments.length > 0 || lineAiFindings.length > 0 || activeCommentLine === rightLineNum;
+              const hasAnnotation =
+                lineComments.length > 0 ||
+                lineAiFindings.length > 0 ||
+                activeCommentLine === rightLineNum;
 
               return (
                 <div key={row.id} className="flex flex-col">
@@ -270,14 +478,14 @@ export function DiffViewer({
                     {/* LEFT COLUMN: Old Revision */}
                     <div
                       className={cn(
-                        "w-1/2 flex border-r border-praxd-border-soft/60 border-l-2",
+                        "w-1/2 flex border-r border-praxd-border-soft/60 border-l-2 relative overflow-hidden",
                         row.left?.type === "deletion"
                           ? "bg-[#281416]/50 border-praxd-red"
                           : "border-transparent bg-transparent"
                       )}
                     >
-                      {/* Gutter */}
-                      <div className="w-12 shrink-0 px-2 text-right select-none text-[11px] text-praxd-text-muted tabular-nums relative flex items-center justify-end">
+                      {/* Pinned Gutter (Line Number + Comment Button) */}
+                      <div className="w-12 shrink-0 px-2 text-right select-none text-[11px] text-praxd-text-muted tabular-nums relative flex items-center justify-end z-10 border-r border-praxd-border-soft/40 bg-[#0e0e0e]">
                         <span className="group-hover:opacity-0 transition-opacity">
                           {row.left?.lineNumber || ""}
                         </span>
@@ -293,30 +501,40 @@ export function DiffViewer({
                         )}
                       </div>
 
-                      {/* Code */}
-                      <div
-                        className={cn(
-                          "flex-1 px-3 text-praxd-text min-w-0",
-                          wrapLines ? "whitespace-pre-wrap break-words" : "whitespace-pre overflow-x-auto"
-                        )}
-                      >
-                        {row.left
-                          ? renderHighlightedCode(row.left.content, row.left.type === "deletion")
-                          : <span className="text-neutral-700 select-none">&nbsp;</span>}
+                      {/* Code Area with Synchronized Horizontal Translation */}
+                      <div className="flex-1 min-w-0 overflow-hidden relative">
+                        <div
+                          style={{
+                            transform: !wrapLines ? `translateX(-${scrollX}px)` : undefined,
+                            transition: isDragging ? "none" : "transform 50ms ease-out",
+                          }}
+                          className={cn(
+                            "px-3 text-praxd-text",
+                            wrapLines
+                              ? "whitespace-pre-wrap break-words"
+                              : "whitespace-pre font-mono inline-block min-w-full"
+                          )}
+                        >
+                          {row.left ? (
+                            renderHighlightedCode(row.left.content, row.left.type === "deletion")
+                          ) : (
+                            <span className="text-neutral-700 select-none">&nbsp;</span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
                     {/* RIGHT COLUMN: New Revision */}
                     <div
                       className={cn(
-                        "w-1/2 flex border-l-2",
+                        "w-1/2 flex border-l-2 relative overflow-hidden",
                         row.right?.type === "addition"
                           ? "bg-[#122619]/50 border-praxd-green"
                           : "border-transparent bg-transparent"
                       )}
                     >
-                      {/* Gutter */}
-                      <div className="w-12 shrink-0 px-2 text-right select-none text-[11px] text-praxd-text-muted tabular-nums relative flex items-center justify-end">
+                      {/* Pinned Gutter (Line Number + Comment Button) */}
+                      <div className="w-12 shrink-0 px-2 text-right select-none text-[11px] text-praxd-text-muted tabular-nums relative flex items-center justify-end z-10 border-r border-praxd-border-soft/40 bg-[#0e0e0e]">
                         <span className="group-hover:opacity-0 transition-opacity">
                           {row.right?.lineNumber || ""}
                         </span>
@@ -332,16 +550,30 @@ export function DiffViewer({
                         )}
                       </div>
 
-                      {/* Code */}
-                      <div
-                        className={cn(
-                          "flex-1 px-3 text-praxd-text min-w-0",
-                          wrapLines ? "whitespace-pre-wrap break-words" : "whitespace-pre overflow-x-auto"
-                        )}
-                      >
-                        {row.right
-                          ? renderHighlightedCode(row.right.content, false, row.right.type === "addition")
-                          : <span className="text-neutral-700 select-none">&nbsp;</span>}
+                      {/* Code Area with Synchronized Horizontal Translation */}
+                      <div className="flex-1 min-w-0 overflow-hidden relative">
+                        <div
+                          style={{
+                            transform: !wrapLines ? `translateX(-${scrollX}px)` : undefined,
+                            transition: isDragging ? "none" : "transform 50ms ease-out",
+                          }}
+                          className={cn(
+                            "px-3 text-praxd-text",
+                            wrapLines
+                              ? "whitespace-pre-wrap break-words"
+                              : "whitespace-pre font-mono inline-block min-w-full"
+                          )}
+                        >
+                          {row.right ? (
+                            renderHighlightedCode(
+                              row.right.content,
+                              false,
+                              row.right.type === "addition"
+                            )
+                          ) : (
+                            <span className="text-neutral-700 select-none">&nbsp;</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -442,7 +674,7 @@ export function DiffViewer({
           </div>
         ) : (
           /* ================= UNIFIED DIFF MODE ================= */
-          <div className="min-w-[760px] divide-y divide-praxd-border-soft/20">
+          <div className="w-full divide-y divide-praxd-border-soft/20">
             {effectiveLines.map((line, idx) => {
               const isAddition = line.type === "addition";
               const isDeletion = line.type === "deletion";
@@ -456,13 +688,16 @@ export function DiffViewer({
                     (f) => f.filePath === file.filename && f.line === line.newLineNumber
                   )
                 : [];
-              const hasAnnotation = lineComments.length > 0 || lineAiFindings.length > 0 || activeCommentLine === lineNum;
+              const hasAnnotation =
+                lineComments.length > 0 ||
+                lineAiFindings.length > 0 ||
+                activeCommentLine === lineNum;
 
               return (
                 <div key={`uni-${idx}`} className="flex flex-col">
                   <div
                     className={cn(
-                      "flex items-stretch group hover:bg-[#161616] transition-colors border-l-2",
+                      "flex items-stretch group hover:bg-[#161616] transition-colors border-l-2 relative overflow-hidden",
                       isAddition
                         ? "bg-[#122619]/50 border-praxd-green"
                         : isDeletion
@@ -471,12 +706,12 @@ export function DiffViewer({
                     )}
                   >
                     {/* Old line number */}
-                    <div className="w-12 shrink-0 px-2 text-right select-none text-[11px] text-praxd-text-muted tabular-nums">
+                    <div className="w-12 shrink-0 px-2 text-right select-none text-[11px] text-praxd-text-muted tabular-nums bg-[#0e0e0e] z-10">
                       {line.oldLineNumber || ""}
                     </div>
 
                     {/* New line number + Hover '+' button */}
-                    <div className="w-12 shrink-0 px-2 text-right select-none text-[11px] text-praxd-text-muted border-r border-praxd-border-soft/60 tabular-nums relative flex items-center justify-end">
+                    <div className="w-12 shrink-0 px-2 text-right select-none text-[11px] text-praxd-text-muted border-r border-praxd-border-soft/60 tabular-nums relative flex items-center justify-end bg-[#0e0e0e] z-10">
                       <span className="group-hover:opacity-0 transition-opacity">
                         {line.newLineNumber || ""}
                       </span>
@@ -494,18 +729,26 @@ export function DiffViewer({
                     </div>
 
                     {/* Prefix sign (+ / -) */}
-                    <div className="w-6 shrink-0 text-center select-none text-neutral-500 font-mono">
+                    <div className="w-6 shrink-0 text-center select-none text-neutral-500 font-mono bg-[#0e0e0e] z-10">
                       {isAddition ? "+" : isDeletion ? "-" : " "}
                     </div>
 
                     {/* Code Content */}
-                    <div
-                      className={cn(
-                        "flex-1 px-3 text-praxd-text min-w-0",
-                        wrapLines ? "whitespace-pre-wrap break-words" : "whitespace-pre overflow-x-auto"
-                      )}
-                    >
-                      {renderHighlightedCode(line.content, isDeletion, isAddition)}
+                    <div className="flex-1 min-w-0 overflow-hidden relative">
+                      <div
+                        style={{
+                          transform: !wrapLines ? `translateX(-${scrollX}px)` : undefined,
+                          transition: isDragging ? "none" : "transform 50ms ease-out",
+                        }}
+                        className={cn(
+                          "px-3 text-praxd-text",
+                          wrapLines
+                            ? "whitespace-pre-wrap break-words"
+                            : "whitespace-pre font-mono inline-block min-w-full"
+                        )}
+                      >
+                        {renderHighlightedCode(line.content, isDeletion, isAddition)}
+                      </div>
                     </div>
                   </div>
 
@@ -588,6 +831,79 @@ export function DiffViewer({
           </div>
         )}
       </div>
+
+      {/* Synchronized Dual-Pane Scrollbar Footer */}
+      {!wrapLines && maxScrollX > 0 && (
+        <div className="shrink-0 flex items-center justify-between px-4 py-2 bg-[#121212] border-t border-praxd-border-soft text-[11px] select-none shadow-sm">
+          {/* Left: Lockstep status & Live pixel offset */}
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-praxd-blue/10 text-praxd-blue font-medium border border-praxd-blue/20">
+              <ArrowLeftRight className="w-3 h-3" />
+              <span>Dual-Pane Sync Scroll</span>
+            </div>
+            <span className="font-mono text-[11px] text-neutral-400">
+              {Math.round(scrollX)}px / {Math.round(maxScrollX)}px
+            </span>
+            {scrollX > 0 && (
+              <button
+                type="button"
+                onClick={() => setScrollX(0)}
+                className="text-[11px] text-praxd-blue hover:text-blue-400 underline font-medium transition-colors"
+              >
+                Reset to start
+              </button>
+            )}
+          </div>
+
+          {/* Center / Right: Interactive Track & Draggable Thumb */}
+          <div className="flex items-center gap-2 flex-1 max-w-md ml-6">
+            {/* Step Left */}
+            <button
+              type="button"
+              onClick={() => setScrollX((prev) => Math.max(0, prev - 80))}
+              disabled={scrollX <= 0}
+              className="p-1 rounded text-praxd-text-muted hover:text-praxd-text hover:bg-[#1f1f1f] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Scroll left (or Shift+Wheel Left)"
+              aria-label="Scroll left"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </button>
+
+            {/* Track */}
+            <div
+              ref={trackRef}
+              onClick={handleTrackClick}
+              className="flex-1 h-2.5 bg-[#1a1a1a] hover:bg-[#222222] rounded-full relative cursor-pointer overflow-hidden border border-praxd-border-soft transition-colors"
+              title="Click to jump or drag thumb to scroll both panes in lockstep"
+            >
+              {/* Thumb */}
+              <div
+                onMouseDown={handleThumbMouseDown}
+                style={{
+                  width: `${thumbWidthPercent}%`,
+                  left: `${thumbLeftPercent}%`,
+                }}
+                className={cn(
+                  "absolute top-0 bottom-0 rounded-full cursor-grab active:cursor-grabbing transition-colors",
+                  isDragging ? "bg-praxd-blue" : "bg-neutral-500 hover:bg-neutral-400"
+                )}
+              />
+            </div>
+
+            {/* Step Right */}
+            <button
+              type="button"
+              onClick={() => setScrollX((prev) => Math.min(maxScrollX, prev + 80))}
+              disabled={scrollX >= maxScrollX}
+              className="p-1 rounded text-praxd-text-muted hover:text-praxd-text hover:bg-[#1f1f1f] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Scroll right (or Shift+Wheel Right)"
+              aria-label="Scroll right"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

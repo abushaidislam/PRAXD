@@ -6,6 +6,7 @@ import {
   WrapText,
   ChevronLeft,
   ChevronRight,
+  ArrowLeftRight,
 } from "lucide-react";
 import { PullRequest, ChangedFile } from "@/types/pr";
 import { FileTreeDropdown } from "./file-tree-dropdown";
@@ -113,7 +114,18 @@ export function CodeView({ pr }: CodeViewProps) {
         </div>
 
         {/* Right: Split / Unified Diff Switcher & Display Options */}
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Dual Sync Scroll Indicator in Split Mode */}
+          {diffMode === "split" && !wrapLines && (
+            <div
+              className="hidden md:flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium rounded-md bg-[#161616] text-praxd-text-secondary border border-praxd-border-soft select-none"
+              title="Side-by-side horizontal scrolling is synchronized across both Old and New code panes"
+            >
+              <ArrowLeftRight className="w-3 h-3 text-praxd-blue" />
+              <span>Sync Scroll</span>
+            </div>
+          )}
+
           {/* Line Wrap Toggle Button */}
           <button
             type="button"
