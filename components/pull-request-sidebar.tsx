@@ -17,6 +17,8 @@ type TabType = "all" | "reviewing" | "authored";
 const MIN_SIDEBAR_WIDTH = 280;
 const MAX_SIDEBAR_WIDTH = 720;
 const DEFAULT_SIDEBAR_WIDTH = 420;
+const SNAP_THRESHOLD = 8;
+const SNAP_POINTS = [340, 420, 540];
 
 export function PullRequestSidebar({
   pullRequests,
@@ -29,9 +31,10 @@ export function PullRequestSidebar({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedGroup, setSelectedGroup] = useState<string>("Authored");
 
-  // Resizable sidebar width state
+  // Resizable sidebar width state & mouse Y for floating HUD badge
   const [sidebarWidth, setSidebarWidth] = useState<number>(DEFAULT_SIDEBAR_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
+  const [mouseY, setMouseY] = useState<number>(200);
 
   // Restore saved width from localStorage if available
   useEffect(() => {
@@ -48,9 +51,10 @@ export function PullRequestSidebar({
     }
   }, []);
 
-  // Resizing mouse drag handlers
+  // Resizing mouse drag handlers with magnetic snapping
   const handleStartResizing = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
+    setMouseY(e.clientY);
     setIsResizing(true);
   }, []);
 
@@ -61,11 +65,21 @@ export function PullRequestSidebar({
   const handleResize = useCallback(
     (e: MouseEvent) => {
       if (isResizing) {
+        setMouseY(e.clientY);
         const maxWidthBound = Math.min(MAX_SIDEBAR_WIDTH, Math.floor(window.innerWidth * 0.6));
-        const newWidth = Math.min(Math.max(e.clientX, MIN_SIDEBAR_WIDTH), maxWidthBound);
-        setSidebarWidth(newWidth);
+        let calculatedWidth = Math.min(Math.max(e.clientX, MIN_SIDEBAR_WIDTH), maxWidthBound);
+
+        // Magnetic snapping to ergonomic snap points (Default 420px, Compact 340px, Wide 540px)
+        for (const snap of SNAP_POINTS) {
+          if (Math.abs(calculatedWidth - snap) <= SNAP_THRESHOLD) {
+            calculatedWidth = snap;
+            break;
+          }
+        }
+
+        setSidebarWidth(calculatedWidth);
         try {
-          localStorage.setItem("praxd:sidebar-width", newWidth.toString());
+          localStorage.setItem("praxd:sidebar-width", calculatedWidth.toString());
         } catch {
           // ignore
         }
@@ -269,7 +283,7 @@ export function PullRequestSidebar({
         )}
       </div>
 
-      {/* Interactive Resizer Handle (desktop only) */}
+      {/* Sleek, Minimalist Resizer Handle (desktop only - no aggressive blue colors) */}
       <div
         role="separator"
         aria-orientation="vertical"
@@ -287,20 +301,59 @@ export function PullRequestSidebar({
         onMouseDown={handleStartResizing}
         onDoubleClick={handleResetWidth}
         className={cn(
-          "hidden md:block absolute top-0 -right-1.5 w-3 h-full cursor-col-resize z-30 select-none group",
-          isResizing ? "bg-praxd-blue/20" : "hover:bg-praxd-blue/10"
+          "hidden md:flex absolute top-0 -right-2 w-4 h-full cursor-col-resize z-30 select-none group items-center justify-center transition-colors",
+          isResizing ? "bg-white/[0.03]" : "hover:bg-white/[0.015]"
         )}
         title="Drag to resize, double-click to reset (420px)"
       >
+        {/* Subtle, refined vertical line */}
         <div
           className={cn(
-            "w-[2px] h-full mx-auto transition-colors duration-150",
+            "w-[1px] h-full transition-all duration-150",
             isResizing
-              ? "bg-praxd-blue"
-              : "bg-transparent group-hover:bg-praxd-blue/60"
+              ? "bg-neutral-300 shadow-[0_0_8px_rgba(255,255,255,0.2)]"
+              : "bg-transparent group-hover:bg-neutral-500/50"
+          )}
+        />
+
+        {/* Center Pill Grab Indicator (Linear/macOS style) */}
+        <div
+          className={cn(
+            "absolute top-1/2 -translate-y-1/2 w-1 rounded-full transition-all duration-200 pointer-events-none",
+            isResizing
+              ? "h-10 bg-neutral-200 shadow-[0_0_8px_rgba(255,255,255,0.3)] opacity-100 scale-105"
+              : "h-6 bg-neutral-500/50 opacity-0 group-hover:opacity-100 group-hover:h-8"
           )}
         />
       </div>
+
+      {/* Floating Live Dimension HUD Tooltip while dragging */}
+      {isResizing && (
+        <div
+          className="fixed z-50 pointer-events-none px-2.5 py-1 rounded-lg bg-[#181818]/95 backdrop-blur-md border border-praxd-border-soft shadow-2xl text-[11px] font-mono text-praxd-text tabular-nums flex items-center gap-1.5 select-none animate-in fade-in zoom-in-95 duration-100"
+          style={{
+            left: `${sidebarWidth + 14}px`,
+            top: `${Math.max(60, Math.min(mouseY - 14, typeof window !== "undefined" ? window.innerHeight - 50 : 200))}px`,
+          }}
+        >
+          <span className="font-semibold">{sidebarWidth}px</span>
+          {sidebarWidth === DEFAULT_SIDEBAR_WIDTH && (
+            <span className="text-[10px] px-1.5 py-0.2 rounded bg-neutral-800 text-praxd-green font-sans font-medium border border-praxd-green/30">
+              Default
+            </span>
+          )}
+          {sidebarWidth === 340 && (
+            <span className="text-[10px] px-1.5 py-0.2 rounded bg-neutral-800 text-praxd-blue font-sans font-medium border border-praxd-blue/30">
+              Compact
+            </span>
+          )}
+          {sidebarWidth === 540 && (
+            <span className="text-[10px] px-1.5 py-0.2 rounded bg-neutral-800 text-orange-400 font-sans font-medium border border-orange-500/30">
+              Wide
+            </span>
+          )}
+        </div>
+      )}
     </aside>
   );
 }
