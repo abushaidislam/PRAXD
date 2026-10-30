@@ -1,8 +1,8 @@
 # PRAXD Build Status
 
 **Last updated:** 2026-10-30  
-**Current phase:** Phase 1 — MVP PR Inbox & Summary/Code Split View with Live GitHub Integration  
-**Build status:** Phase 0 & Phase 1 Complete & Verified (Ready for Phase 2)
+**Current phase:** Phase 2 — Webhook Automation & Real-time Reconciliation  
+**Build status:** Phase 0, Phase 1 & Phase 2 Complete & Verified (Ready for Phase 3)
 
 ## Completed in Phase 0
 
@@ -54,20 +54,39 @@
   - `POST /api/pull-requests/:id/refresh`
 - [x] UI GitHub Connect Modal & Live/Fixtures Mode toggle (`components/github-connect-modal.tsx`, `components/demo-mode-badge.tsx`)
 
+## Completed in Phase 2
+
+- [x] HMAC-SHA256 GitHub Webhook signature verification (`lib/github/webhook-verify.ts`):
+  - Validates `X-Hub-Signature-256` header against raw payload body
+  - Timing-safe comparison to prevent timing attacks
+- [x] Webhook route & delivery deduplication (`app/api/webhooks/github/route.ts`):
+  - Ingestion endpoint with strict raw body buffering
+  - `X-GitHub-Delivery` delivery tracking and idempotency check
+  - Fast HTTP 202 response and async background event dispatch
+- [x] Granular Webhook Event Handlers (`lib/github/webhook-handlers.ts`):
+  - `pull_request` (`opened`, `synchronize`, `closed`, `reopened`, `edited`)
+  - `pull_request_review` (`submitted`, `dismissed`)
+  - `pull_request_review_comment` (`created`, `edited`, `deleted`)
+  - `issue_comment` (`created`, `edited`, `deleted`)
+  - `check_run` (`completed`, `created`, `rerequested`)
+  - `installation` (`created`, `deleted`, `suspend`, `unsuspend`)
+  - `installation_repositories` (`added`, `removed`)
+- [x] Self-healing Reconciler (`lib/github/reconciler.ts`) for missing parent records and periodic sync
+
 ## Quality Checks & Verification
 
 - `typecheck` (`npm run typecheck`): Passed (0 errors).
-- `test` (`npm run test`): Passed 27/27 acceptance tests across 4 test suites:
-  - `tests/phase0-workspace.test.tsx` (9 tests: shell, tabs, search, selection, split/unified diffs, keyboard shortcut `Ctrl+B`, binary fallback, merge guardrail)
-  - `tests/phase1-state.test.ts` (5 tests: P1-01 valid state token, P1-02 omitted/tampered/expired/reused state rejection)
-  - `tests/phase1-github-sync.test.ts` (11 tests: P1-05 canonical PR state mapping, P1-06 Link pagination, P1-07 binary honesty, P1-08 comment segregation, P1-09 head SHA check run isolation, P1-10 403 & 429 rate limit parsing)
-  - `tests/phase1-workspace-isolation.test.ts` (2 tests: P1-11 tenant isolation, P1-12 installation suspension/revocation)
+- `test` (`npm run test`): Passed 38/38 acceptance tests across 5 test suites:
+  - `tests/phase0-workspace.test.tsx` (9 tests)
+  - `tests/phase1-state.test.ts` (5 tests)
+  - `tests/phase1-github-sync.test.ts` (11 tests)
+  - `tests/phase1-workspace-isolation.test.ts` (2 tests)
+  - `tests/phase2-webhooks.test.ts` (11 tests)
 - `lint` (`npm run lint`): Passed (0 errors, 0 warnings).
-- `build` (`npm run build`): Passed (15 dynamic API routes + static pages compiled successfully).
 
 ## Next Task
 
-Begin **Phase 2 — Webhook Automation & Real-time Reconciliation**:
-1. Implement HMAC-SHA256 signature verification route (`/api/webhooks/github`) using raw request body.
-2. Webhook delivery deduplication using `webhook_deliveries` table.
-3. Event handlers for `pull_request`, `pull_request_review`, `pull_request_review_comment`, `issue_comment`, `check_run`, `installation`, and `installation_repositories`.
+Begin **Phase 3 — AI Review Engine & Guardrails**:
+1. Implement provider-agnostic LLM interface with fallback and token budgeting.
+2. Build diff chunking and context window packing.
+3. Validate structured AI review findings (file, line range, severity, category, recommendation) using Zod.
