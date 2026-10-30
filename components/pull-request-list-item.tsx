@@ -62,11 +62,31 @@ export function PullRequestListItem({
           </span>
         </div>
 
-        {/* Subtitle / Repository + Branch + Diff Stats */}
-        <div className="flex items-center justify-between gap-2 mt-1 text-[11px] text-praxd-text-muted">
-          <span className="truncate max-w-[240px]">
-            {pr.repoOwner}/... {pr.headRef.length > 22 ? `${pr.headRef.slice(0, 22)}...` : pr.headRef}
-          </span>
+        {/* Subtitle / Author Avatar + Name + Repository/Branch + Diff Stats */}
+        <div className="flex items-center justify-between gap-2 mt-1.5 text-[11px] text-praxd-text-muted">
+          <div className="flex items-center gap-1.5 min-w-0">
+            {/* Author Avatar with fallback */}
+            {pr.author?.avatarUrl ? (
+              <img
+                src={pr.author.avatarUrl}
+                alt={pr.author.login}
+                className="w-3.5 h-3.5 rounded-full object-cover shrink-0 ring-1 ring-white/10 bg-[#252525]"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = "none";
+                }}
+              />
+            ) : (
+              <div className="w-3.5 h-3.5 rounded-full bg-[#2a2a2a] ring-1 ring-white/10 flex items-center justify-center text-[8px] font-bold text-neutral-300 shrink-0">
+                {(pr.author?.login || "U").charAt(0).toUpperCase()}
+              </div>
+            )}
+
+            <span className="truncate max-w-[220px]">
+              <span className="text-praxd-text-secondary font-medium">{pr.author?.login || pr.repoOwner}</span>
+              <span className="text-neutral-500">/... {pr.headRef.length > 20 ? `${pr.headRef.slice(0, 20)}...` : pr.headRef}</span>
+            </span>
+          </div>
+
           <div className="flex items-center gap-1 shrink-0 font-mono text-[10px]">
             <span className="text-praxd-green">+{pr.additions}</span>
             <span className="text-praxd-red">-{pr.deletions}</span>
