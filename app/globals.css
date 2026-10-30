@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --praxd-bg: #111111;
+  --praxd-sidebar: #171717;
+  --praxd-panel: #1b1b1b;
+  --praxd-panel-hover: #222222;
+  --praxd-border: #303030;
+  --praxd-border-soft: #262626;
+  --praxd-text: #f2f2f2;
+  --praxd-text-secondary: #a3a3a3;
+  --praxd-text-muted: #737373;
+  --praxd-green: #2fbf71;
+  --praxd-red: #f05252;
+  --praxd-amber: #d6a344;
+  --praxd-blue: #5a9cff;
+  --praxd-radius-sm: 6px;
+  --praxd-radius-md: 9px;
+  --praxd-radius-lg: 12px;
+}
+
+body {
+  background-color: var(--praxd-bg);
+  color: var(--praxd-text);
+  font-family: Inter, Geist, ui-sans-serif, system-ui, sans-serif;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  user-select: none;
+}
+
+/* Custom subtle scrollbars matching the screenshots */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333333;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4a4a4a;
+}
+
+/* Code font styling */
+.font-code {
+  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-variant-ligatures: none;
+}
+
+/* Accessible focus ring */
+:focus-visible {
+  outline: 2px solid var(--praxd-blue);
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
