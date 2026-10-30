@@ -154,4 +154,13 @@ describe("Phase 1 Acceptance: GitHub Synchronization & Data Mapping", () => {
       expect(err.message).toContain("Forbidden");
     });
   });
+
+  describe("P1-11: Installation Details Verification", () => {
+    it("returns null safely when installation fetch fails or is unconfigured", async () => {
+      const { getInstallationDetails } = await import("@/lib/github/app-auth");
+      // With non-existent ID or invalid network, should return null safely without throwing
+      const details = await getInstallationDetails(-999);
+      expect(details).toBeNull();
+    });
+  });
 });

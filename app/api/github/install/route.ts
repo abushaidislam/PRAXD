@@ -16,5 +16,16 @@ export async function GET(req: NextRequest) {
     state
   )}`;
 
-  return NextResponse.redirect(githubInstallUrl);
+  const response = NextResponse.redirect(githubInstallUrl);
+  // Store signed state in an HTTP-only cookie so that when GitHub redirects to Setup URL (which drops ?state=),
+  // the callback can securely verify the initiating user and workspace.
+  response.cookies.set("praxd_install_state", state, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 10 * 60, // 10 minutes
+    secure: process.env.NODE_ENV === "production",
+  });
+
+  return response;
 }

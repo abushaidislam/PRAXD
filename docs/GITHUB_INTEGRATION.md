@@ -25,8 +25,8 @@ Create a dedicated App named **PRAXD**. Use separate GitHub Apps for local devel
 |---|---|
 | App name | `PRAXD` (must be globally available in GitHub) |
 | Homepage URL | Deployed PRAXD origin, e.g. `https://app.example.com` |
-| Callback URL | `https://APP_ORIGIN/api/github/callback` (or the route chosen by the implementation) |
-| Setup URL | Optional dedicated installation-complete route; if used, verify signed-in user/workspace context server-side |
+| Callback URL | `https://APP_ORIGIN/api/github/callback` (OAuth user authorization callback) |
+| Setup URL | `https://APP_ORIGIN/api/github/callback` (**Required** to redirect users back to PRAXD after App installation; enable "Redirect on update") |
 | Webhook URL | `https://APP_ORIGIN/api/webhooks/github` |
 | Webhook secret | High-entropy random secret, different per environment, stored in a server secret manager |
 | SSL verification | Enabled |

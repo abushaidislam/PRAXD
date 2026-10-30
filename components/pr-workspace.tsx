@@ -19,6 +19,17 @@ export function PRWorkspace() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isLoadingLive, setIsLoadingLive] = useState(false);
 
+  // Automatically switch to Live Mode if redirected back from GitHub App installation
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const installStatus = params.get("installation");
+      if (installStatus === "success" || installStatus === "connected") {
+        setIsLiveMode(true);
+      }
+    }
+  }, []);
+
   // Fetch live pull requests when Live Mode is active
   useEffect(() => {
     if (!isLiveMode) {

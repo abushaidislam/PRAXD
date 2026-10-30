@@ -94,3 +94,48 @@ export async function getInstallationAccessToken(
 
   return data.token;
 }
+
+export interface InstallationInfo {
+  id: number;
+  account: { login: string; type: string };
+  repositorySelection: string;
+}
+
+/**
+ * Validates an installation ID against GitHub API using App JWT authentication.
+ * Confirms account login, account type, and repository selection.
+ */
+export async function getInstallationDetails(
+  installationId: number
+): Promise<InstallationInfo | null> {
+  try {
+    const jwt = generateAppJwt();
+    const response = await fetch(
+      `https://api.github.com/app/installations/${installationId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${jwt}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "User-Agent": "PRAXD-PR-Workspace/0.1.0",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    return {
+      id: data.id,
+      account: {
+        login: data.account?.login || "unknown",
+        type: data.account?.type || "User",
+      },
+      repositorySelection: data.repository_selection || "all",
+    };
+  } catch {
+    return null;
+  }
+}
