@@ -57,14 +57,14 @@ export function PullRequestSidebar({
       className="w-full md:w-[420px] shrink-0 border-r border-praxd-border-soft bg-praxd-sidebar flex flex-col h-full select-none"
       aria-label="Pull requests inbox"
     >
-      {/* Top Header Region: Tabs & Sidebar close button on mobile */}
+      {/* Top Header Region: Tabs & Sidebar close button */}
       <div className="p-3 pb-2 space-y-2.5 border-b border-praxd-border-soft">
-        <div className="flex items-center justify-between">
-          {/* Segmented Tabs: All / Reviewing / Authored */}
+        <div className="relative flex items-center justify-center min-h-[32px]">
+          {/* Centered Segmented Tabs: All / Reviewing / Authored */}
           <div
             role="tablist"
             aria-label="PR Inbox View Filter"
-            className="flex items-center p-0.5 rounded-lg bg-[#202020] border border-praxd-border-soft"
+            className="flex items-center p-0.5 rounded-lg bg-[#202020] border border-praxd-border-soft shadow-inner"
           >
             {(["all", "reviewing", "authored"] as TabType[]).map((tab) => {
               const label = tab === "all" ? "All" : tab === "reviewing" ? "Reviewing" : "Authored";
@@ -76,10 +76,10 @@ export function PullRequestSidebar({
                   aria-selected={isActive}
                   onClick={() => setActiveTab(tab)}
                   className={cn(
-                    "px-3 py-1 text-[12px] font-medium rounded-md transition-colors capitalize focus:outline-none focus-visible:ring-1 focus-visible:ring-praxd-blue",
+                    "px-3 py-1 text-[12px] font-medium rounded-md transition-all duration-150 capitalize focus:outline-none focus-visible:ring-1 focus-visible:ring-praxd-blue",
                     isActive
                       ? "bg-[#2e2e2e] text-praxd-text shadow-sm"
-                      : "text-praxd-text-muted hover:text-praxd-text-secondary"
+                      : "text-praxd-text-muted hover:text-praxd-text-secondary hover:bg-[#252525]"
                   )}
                 >
                   {label}
@@ -88,11 +88,11 @@ export function PullRequestSidebar({
             })}
           </div>
 
-          {/* Toggle sidebar button */}
+          {/* Toggle sidebar button placed on the right */}
           <button
             type="button"
             onClick={onToggleOpen}
-            className="p-1.5 rounded-md hover:bg-[#222222] text-praxd-text-secondary hover:text-praxd-text transition-colors"
+            className="absolute right-0 p-1.5 rounded-md hover:bg-[#222222] text-praxd-text-secondary hover:text-praxd-text transition-colors"
             title="Collapse inbox (Ctrl+B)"
             aria-label="Collapse inbox sidebar"
           >
