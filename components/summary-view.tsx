@@ -14,6 +14,8 @@ import {
 import { PullRequest } from "@/types/pr";
 import { CheckRunList } from "./check-run-list";
 import { ActivityTimeline } from "./activity-timeline";
+import { AIReviewPanel } from "./ai-review-panel";
+import { FindingRecord } from "@/types/ai-review";
 import { cn } from "@/lib/utils";
 
 interface SummaryViewProps {
@@ -22,7 +24,42 @@ interface SummaryViewProps {
 
 export function SummaryView({ pr }: SummaryViewProps) {
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(true);
+  const [isReviewRunning, setIsReviewRunning] = useState(false);
   const hasShield = pr.title.toLowerCase().includes("sentinel");
+
+  // Transform PR AI findings into FindingRecord format
+  const reviewFindings: FindingRecord[] = (pr.aiFindings || []).map((f) => ({
+    id: f.id,
+    reviewRunId: "run-fixture",
+    fingerprint: f.id,
+    severity: f.severity === "warning" ? "medium" : f.severity === "suggestion" ? "low" : (f.severity as any),
+    kind: "security",
+    title: f.title,
+    description: f.explanation,
+    impact: "Unsanitized input can cause security exploits or unexpected behavior.",
+    recommendation: f.suggestedFix || null,
+    confidence: f.confidence,
+    filePath: f.filePath,
+    lineStart: f.line || null,
+    lineEnd: f.line || null,
+    evidenceExcerpt: null,
+    verificationSteps: ["Verify that no dynamic string concatenation is used for style or DOM nodes."],
+    recommendedPatch: null,
+    status: "open",
+    isValidated: true,
+    createdAt: new Date().toISOString(),
+  }));
+
+  const handleTriggerReview = async () => {
+    setIsReviewRunning(true);
+    try {
+      await fetch(`/api/pull-requests/${pr.id}/ai-review`, { method: "POST" });
+    } catch {
+      // Offline/demo fallback
+    } finally {
+      setTimeout(() => setIsReviewRunning(false), 1200);
+    }
+  };
 
   return (
     <div className="h-full overflow-y-auto px-4 md:px-8 py-6 select-text">
@@ -202,6 +239,15 @@ export function SummaryView({ pr }: SummaryViewProps) {
             </div>
           )}
         </div>
+
+        {/* AI Review Panel Section */}
+        <AIReviewPanel
+          prId={pr.id}
+          headSha={pr.headSha}
+          findings={reviewFindings}
+          onTriggerReview={handleTriggerReview}
+          isRunning={isReviewRunning}
+        />
 
         {/* Checks Section */}
         <CheckRunList checks={pr.checks} />
