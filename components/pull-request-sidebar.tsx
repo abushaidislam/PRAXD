@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { Search, Filter, ChevronDown, X, PanelLeftClose } from "lucide-react";
 import { PullRequest } from "@/types/pr";
 import { PullRequestListItem } from "./pull-request-list-item";
@@ -14,6 +14,10 @@ interface PullRequestSidebarProps {
 
 type TabType = "all" | "reviewing" | "authored";
 
+const MIN_SIDEBAR_WIDTH = 280;
+const MAX_SIDEBAR_WIDTH = 720;
+const DEFAULT_SIDEBAR_WIDTH = 420;
+
 export function PullRequestSidebar({
   pullRequests,
   selectedPr,
@@ -24,6 +28,76 @@ export function PullRequestSidebar({
   const [activeTab, setActiveTab] = useState<TabType>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedGroup, setSelectedGroup] = useState<string>("Authored");
+
+  // Resizable sidebar width state
+  const [sidebarWidth, setSidebarWidth] = useState<number>(DEFAULT_SIDEBAR_WIDTH);
+  const [isResizing, setIsResizing] = useState(false);
+
+  // Restore saved width from localStorage if available
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("praxd:sidebar-width");
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= MIN_SIDEBAR_WIDTH && parsed <= MAX_SIDEBAR_WIDTH) {
+          setSidebarWidth(parsed);
+        }
+      }
+    } catch {
+      // localStorage may be restricted in sandboxes
+    }
+  }, []);
+
+  // Resizing mouse drag handlers
+  const handleStartResizing = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  }, []);
+
+  const handleStopResizing = useCallback(() => {
+    setIsResizing(false);
+  }, []);
+
+  const handleResize = useCallback(
+    (e: MouseEvent) => {
+      if (isResizing) {
+        const maxWidthBound = Math.min(MAX_SIDEBAR_WIDTH, Math.floor(window.innerWidth * 0.6));
+        const newWidth = Math.min(Math.max(e.clientX, MIN_SIDEBAR_WIDTH), maxWidthBound);
+        setSidebarWidth(newWidth);
+        try {
+          localStorage.setItem("praxd:sidebar-width", newWidth.toString());
+        } catch {
+          // ignore
+        }
+      }
+    },
+    [isResizing]
+  );
+
+  const handleResetWidth = useCallback(() => {
+    setSidebarWidth(DEFAULT_SIDEBAR_WIDTH);
+    try {
+      localStorage.setItem("praxd:sidebar-width", DEFAULT_SIDEBAR_WIDTH.toString());
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isResizing) {
+      window.addEventListener("mousemove", handleResize);
+      window.addEventListener("mouseup", handleStopResizing);
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    }
+
+    return () => {
+      window.removeEventListener("mousemove", handleResize);
+      window.removeEventListener("mouseup", handleStopResizing);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [isResizing, handleResize, handleStopResizing]);
 
   // Filtering based on Tab and Search query
   const filteredPrs = useMemo(() => {
@@ -54,7 +128,11 @@ export function PullRequestSidebar({
 
   return (
     <aside
-      className="w-full md:w-[420px] shrink-0 border-r border-praxd-border-soft bg-praxd-sidebar flex flex-col h-full select-none"
+      style={{ ["--sidebar-width" as any]: `${sidebarWidth}px` }}
+      className={cn(
+        "relative shrink-0 border-r border-praxd-border-soft bg-praxd-sidebar flex flex-col h-full select-none",
+        "w-full md:w-[var(--sidebar-width)]"
+      )}
       aria-label="Pull requests inbox"
     >
       {/* Top Header Region: Tabs & Sidebar close button */}
@@ -189,6 +267,39 @@ export function PullRequestSidebar({
             />
           ))
         )}
+      </div>
+
+      {/* Interactive Resizer Handle (desktop only) */}
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize pull requests sidebar"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowLeft") {
+            setSidebarWidth((prev) => Math.max(MIN_SIDEBAR_WIDTH, prev - 12));
+          } else if (e.key === "ArrowRight") {
+            setSidebarWidth((prev) => Math.min(MAX_SIDEBAR_WIDTH, prev + 12));
+          } else if (e.key === "Enter" || e.key === " ") {
+            handleResetWidth();
+          }
+        }}
+        onMouseDown={handleStartResizing}
+        onDoubleClick={handleResetWidth}
+        className={cn(
+          "hidden md:block absolute top-0 -right-1.5 w-3 h-full cursor-col-resize z-30 select-none group",
+          isResizing ? "bg-praxd-blue/20" : "hover:bg-praxd-blue/10"
+        )}
+        title="Drag to resize, double-click to reset (420px)"
+      >
+        <div
+          className={cn(
+            "w-[2px] h-full mx-auto transition-colors duration-150",
+            isResizing
+              ? "bg-praxd-blue"
+              : "bg-transparent group-hover:bg-praxd-blue/60"
+          )}
+        />
       </div>
     </aside>
   );
