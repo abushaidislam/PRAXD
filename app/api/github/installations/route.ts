@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getAuthenticatedContext } from "@/lib/supabase/auth";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { getActiveInstallation } from "@/lib/github/live";
 import { apiSuccess, apiError } from "@/lib/api-response";
 
 export async function GET(req: NextRequest) {
@@ -15,9 +16,25 @@ export async function GET(req: NextRequest) {
     .select("*")
     .eq("workspace_id", auth.workspaceId);
 
-  if (error) {
-    return apiSuccess({ installations: [] });
+  if (!error && installations && installations.length > 0) {
+    return apiSuccess({ installations });
   }
 
-  return apiSuccess({ installations: installations || [] });
+  // Fallback: Check active installation directly with GitHub API
+  const liveInstall = await getActiveInstallation();
+  if (liveInstall) {
+    return apiSuccess({
+      installations: [
+        {
+          id: `live-install-${liveInstall.id}`,
+          workspace_id: auth.workspaceId,
+          installation_id: liveInstall.id,
+          account_login: liveInstall.login,
+          status: "active",
+        },
+      ],
+    });
+  }
+
+  return apiSuccess({ installations: [] });
 }

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getAuthenticatedContext } from "@/lib/supabase/auth";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { fetchLivePullRequestDetails } from "@/lib/github/live";
 import { apiSuccess, apiError } from "@/lib/api-response";
 
 export async function GET(
@@ -11,6 +12,22 @@ export async function GET(
   const auth = await getAuthenticatedContext();
   if (!auth) {
     return apiError("UNAUTHORIZED", "Authentication required.", 401);
+  }
+
+  // Handle live PRs directly from GitHub API
+  if (pullRequestId.startsWith("live-")) {
+    const parts = pullRequestId.replace("live-", "").split("-");
+    if (parts.length >= 3) {
+      const pullNumber = parseInt(parts[parts.length - 1], 10);
+      const repo = parts[parts.length - 2];
+      const owner = parts.slice(0, parts.length - 2).join("-");
+      if (!isNaN(pullNumber) && owner && repo) {
+        const livePr = await fetchLivePullRequestDetails(owner, repo, pullNumber);
+        if (livePr) {
+          return apiSuccess(livePr);
+        }
+      }
+    }
   }
 
   const supabase = createServiceRoleClient();

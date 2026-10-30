@@ -19,15 +19,32 @@ export function PRWorkspace() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isLoadingLive, setIsLoadingLive] = useState(false);
 
-  // Automatically switch to Live Mode if redirected back from GitHub App installation
+  // Automatically switch to Live Mode if GitHub App is connected or redirected
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const installStatus = params.get("installation");
-      if (installStatus === "success" || installStatus === "connected") {
-        setIsLiveMode(true);
+    async function checkActiveInstallation() {
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        const installStatus = params.get("installation");
+        if (installStatus === "success" || installStatus === "connected") {
+          setIsLiveMode(true);
+          return;
+        }
+      }
+
+      try {
+        const res = await fetch("/api/github/installations");
+        if (res.ok) {
+          const json = await res.json();
+          if (json.installations && json.installations.length > 0) {
+            setIsLiveMode(true);
+          }
+        }
+      } catch {
+        // Fall back to fixture mode
       }
     }
+
+    checkActiveInstallation();
   }, []);
 
   // Fetch live pull requests when Live Mode is active
@@ -47,8 +64,25 @@ export function PRWorkspace() {
           if (json.data && json.data.length > 0) {
             setPullRequests(json.data);
             setSelectedPr(json.data[0]);
+
+            // If the first PR files need loading, fetch its details
+            if (!json.data[0].files || json.data[0].files.length === 0) {
+              try {
+                const detailRes = await fetch(`/api/pull-requests/${json.data[0].id}`);
+                if (detailRes.ok) {
+                  const detailJson = await detailRes.json();
+                  if (detailJson.data) {
+                    setSelectedPr(detailJson.data);
+                    setPullRequests((prev) =>
+                      prev.map((item, idx) => (idx === 0 ? detailJson.data : item))
+                    );
+                  }
+                }
+              } catch {
+                // Ignore detail fetch error
+              }
+            }
           } else {
-            // If database has 0 PRs yet, show empty or offer connection
             setPullRequests([]);
           }
         }
@@ -61,6 +95,27 @@ export function PRWorkspace() {
 
     loadLivePrs();
   }, [isLiveMode]);
+
+  // Select PR and lazily fetch files/diff if not yet loaded
+  const handleSelectPr = useCallback(async (pr: PullRequest) => {
+    setSelectedPr(pr);
+    if (!pr.files || pr.files.length === 0) {
+      try {
+        const res = await fetch(`/api/pull-requests/${pr.id}`);
+        if (res.ok) {
+          const fullPr = await res.json();
+          if (fullPr && fullPr.data) {
+            setSelectedPr(fullPr.data);
+            setPullRequests((prev) =>
+              prev.map((item) => (item.id === pr.id ? fullPr.data : item))
+            );
+          }
+        }
+      } catch {
+        // Keep existing pr
+      }
+    }
+  }, []);
 
   // Keyboard shortcut listener: Cmd/Ctrl + B to toggle sidebar
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -96,7 +151,7 @@ export function PRWorkspace() {
         <PullRequestSidebar
           pullRequests={pullRequests}
           selectedPr={selectedPr}
-          onSelectPr={(pr) => setSelectedPr(pr)}
+          onSelectPr={handleSelectPr}
           isOpen={isSidebarOpen}
           onToggleOpen={() => setIsSidebarOpen(false)}
         />

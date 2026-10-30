@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getAuthenticatedContext } from "@/lib/supabase/auth";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { fetchLiveRepositories } from "@/lib/github/live";
 import { apiPaginated, apiError } from "@/lib/api-response";
 
 export async function GET(req: NextRequest) {
@@ -27,9 +28,15 @@ export async function GET(req: NextRequest) {
   }
 
   const { data, error } = await query;
-  if (error) {
-    return apiPaginated([], { nextCursor: null, hasNextPage: false });
+  if (!error && data && data.length > 0) {
+    return apiPaginated(data, { nextCursor: null, hasNextPage: false });
   }
 
-  return apiPaginated(data || [], { nextCursor: null, hasNextPage: false });
+  // Graceful fallback: If Supabase table is not yet migrated, fetch directly from GitHub App installation
+  const liveRepos = await fetchLiveRepositories(limit);
+  const filtered = q
+    ? liveRepos.filter((r: any) => r.full_name?.toLowerCase().includes(q.toLowerCase()))
+    : liveRepos;
+
+  return apiPaginated(filtered, { nextCursor: null, hasNextPage: false });
 }
