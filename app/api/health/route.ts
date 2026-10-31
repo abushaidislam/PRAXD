@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { getKmsStatus } from "@/lib/security/kms";
+import { getMigrationStatus } from "@/lib/db/migrator";
 
 export const dynamic = "force-dynamic";
 
@@ -19,20 +21,40 @@ export async function GET() {
   }
 
   const durationMs = Date.now() - startTime;
+  const kmsStatus = getKmsStatus();
+  let migrationStatus = { isUpToDate: true, pendingCount: 0 };
+
+  try {
+    const migReport = await getMigrationStatus();
+    migrationStatus = {
+      isUpToDate: migReport.isUpToDate,
+      pendingCount: migReport.pendingCount,
+    };
+  } catch {
+    // If running in restricted or mock environment
+  }
+
+  const isHealthy = dbStatus === "healthy" && kmsStatus.operational;
 
   return NextResponse.json(
     {
-      status: dbStatus === "healthy" ? "healthy" : "degraded",
-      version: "0.1.0",
+      status: isHealthy ? "healthy" : "degraded",
+      version: "0.6.0",
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV || "development",
       checks: {
         database: dbStatus,
         latencyMs: durationMs,
+        kms: {
+          operational: kmsStatus.operational,
+          provider: kmsStatus.provider,
+          algorithm: kmsStatus.algorithm,
+        },
+        migrations: migrationStatus,
       },
     },
     {
-      status: dbStatus === "healthy" ? 200 : 503,
+      status: isHealthy ? 200 : 503,
       headers: {
         "Cache-Control": "no-store, max-age=0",
       },

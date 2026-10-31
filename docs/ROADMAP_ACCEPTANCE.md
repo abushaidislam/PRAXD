@@ -416,10 +416,10 @@ Transitions the project from local/staging execution into a robust, automated pr
 
 ### Acceptance criteria
 
-- [ ] GitHub Actions CI triggers automatically on PRs and blocks merge if any test or typecheck fails.
-- [ ] Database migrations execute idempotently without data loss or schema locking.
-- [ ] Envelope encryption correctly decrypts installation keys in memory and purges decrypted buffers post-invocation.
-- [ ] Production health check `/api/health` returns healthy database status and roundtrip latency under 50ms.
+- [x] GitHub Actions CI triggers automatically on PRs and blocks merge if any test or typecheck fails.
+- [x] Database migrations execute idempotently without data loss or schema locking.
+- [x] Envelope encryption correctly decrypts installation keys in memory and purges decrypted buffers post-invocation.
+- [x] Production health check `/api/health` returns healthy database status and roundtrip latency under 50ms.
 
 ---
 

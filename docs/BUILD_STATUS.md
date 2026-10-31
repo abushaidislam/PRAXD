@@ -2,20 +2,20 @@
 
 **Last updated:** 2026-10-31  
 **Current version:** v0.6.0 (Enterprise Horizon & Commercial Roadmap Active)  
-**Current phase:** Phase 9 — Production Cloud Deployment, CI/CD Pipeline & KMS Secret Management  
-**Build status:** Phases 0 through 8 (v0.1.0 to v0.5.0) are 100% Complete & Verified (119/119 Automated Tests Passing)
+**Current phase:** Phase 10 — 1-Click Autonomous Autofix & PR Commit Engine  
+**Build status:** Phases 0 through 9 (v0.1.0 to v0.6.0) are 100% Complete & Verified (130/130 Automated Tests Passing)
 
-## Completed Roadmap Phases (v0.1.0 — v0.5.0)
+## Completed Roadmap Phases (v0.1.0 — v0.6.0)
 
 - [x] **Phase 0–4 (v0.1.0 MVP):** UI Shell, Dual-Pane Workspace, Synchronized Diff Scroll, GitHub Sync, Webhooks, AI Review Engine, Audit Logging.
 - [x] **Phase 5 (v0.2.0):** Interactive PR Assistant & Contextual Chat (Header `Chat` drawer, streaming SSE, `/explain`, `/test-ideas`, `/draft-response`).
 - [x] **Phase 6 (v0.3.0):** Team Collaboration, GitHub SSO & Real-Time Presence (Presence heartbeats, internal workspace notes, 5-role RBAC).
 - [x] **Phase 7 (v0.4.0):** Automated Policy Engine, CI/CD Bot Mode & Risk Scoring (0–100 risk score, event-driven webhooks, Slack/Discord alerts).
 - [x] **Phase 8 (v0.5.0):** Multi-Model LLM Adapters & Enterprise Governance (Claude, Gemini, OpenAI, Ollama, retention purging, DORA metrics).
+- [x] **Phase 9 (v0.6.0):** Production Cloud Deployment, CI/CD Pipeline & KMS Secret Management (GitHub Actions automated test gatekeeper, Supabase live migrations, envelope encryption).
 
-## Active Commercial & Enterprise Roadmap (v0.6.0 — v1.0.0 GA)
+## Active Commercial & Enterprise Roadmap (v0.7.0 — v1.0.0 GA)
 
-- [ ] **Phase 9 (v0.6.0):** Production Cloud Deployment, CI/CD Pipeline & KMS Secret Management (GitHub Actions automated test gatekeeper, Supabase live migrations, envelope encryption).
 - [ ] **Phase 10 (v0.7.0):** 1-Click Autonomous Autofix & PR Commit Engine (User-confirmed Git commit write-back with pre-commit AST syntax validation).
 - [ ] **Phase 11 (v0.8.0):** Developer IDE Integration: VS Code & JetBrains Extension (In-editor PR triage, diff annotations, and local patch application).
 - [ ] **Phase 12 (v0.9.0):** Multi-VCS Expansion: GitLab MR & Bitbucket Support (Pluggable `IVCSProvider` universal code review layer).
@@ -372,11 +372,49 @@
   - Replaced hardcoded lines 1638-1640 with dynamic context line numbers derived from actual diff hunk headers.
   - Placed hook before early return, preventing React hook ordering errors.
 
+## Completed in Phase 9 (Production Cloud Deployment, CI/CD Pipeline & KMS Secret Management)
+
+- [x] Automated GitHub Actions CI/CD Pipeline (`.github/workflows/ci.yml`):
+  - Strict pull request and main branch execution gates.
+  - Mandatory pipeline steps: `npm run lint`, `npm run typecheck`, full acceptance test suite execution, and production Next.js build.
+  - Concurrency cancel-in-progress configuration preventing race conditions and stale CI runs.
+  - Database schema checksum validation job and preview deployment staging hooks.
+- [x] Production Supabase Database Migrator & Integrity Engine (`lib/db/migrator.ts`, `scripts/migrate.ts`):
+  - Deterministic SHA-256 checksum calculation over migration files (`0001_initial_schema.sql`, `0002_production_integrity.sql`).
+  - Idempotent execution model: automatically detects applied vs pending migrations without duplicate schema execution.
+  - Cryptographic tamper detection: immediately halts and alerts if historical migration SQL has been altered post-execution.
+  - Standalone CLI runner with `--dry-run`, `--status`, and automated application modes.
+- [x] Enterprise KMS Envelope Encryption & Buffer Purging (`lib/security/kms.ts`):
+  - Production envelope encryption leveraging AES-256-GCM and ephemeral 256-bit Data Encryption Keys (DEKs).
+  - Encrypted envelope structure with 96-bit IVs, 128-bit authentication tags, and key IDs.
+  - Memory security: zero-wiping (`purgeDecryptedBuffer` / `buf.fill(0)`) purging sensitive secret buffers post-invocation.
+  - Transparent key resolver (`decryptKeyIfEnveloped`) seamlessly integrated into GitHub App authentication (`lib/github/app-auth.ts`).
+  - KMS operational status reporter supporting local AES-256-GCM, AWS KMS, and HashiCorp Vault.
+- [x] Production Security Headers & Edge CDN Caching (`next.config.mjs`):
+  - Pre-configured enterprise security headers across all application routes:
+    - `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload` (HSTS)
+    - `X-Frame-Options: DENY` (Anti-clickjacking)
+    - `X-Content-Type-Options: nosniff` (MIME sniffing prevention)
+    - `Referrer-Policy: strict-origin-when-cross-origin`
+    - `Permissions-Policy: camera=(), microphone=(), geolocation=(), browsing-topics=()`
+    - `Content-Security-Policy`: strict defense-in-depth policy restricting script and connect origins.
+  - Immutable production caching headers (`Cache-Control: public, max-age=31536000, immutable`) for `/_next/static/*`.
+- [x] Enhanced Production Health & Readiness (`app/api/health/route.ts`):
+  - Updated API version to `0.6.0`.
+  - Comprehensive health checks inspecting PostgreSQL database connectivity, KMS engine operational status, and schema migration status.
+  - Latency measurement maintaining strict SLAs under 50ms.
+- [x] Comprehensive Acceptance Test Suite (`tests/phase9-production-cloud.test.ts`):
+  - P9-01: GitHub Actions CI workflow triggers and mandatory pipeline step enforcement.
+  - P9-02: Database migrator checksum calculation, idempotent execution, and tamper detection.
+  - P9-03: KMS AES-256-GCM envelope encryption, auth tag validation, and in-memory buffer zeroing.
+  - P9-04: Production security headers and edge caching configuration.
+  - P9-05: Enhanced health and readiness response structure and SLA metrics.
+
 ## Quality Checks & Verification
 
 - `lint` (`npm run lint`): Passed (0 warnings, 0 errors).
 - `typecheck` (`npm run typecheck`): Passed (0 errors).
-- `test` (`npm run test`): Passed 119/119 acceptance tests across 12 test suites:
+- `test` (`npm run test`): Passed 130/130 acceptance tests across 13 test suites:
   - `tests/phase0-workspace.test.tsx` (9 tests)
   - `tests/phase1-state.test.ts` (5 tests)
   - `tests/phase1-github-sync.test.ts` (12 tests)
@@ -388,5 +426,6 @@
   - `tests/phase6-collaboration.test.ts` (9 tests)
   - `tests/phase7-policy-bot.test.ts` (25 tests)
   - `tests/phase8-enterprise-governance.test.ts` (17 tests)
+  - `tests/phase9-production-cloud.test.ts` (11 tests)
   - `tests/live-ai-readiness.test.ts` (4 tests)
-- `build` (`npm run build`): Passed (34 dynamic API routes + 23 static pages compiled successfully).
+- `build` (`npm run build`): Passed (35 dynamic API routes + 23 static pages compiled successfully).

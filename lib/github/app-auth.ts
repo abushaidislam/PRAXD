@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { decryptKeyIfEnveloped } from "@/lib/security/kms";
 
 interface CachedToken {
   token: string;
@@ -21,29 +22,44 @@ export function generateAppJwt(): string {
     );
   }
 
-  const privateKey = Buffer.from(privateKeyBase64, "base64").toString("utf8");
+  const { key: resolvedKey, purge } = decryptKeyIfEnveloped(privateKeyBase64);
+  let privateKey = resolvedKey;
+  if (
+    !resolvedKey.includes("-----BEGIN RSA PRIVATE KEY-----") &&
+    !resolvedKey.includes("-----BEGIN PRIVATE KEY-----")
+  ) {
+    try {
+      privateKey = Buffer.from(resolvedKey, "base64").toString("utf8");
+    } catch {
+      privateKey = resolvedKey;
+    }
+  }
 
-  const now = Math.floor(Date.now() / 1000);
-  const header = {
-    alg: "RS256",
-    typ: "JWT",
-  };
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    const header = {
+      alg: "RS256",
+      typ: "JWT",
+    };
 
-  const payload = {
-    iat: now - 60, // Issued 60 seconds in the past to allow for clock drift
-    exp: now + 9 * 60, // Expires in 9 minutes (max allowed by GitHub is 10 min)
-    iss: appId,
-  };
+    const payload = {
+      iat: now - 60, // Issued 60 seconds in the past to allow for clock drift
+      exp: now + 9 * 60, // Expires in 9 minutes (max allowed by GitHub is 10 min)
+      iss: appId,
+    };
 
-  const encodedHeader = Buffer.from(JSON.stringify(header)).toString("base64url");
-  const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  const message = `${encodedHeader}.${encodedPayload}`;
+    const encodedHeader = Buffer.from(JSON.stringify(header)).toString("base64url");
+    const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
+    const message = `${encodedHeader}.${encodedPayload}`;
 
-  const signer = crypto.createSign("RSA-SHA256");
-  signer.update(message);
-  const signature = signer.sign(privateKey, "base64url");
+    const signer = crypto.createSign("RSA-SHA256");
+    signer.update(message);
+    const signature = signer.sign(privateKey, "base64url");
 
-  return `${message}.${signature}`;
+    return `${message}.${signature}`;
+  } finally {
+    purge();
+  }
 }
 
 /**
