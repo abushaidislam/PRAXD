@@ -1,5 +1,6 @@
 import React from "react";
-import { Info, Github, RefreshCw } from "lucide-react";
+import { Github } from "lucide-react";
+import { BrandLogo } from "@/components/brand-logo";
 
 interface DemoModeBadgeProps {
   isLiveMode: boolean;
@@ -19,7 +20,7 @@ export function DemoModeBadge({
       className="flex items-center justify-between px-3 py-1 bg-[#1a1a1a] border-b border-praxd-border-soft text-[11px] text-praxd-text-secondary select-none"
     >
       <div className="flex items-center gap-1.5 truncate">
-        <Info className="w-3.5 h-3.5 text-praxd-blue shrink-0" />
+        <BrandLogo size={15} />
         <span className="font-medium text-praxd-text shrink-0">
           {isLiveMode ? "PRAXD Live Mode" : "PRAXD Phase 0 Fixture Mode"}
         </span>

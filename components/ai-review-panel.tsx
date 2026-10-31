@@ -42,6 +42,14 @@ export function AIReviewPanel({
   const [publishedIds, setPublishedIds] = useState<Set<string>>(new Set());
   const [confirmPublishId, setConfirmPublishId] = useState<string | null>(null);
 
+  // Synchronize local findings when parent prop updates (e.g. newly completed AI review)
+  React.useEffect(() => {
+    setLocalFindings(findings);
+    if (findings.length > 0) {
+      setExpandedFindingId((prev) => (prev ? prev : findings[0].id));
+    }
+  }, [findings]);
+
   const filteredFindings = localFindings.filter((f) => {
     if (selectedSeverity === "all") return true;
     return f.severity === selectedSeverity;

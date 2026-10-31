@@ -27,37 +27,101 @@ export function SummaryView({ pr }: SummaryViewProps) {
   const [isReviewRunning, setIsReviewRunning] = useState(false);
   const hasShield = pr.title.toLowerCase().includes("sentinel");
 
-  // Transform PR AI findings into FindingRecord format
-  const reviewFindings: FindingRecord[] = (pr.aiFindings || []).map((f) => ({
-    id: f.id,
-    reviewRunId: "run-fixture",
-    fingerprint: f.id,
-    severity: f.severity === "warning" ? "medium" : f.severity === "suggestion" ? "low" : (f.severity as any),
-    kind: "security",
-    title: f.title,
-    description: f.explanation,
-    impact: "Unsanitized input can cause security exploits or unexpected behavior.",
-    recommendation: f.suggestedFix || null,
-    confidence: f.confidence,
-    filePath: f.filePath,
-    lineStart: f.line || null,
-    lineEnd: f.line || null,
-    evidenceExcerpt: null,
-    verificationSteps: ["Verify that no dynamic string concatenation is used for style or DOM nodes."],
-    recommendedPatch: null,
-    status: "open",
-    isValidated: true,
-    createdAt: new Date().toISOString(),
-  }));
+  // Dynamic findings state
+  const [activeFindings, setActiveFindings] = useState<FindingRecord[]>(() => {
+    return (pr.aiFindings || []).map((f) => ({
+      id: f.id,
+      reviewRunId: "run-fixture",
+      fingerprint: f.id,
+      severity: f.severity === "warning" ? "medium" : f.severity === "suggestion" ? "low" : (f.severity as any),
+      kind: "security",
+      title: f.title,
+      description: f.explanation,
+      impact: "Unsanitized input can cause security exploits or unexpected behavior.",
+      recommendation: f.suggestedFix || null,
+      confidence: f.confidence,
+      filePath: f.filePath,
+      lineStart: f.line || null,
+      lineEnd: f.line || null,
+      evidenceExcerpt: null,
+      verificationSteps: ["Verify that no dynamic string concatenation is used for style or DOM nodes."],
+      recommendedPatch: null,
+      status: "open",
+      isValidated: true,
+      createdAt: new Date().toISOString(),
+    }));
+  });
+
+  // Re-fetch findings when PR changes or on mount
+  React.useEffect(() => {
+    let isCancelled = false;
+
+    // Reset to PR's initial findings first
+    const initialFindings: FindingRecord[] = (pr.aiFindings || []).map((f) => ({
+      id: f.id,
+      reviewRunId: "run-fixture",
+      fingerprint: f.id,
+      severity: f.severity === "warning" ? "medium" : f.severity === "suggestion" ? "low" : (f.severity as any),
+      kind: "security",
+      title: f.title,
+      description: f.explanation,
+      impact: "Unsanitized input can cause security exploits or unexpected behavior.",
+      recommendation: f.suggestedFix || null,
+      confidence: f.confidence,
+      filePath: f.filePath,
+      lineStart: f.line || null,
+      lineEnd: f.line || null,
+      evidenceExcerpt: null,
+      verificationSteps: ["Verify that no dynamic string concatenation is used for style or DOM nodes."],
+      recommendedPatch: null,
+      status: "open",
+      isValidated: true,
+      createdAt: new Date().toISOString(),
+    }));
+    setActiveFindings(initialFindings);
+
+    async function loadLatestFindings() {
+      try {
+        const res = await fetch(`/api/pull-requests/${pr.id}/ai-review`);
+        if (res.ok) {
+          const json = await res.json();
+          if (!isCancelled && json.data && json.data.findings && json.data.findings.length > 0) {
+            setActiveFindings(json.data.findings);
+          }
+        }
+      } catch {
+        // Fallback to initial
+      }
+    }
+
+    loadLatestFindings();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [pr.id, pr.aiFindings]);
 
   const handleTriggerReview = async () => {
     setIsReviewRunning(true);
     try {
-      await fetch(`/api/pull-requests/${pr.id}/ai-review`, { method: "POST" });
+      const res = await fetch(`/api/pull-requests/${pr.id}/ai-review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        // Fetch newly generated findings
+        const reviewRes = await fetch(`/api/pull-requests/${pr.id}/ai-review`);
+        if (reviewRes.ok) {
+          const reviewJson = await reviewRes.json();
+          if (reviewJson.data && reviewJson.data.findings) {
+            setActiveFindings(reviewJson.data.findings);
+          }
+        }
+      }
     } catch {
       // Offline/demo fallback
     } finally {
-      setTimeout(() => setIsReviewRunning(false), 1200);
+      setIsReviewRunning(false);
     }
   };
 
@@ -244,7 +308,7 @@ export function SummaryView({ pr }: SummaryViewProps) {
         <AIReviewPanel
           prId={pr.id}
           headSha={pr.headSha}
-          findings={reviewFindings}
+          findings={activeFindings}
           onTriggerReview={handleTriggerReview}
           isRunning={isReviewRunning}
         />

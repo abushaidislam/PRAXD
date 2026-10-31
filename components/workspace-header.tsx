@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { PullRequest } from "@/types/pr";
 import { cn } from "@/lib/utils";
+import { BrandLogo } from "@/components/brand-logo";
 
 interface WorkspaceHeaderProps {
   pr: PullRequest | null;
@@ -33,15 +34,19 @@ export function WorkspaceHeader({
       {/* Left PR identity & sidebar reveal toggle */}
       <div className="flex items-center gap-2.5 min-w-0 flex-1 max-w-[calc(50%-100px)] pr-3 z-10">
         {!isSidebarOpen && (
-          <button
-            type="button"
-            onClick={onToggleSidebar}
-            className="p-1.5 rounded-md hover:bg-[#202020] text-praxd-text-secondary hover:text-praxd-text transition-colors mr-1 shrink-0"
-            title="Expand inbox (Ctrl+B)"
-            aria-label="Expand inbox sidebar"
-          >
-            <PanelLeftOpen className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0 mr-1.5">
+            <button
+              type="button"
+              onClick={onToggleSidebar}
+              className="p-1.5 rounded-md hover:bg-[#202020] text-praxd-text-secondary hover:text-praxd-text transition-colors shrink-0"
+              title="Expand inbox (Ctrl+B)"
+              aria-label="Expand inbox sidebar"
+            >
+              <PanelLeftOpen className="w-4 h-4" />
+            </button>
+            <BrandLogo size={19} showText />
+            <span className="text-praxd-border-soft mx-0.5 select-none">/</span>
+          </div>
         )}
 
         <div className="flex items-center gap-2 min-w-0">

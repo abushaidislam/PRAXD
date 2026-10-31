@@ -16,6 +16,7 @@
   - Summary view (exact reproduction of screenshots: title with shield icon, author metadata, branch comparison, requested reviewers, comments, checks, collapsible description with styled vulnerability breakdown, checks list, activity timeline, leave comment input)
   - Code view (breadcrumb toolbar with branch flow, sticky multi-file selector dropdown, split vs unified diff toggle, file header, unmodified lines folding, side-by-side split diff with independent line numbers and syntax highlighting, gutter comment hover `+` affordance, inline comment threads, PRAXD AI review finding callout anchor, fallback for binary/missing patch files)
   - Demo mode notice badge explicitly marking local fixture mode
+  - Official PRAXD brand logo integration across the workspace (`public/logo.png`, `public/favicon.ico`, `app/icon.png`, `app/apple-icon.png`, `components/brand-logo.tsx`) in layout metadata, top status badge, sidebar header, collapsed-header brand mark, connect modal, and empty states
 
 ## Completed in Phase 1
 
@@ -164,16 +165,38 @@
   - Interactive bottom synchronized scrollbar with draggable thumb, click-to-jump track, step nudge buttons (`<` and `>`), and instant "Reset to start" affordance.
   - Subheader indicator with clear Base (Old) and Head (New) column badges, plus a `Sync Scroll` status badge in the toolbar.
 
+## Live AI Review & Production Model Readiness
+
+- [x] Multi-Provider AI Review Engine (`lib/ai/reviewer.ts`):
+  - Google Gemini API reviewer (`GeminiReviewer`) supporting `gemini-2.5-flash` / `gemini-2.5-pro` with structured JSON output and markdown code-fence sanitization.
+  - OpenAI Structured reviewer (`OpenAIReviewer`) supporting `gpt-4o` with strict JSON parsing.
+  - Deterministic fallback reviewer (`DeterministicReviewer`) with dynamic hunk line matching across live patches.
+  - Auto-resolver `getAIReviewer(preferredModel)` supporting both Gemini and OpenAI keys.
+- [x] Live GitHub PR AI Review Execution (`lib/ai/lifecycle.ts`, `app/api/pull-requests/[pullRequestId]/ai-review/route.ts`):
+  - Added support for direct live PR IDs (`live__${owner}__${repo}__${number}`).
+  - Resolves metadata and diff patches directly from GitHub REST API on the fly.
+  - Durable in-memory review store (`liveReviewsStore`) caching runs and findings across requests.
+- [x] Dynamic AI Review UI Synchronization (`components/summary-view.tsx`, `components/ai-review-panel.tsx`):
+  - Replaces static fixture findings with dynamic state hook.
+  - Fetches and displays newly generated AI review findings immediately after triggering review.
+  - Synchronizes parent finding updates to local panel state with `useEffect`.
+- [x] GitHub Finding Comment Publication Fix (`app/api/ai-findings/[findingId]/publish/route.ts`):
+  - Fixed database column lookup from `repo.owner` to `repo.owner_login` preventing GitHub 404 URL errors.
+  - Added support for publishing findings from live PRs via GitHub App installation token.
+- [x] Dynamic Context Lines in Diff Viewer (`components/diff-viewer.tsx`):
+  - Replaced hardcoded lines 1638-1640 with dynamic context line numbers derived from actual diff hunk headers.
+  - Placed hook before early return, preventing React hook ordering errors.
+
 ## Quality Checks & Verification
 
 - `typecheck` (`npm run typecheck`): Passed (0 errors).
-- `test` (`npm run test`): Passed 54/54 acceptance tests across 7 test suites:
-  - `tests/phase0-workspace.test.tsx` (9 tests: shell, tabs, search, selection, split/unified diffs, keyboard shortcut `Ctrl+B`, binary fallback, merge guardrail)
-  - `tests/phase1-state.test.ts` (5 tests: P1-01 valid state token, P1-02 omitted/tampered/expired/reused state rejection)
-  - `tests/phase1-github-sync.test.ts` (11 tests: P1-05 canonical PR state mapping, P1-06 Link pagination, P1-07 binary honesty, P1-08 comment segregation, P1-09 head SHA check run isolation, P1-10 403 & 429 rate limit parsing)
-  - `tests/phase1-workspace-isolation.test.ts` (2 tests: P1-11 tenant isolation, P1-12 installation suspension/revocation)
-  - `tests/phase2-webhooks.test.ts` (11 tests: P2-01 canonical test vector, P2-02 byte tampering/whitespace mutation rejection, P2-03 header prefix/secret validation, P2-04 delivery deduplication, P2-06 out-of-order forward-only SHA invariant, P2-07 repo removal access revocation, P2-09 check run idempotency, P2-11 bounded retries and safe error code)
-  - `tests/phase3-ai-review.test.ts` (9 tests: P3-01 schema validation, P3-02 secret redaction, P3-03 context byte cap, P3-04 deterministic fingerprinting, P3-05 semantic evidence grounding, P3-06 concurrency guard, P3-07 stale head SHA invalidation, P3-08 advisory boundary, P3-09 finding lifecycle status transitions)
-  - `tests/phase4-audit-hardening.test.ts` (7 tests: P4-01 audit metadata token sanitization, P4-02 database error resilience, P4-03 confirmation requirement, P4-04 closed PR rejection, P4-05 non-destructive failure preservation, P4-06 bounded pagination, P4-07 health status schema)
-- `lint` (`npm run lint`): Passed (0 errors, 0 warnings).
-- `build` (`npm run build`): Passed (22 dynamic API routes + static pages compiled successfully).
+- `test` (`npm run test`): Passed 59/59 acceptance tests across 8 test suites:
+  - `tests/phase0-workspace.test.tsx` (9 tests)
+  - `tests/phase1-state.test.ts` (5 tests)
+  - `tests/phase1-github-sync.test.ts` (12 tests)
+  - `tests/phase1-workspace-isolation.test.ts` (2 tests)
+  - `tests/phase2-webhooks.test.ts` (11 tests)
+  - `tests/phase3-ai-review.test.ts` (9 tests)
+  - `tests/phase4-audit-hardening.test.ts` (7 tests)
+  - `tests/live-ai-readiness.test.ts` (4 tests)
+- `build` (`npm run build`): Passed (22 dynamic API routes + static pages compiled successfully in 89s).

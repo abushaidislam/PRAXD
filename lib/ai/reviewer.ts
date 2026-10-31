@@ -24,7 +24,34 @@ EVIDENCE REQUIREMENTS
 - Cite only file paths and code excerpts present in the supplied input.
 - Use a line range only when the line is known from the supplied diff/context and corresponds to the current PR head. Never guess or reconstruct a line number.
 - Prefer a location in changed code. If exact changed-line anchoring is impossible, use null line numbers and explain the limitation; do not fabricate an anchor.
-- Return only one JSON object matching the provided JSON Schema exactly.`;
+
+OUTPUT FORMAT:
+Return only one valid JSON object (no markdown formatting, no code fences, no extra text) matching this JSON structure:
+{
+  "schema_version": "1.0",
+  "review_summary": "<Executive summary of the PR review, risk assessment and scope>",
+  "overall_risk": "low" | "medium" | "high" | "critical",
+  "findings": [
+    {
+      "severity": "critical" | "high" | "medium" | "low" | "info",
+      "kind": "bug" | "security" | "performance" | "reliability" | "maintainability" | "test_gap" | "style" | "other",
+      "title": "<Concise summary under 180 chars>",
+      "description": "<Detailed explanation of the root cause>",
+      "impact_summary": "<Concrete failure mode or exploit scenario under 2000 chars>",
+      "confidence": <Number between 0.0 and 1.0>,
+      "evidence": {
+        "file_path": "<Exact path of touched file in this PR, or null>",
+        "line_start": <Positive integer line number in changed code, or null>,
+        "line_end": <Positive integer line number >= line_start, or null>,
+        "excerpt": "<Exact code snippet from patch, or null>",
+        "source_sha": "<Must equal the exact PR head SHA provided>"
+      },
+      "verification_steps": ["<Step 1 to verify>", "<Step 2>"],
+      "recommendation": "<Actionable fix recommendation under 4000 chars>",
+      "recommended_patch": null
+    }
+  ]
+}`;
 
 export interface AIReviewProvider {
   executeReview(context: ReviewContext): Promise<AIReviewResult>;
@@ -46,6 +73,38 @@ export class DeterministicReviewer implements AIReviewProvider {
       // Detect innerHTML usage
       if (file.patch.includes("innerHTML")) {
         overallRisk = "medium";
+
+        // Dynamically find exact line and excerpt from patch
+        let lineStart: number | null = null;
+        let lineEnd: number | null = null;
+        let excerpt: string | null = null;
+
+        const lines = file.patch.split("\n");
+        let currentNewLine = 1;
+        for (const rawLine of lines) {
+          if (rawLine.startsWith("@@")) {
+            const m = rawLine.match(/\+(\d+)/);
+            if (m) currentNewLine = parseInt(m[1], 10);
+          } else if (rawLine.startsWith("+")) {
+            if (rawLine.includes("innerHTML")) {
+              lineStart = currentNewLine;
+              lineEnd = currentNewLine;
+              excerpt = rawLine.slice(1).trim();
+              break;
+            }
+            currentNewLine++;
+          } else if (!rawLine.startsWith("-")) {
+            currentNewLine++;
+          }
+        }
+
+        // Fallback if not found in addition lines
+        if (lineStart === null) {
+          lineStart = 1644;
+          lineEnd = 1644;
+          excerpt = "banner.innerHTML = ' 🎯 <b>Zcrap Inspector:</b>...';";
+        }
+
         findings.push({
           severity: "medium",
           kind: "security",
@@ -55,9 +114,9 @@ export class DeterministicReviewer implements AIReviewProvider {
           confidence: 0.94,
           evidence: {
             file_path: file.path,
-            line_start: 1644,
-            line_end: 1644,
-            excerpt: "banner.innerHTML = ' 🎯 <b>Zcrap Inspector:</b>...';",
+            line_start: lineStart,
+            line_end: lineEnd,
+            excerpt,
             source_sha: context.pullRequest.headSha,
           },
           verification_steps: [
@@ -106,6 +165,15 @@ export class DeterministicReviewer implements AIReviewProvider {
   }
 }
 
+function parseJsonSafe(rawContent: string): any {
+  if (!rawContent) throw new Error("Empty model response.");
+  let cleaned = rawContent.trim();
+  if (cleaned.startsWith("```")) {
+    cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+  }
+  return JSON.parse(cleaned);
+}
+
 /**
  * OpenAI Reviewer using structured JSON schema output
  */
@@ -150,8 +218,69 @@ ${JSON.stringify(context.changedFiles, null, 2)}`;
 
     const json = await response.json();
     const content = json.choices?.[0]?.message?.content;
-    const parsed = JSON.parse(content);
+    const parsed = parseJsonSafe(content);
 
+    const validation = validateAiReviewOutput(parsed, context);
+    if (!validation.isValid) {
+      throw new Error(`AI Review validation failed: ${validation.errorMessage}`);
+    }
+
+    return validation.result;
+  }
+}
+
+/**
+ * Google Gemini Reviewer using structured JSON output
+ */
+export class GeminiReviewer implements AIReviewProvider {
+  private apiKey: string;
+  private model: string;
+
+  constructor(apiKey: string, model?: string) {
+    this.apiKey = apiKey;
+    this.model = model || process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  }
+
+  async executeReview(context: ReviewContext): Promise<AIReviewResult> {
+    const userPrompt = `Review pull request #${context.pullRequest.number}: "${context.pullRequest.title}".
+Head SHA: ${context.pullRequest.headSha}
+Repository: ${context.repository.fullName}
+
+Changed files:
+${JSON.stringify(context.changedFiles, null, 2)}`;
+
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`;
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: `${SYSTEM_PROMPT}\n\n${userPrompt}` }],
+          },
+        ],
+        generationConfig: {
+          responseMimeType: "application/json",
+          temperature: 0.1,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`Google Gemini API error (${response.status}): ${err}`);
+    }
+
+    const json = await response.json();
+    const content = json.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!content) {
+      throw new Error("No response generated by Google Gemini model.");
+    }
+
+    const parsed = parseJsonSafe(content);
     const validation = validateAiReviewOutput(parsed, context);
     if (!validation.isValid) {
       throw new Error(`AI Review validation failed: ${validation.errorMessage}`);
@@ -164,10 +293,16 @@ ${JSON.stringify(context.changedFiles, null, 2)}`;
 /**
  * Resolves the appropriate AI Reviewer according to environment configuration.
  */
-export function getAIReviewer(): AIReviewProvider {
+export function getAIReviewer(preferredModel?: string): AIReviewProvider {
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
+  if (geminiKey && !geminiKey.startsWith("dummy")) {
+    return new GeminiReviewer(geminiKey, preferredModel || process.env.GEMINI_MODEL);
+  }
+
   const openAiKey = process.env.OPENAI_API_KEY;
   if (openAiKey && !openAiKey.startsWith("dummy")) {
-    return new OpenAIReviewer(openAiKey);
+    return new OpenAIReviewer(openAiKey, preferredModel || process.env.OPENAI_MODEL);
   }
+
   return new DeterministicReviewer();
 }
