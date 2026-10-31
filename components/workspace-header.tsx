@@ -9,6 +9,8 @@ import {
   PanelLeftOpen,
   Users,
   Sliders,
+  BarChart2,
+  Shield,
 } from "lucide-react";
 import { PullRequest } from "@/types/pr";
 import { RiskScore } from "@/types/policy";
@@ -27,6 +29,8 @@ interface WorkspaceHeaderProps {
   onToggleChat?: () => void;
   onOpenTeamModal?: () => void;
   onOpenPolicyModal?: () => void;
+  onOpenGovernanceModal?: () => void;
+  onOpenAnalyticsModal?: () => void;
   activeFile?: string | null;
   risk?: RiskScore | null;
 }
@@ -41,6 +45,8 @@ export function WorkspaceHeader({
   onToggleChat,
   onOpenTeamModal,
   onOpenPolicyModal,
+  onOpenGovernanceModal,
+  onOpenAnalyticsModal,
   activeFile,
   risk,
 }: WorkspaceHeaderProps) {
@@ -151,6 +157,28 @@ export function WorkspaceHeader({
           aria-label="Policy Engine settings"
         >
           <Sliders className="w-4 h-4" />
+        </button>
+
+        {/* Phase 8: Engineering Velocity & DORA Analytics button */}
+        <button
+          type="button"
+          onClick={onOpenAnalyticsModal}
+          className="p-1.5 rounded-md hover:bg-[#202020] text-praxd-text-muted hover:text-praxd-text transition-colors"
+          title="Engineering Velocity & DORA Metrics"
+          aria-label="DORA Metrics"
+        >
+          <BarChart2 className="w-4 h-4" />
+        </button>
+
+        {/* Phase 8: Multi-Model & Enterprise Governance button */}
+        <button
+          type="button"
+          onClick={onOpenGovernanceModal}
+          className="p-1.5 rounded-md hover:bg-[#202020] text-praxd-text-muted hover:text-praxd-text transition-colors"
+          title="Multi-Model Adapter & Data Retention Governance"
+          aria-label="Governance settings"
+        >
+          <Shield className="w-4 h-4" />
         </button>
 
         {/* External GitHub link */}

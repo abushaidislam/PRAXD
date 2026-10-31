@@ -83,3 +83,7 @@ class PresenceBroker {
 }
 
 export const presenceBroker = new PresenceBroker();
+
+export function clearAllPresence(): void {
+  presenceBroker.resetAll();
+}
