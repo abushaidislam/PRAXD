@@ -1,10 +1,20 @@
 # PRAXD Build Status
 
-**Last updated:** 2026-10-30  
-**Current phase:** Phase 4 — Publishing, Audit Logs & Production Hardening Complete  
-**Build status:** All Phases (0, 1, 2, 3, and 4) 100% Complete & Verified
+**Last updated:** 2026-10-31  
+**Current version:** v0.2.0 (Post-MVP Evolution)  
+**Current phase:** Phase 5 — Interactive PR Assistant & Contextual Chat (Active Planning / Scaffold)  
+**Build status:** Phases 0, 1, 2, 3, and 4 (MVP) are 100% Complete & Verified (59/59 Automated Tests Passing)
 
-## Completed in Phase 0
+## Active Post-MVP Roadmap (v0.2.0 — v0.5.0)
+
+- [ ] **Phase 5 (v0.2.0):** Interactive PR Assistant & Contextual Chat (Activating the header `Chat` affordance with streaming SSE, diff-bounded reasoning, and `/explain`, `/test-ideas`, `/draft-response` commands)
+- [ ] **Phase 6 (v0.3.0):** Team Collaboration, GitHub SSO & Real-Time Presence (Supabase Realtime WebSockets for active reviewer indicators, shared internal notes)
+- [ ] **Phase 7 (v0.4.0):** Automated Policy Engine, CI/CD Bot Mode & Risk Scoring (0–100 composite risk score, event-driven webhooks, Slack/Discord alerts)
+- [ ] **Phase 8 (v0.5.0):** Multi-Model LLM Adapters & Enterprise Governance (Anthropic Claude, Google Gemini, Ollama/vLLM, automated patch retention purging)
+
+---
+
+## Completed in Phase 0 (MVP Shell)
 
 - [x] Product requirements and MVP scope (updated with UX ergonomics & safe merge guardrails)
 - [x] Screenshot-derived UI/UX specification (`docs/UI_UX_SPEC.md`)
