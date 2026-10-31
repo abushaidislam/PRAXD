@@ -13,6 +13,8 @@ import { BrandLogo } from "./brand-logo";
 import { PRChat } from "./pr-chat";
 import { TeamManagementModal } from "./team-management-modal";
 import { PolicyModal } from "./policy-modal";
+import { GovernanceModal } from "./governance-modal";
+import { DoraMetricsModal } from "./dora-metrics-modal";
 import { computeRiskScore } from "@/lib/policy/risk-scoring";
 
 export function PRWorkspace() {
@@ -20,6 +22,8 @@ export function PRWorkspace() {
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
+  const [isGovernanceModalOpen, setIsGovernanceModalOpen] = useState(false);
+  const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
   const [pullRequests, setPullRequests] = useState<PullRequest[]>(FIXTURE_PULL_REQUESTS);
   const [selectedPr, setSelectedPr] = useState<PullRequest>(FIXTURE_PULL_REQUESTS[0]);
   const [activeView, setActiveView] = useState<"summary" | "code">("code");
@@ -199,6 +203,18 @@ export function PRWorkspace() {
         repoName={selectedPr?.repoName}
       />
 
+      {/* Enterprise Multi-Model & Governance Modal (Phase 8) */}
+      <GovernanceModal
+        isOpen={isGovernanceModalOpen}
+        onClose={() => setIsGovernanceModalOpen(false)}
+      />
+
+      {/* Engineering Velocity & DORA Analytics Modal (Phase 8) */}
+      <DoraMetricsModal
+        isOpen={isAnalyticsModalOpen}
+        onClose={() => setIsAnalyticsModalOpen(false)}
+      />
+
       {/* Main Dual-Pane Workspace */}
       <div className="flex-1 flex min-h-0 overflow-hidden relative">
         {/* Left PR Inbox Sidebar */}
@@ -226,6 +242,8 @@ export function PRWorkspace() {
             onToggleChat={() => setIsChatOpen((prev) => !prev)}
             onOpenTeamModal={() => setIsTeamModalOpen(true)}
             onOpenPolicyModal={() => setIsPolicyModalOpen(true)}
+            onOpenGovernanceModal={() => setIsGovernanceModalOpen(true)}
+            onOpenAnalyticsModal={() => setIsAnalyticsModalOpen(true)}
             activeFile={focusedFilePath}
             risk={currentRisk}
           />

@@ -1,6 +1,10 @@
 import { ReviewContext } from "./context-builder";
 import { AIReviewResult } from "@/types/ai-review";
 import { validateAiReviewOutput } from "./validator";
+import { AnthropicReviewer } from "./anthropic-reviewer";
+import { SelfHostedReviewer } from "./self-hosted-reviewer";
+import { FallbackChainReviewer, ProviderEntry } from "./fallback-chain-reviewer";
+import { AIProviderType, SelfHostedConfig } from "@/types/governance";
 
 export const PROMPT_VERSION = "praxd-ai-review-v1.0";
 
@@ -293,15 +297,143 @@ ${JSON.stringify(context.changedFiles, null, 2)}`;
 /**
  * Resolves the appropriate AI Reviewer according to environment configuration.
  */
-export function getAIReviewer(preferredModel?: string): AIReviewProvider {
+export interface ReviewerResolutionOptions {
+  provider?: AIProviderType;
+  model?: string;
+  zeroDataRetention?: boolean;
+  selfHosted?: SelfHostedConfig;
+  fallbackChain?: AIProviderType[];
+}
+
+/**
+ * Resolves the appropriate AI Reviewer according to environment or workspace configuration.
+ * Allows switching providers (Anthropic, Gemini, OpenAI, Self-Hosted) with zero code refactoring.
+ */
+export function getAIReviewer(
+  preferredModel?: string,
+  options?: ReviewerResolutionOptions
+): AIReviewProvider {
+  const provider = options?.provider || (process.env.AI_PROVIDER as AIProviderType);
+  const model = options?.model || preferredModel;
+
+  // 1. Explicit Anthropic
+  if (provider === "anthropic") {
+    const key = process.env.ANTHROPIC_API_KEY;
+    if (key && !key.startsWith("dummy")) {
+      return new AnthropicReviewer(key, model, options?.zeroDataRetention);
+    }
+  }
+
+  // 2. Explicit Gemini
+  if (provider === "gemini") {
+    const key = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
+    if (key && !key.startsWith("dummy")) {
+      return new GeminiReviewer(key, model || process.env.GEMINI_MODEL);
+    }
+  }
+
+  // 3. Explicit OpenAI
+  if (provider === "openai") {
+    const key = process.env.OPENAI_API_KEY;
+    if (key && !key.startsWith("dummy")) {
+      return new OpenAIReviewer(key, model || process.env.OPENAI_MODEL);
+    }
+  }
+
+  // 4. Explicit Self-Hosted OpenAI-Compatible (Ollama, vLLM, Azure OpenAI)
+  if (provider === "selfhosted") {
+    const baseUrl = options?.selfHosted?.baseUrl || process.env.SELF_HOSTED_BASE_URL;
+    if (baseUrl) {
+      return new SelfHostedReviewer({
+        baseUrl,
+        apiKey: options?.selfHosted?.apiKey || process.env.SELF_HOSTED_API_KEY || null,
+        model: options?.selfHosted?.model || process.env.SELF_HOSTED_MODEL || model,
+        requireTls: options?.selfHosted?.requireTls ?? (process.env.SELF_HOSTED_REQUIRE_TLS !== "false"),
+        customHeaders: options?.selfHosted?.customHeaders,
+      });
+    }
+  }
+
+  // 5. Explicit Deterministic
+  if (provider === "deterministic") {
+    return new DeterministicReviewer();
+  }
+
+  // 6. Explicit Fallback Chain
+  if (provider === "fallback") {
+    const entries: ProviderEntry[] = [];
+
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    if (anthropicKey && !anthropicKey.startsWith("dummy")) {
+      entries.push({
+        name: "anthropic",
+        provider: new AnthropicReviewer(anthropicKey, model, options?.zeroDataRetention),
+      });
+    }
+
+    const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
+    if (geminiKey && !geminiKey.startsWith("dummy")) {
+      entries.push({
+        name: "gemini",
+        provider: new GeminiReviewer(geminiKey, model || process.env.GEMINI_MODEL),
+      });
+    }
+
+    const openAiKey = process.env.OPENAI_API_KEY;
+    if (openAiKey && !openAiKey.startsWith("dummy")) {
+      entries.push({
+        name: "openai",
+        provider: new OpenAIReviewer(openAiKey, model || process.env.OPENAI_MODEL),
+      });
+    }
+
+    const selfHostedUrl = options?.selfHosted?.baseUrl || process.env.SELF_HOSTED_BASE_URL;
+    if (selfHostedUrl) {
+      entries.push({
+        name: "selfhosted",
+        provider: new SelfHostedReviewer({
+          baseUrl: selfHostedUrl,
+          apiKey: options?.selfHosted?.apiKey || process.env.SELF_HOSTED_API_KEY || null,
+          model: options?.selfHosted?.model || process.env.SELF_HOSTED_MODEL || model,
+          requireTls: options?.selfHosted?.requireTls ?? (process.env.SELF_HOSTED_REQUIRE_TLS !== "false"),
+          customHeaders: options?.selfHosted?.customHeaders,
+        }),
+      });
+    }
+
+    entries.push({
+      name: "deterministic",
+      provider: new DeterministicReviewer(),
+    });
+
+    return new FallbackChainReviewer(entries);
+  }
+
+  // Default: check active keys in conventional order
   const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
   if (geminiKey && !geminiKey.startsWith("dummy")) {
-    return new GeminiReviewer(geminiKey, preferredModel || process.env.GEMINI_MODEL);
+    return new GeminiReviewer(geminiKey, model || process.env.GEMINI_MODEL);
   }
 
   const openAiKey = process.env.OPENAI_API_KEY;
   if (openAiKey && !openAiKey.startsWith("dummy")) {
-    return new OpenAIReviewer(openAiKey, preferredModel || process.env.OPENAI_MODEL);
+    return new OpenAIReviewer(openAiKey, model || process.env.OPENAI_MODEL);
+  }
+
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  if (anthropicKey && !anthropicKey.startsWith("dummy")) {
+    return new AnthropicReviewer(anthropicKey, model, options?.zeroDataRetention);
+  }
+
+  const selfHostedUrl = options?.selfHosted?.baseUrl || process.env.SELF_HOSTED_BASE_URL;
+  if (selfHostedUrl) {
+    return new SelfHostedReviewer({
+      baseUrl: selfHostedUrl,
+      apiKey: options?.selfHosted?.apiKey || process.env.SELF_HOSTED_API_KEY || null,
+      model: options?.selfHosted?.model || process.env.SELF_HOSTED_MODEL || model,
+      requireTls: options?.selfHosted?.requireTls ?? (process.env.SELF_HOSTED_REQUIRE_TLS !== "false"),
+      customHeaders: options?.selfHosted?.customHeaders,
+    });
   }
 
   return new DeterministicReviewer();

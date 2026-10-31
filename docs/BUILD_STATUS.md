@@ -1,16 +1,16 @@
 # PRAXD Build Status
 
 **Last updated:** 2026-10-31  
-**Current version:** v0.4.0 (Post-MVP Evolution)  
-**Current phase:** Phase 8 — Multi-Model Adapter & Enterprise Governance (Next in Queue)  
-**Build status:** Phases 0, 1, 2, 3, 4 (MVP), Phase 5, Phase 6, and Phase 7 are 100% Complete & Verified (102/102 Automated Tests Passing)
+**Current version:** v0.5.0 (Full Post-MVP Scope Delivered)  
+**Current phase:** All Roadmap Phases (Phases 0 through 8) 100% Shipped & Operational  
+**Build status:** Phases 0, 1, 2, 3, 4 (MVP), Phase 5, Phase 6, Phase 7, and Phase 8 are 100% Complete & Verified (119/119 Automated Tests Passing)
 
 ## Active Post-MVP Roadmap (v0.2.0 — v0.5.0)
 
 - [x] **Phase 5 (v0.2.0):** Interactive PR Assistant & Contextual Chat (Header `Chat` affordance activated with slide-out drawer, streaming SSE, 32 KB diff-bounded reasoning, copy buttons, line-citation deep linking, and `/explain`, `/test-ideas`, `/draft-response`, `/security-audit` slash commands)
 - [x] **Phase 6 (v0.3.0):** Team Collaboration, GitHub SSO & Real-Time Presence (GitHub OAuth profile hydration, real-time reviewer presence heartbeats with live file inspection pills, shared workspace-only internal notes with `@mention` tagging, and 5-role RBAC enforcement)
 - [x] **Phase 7 (v0.4.0):** Automated Policy Engine, CI/CD Bot Mode & Risk Scoring (0–100 composite risk score, event-driven webhooks, Slack/Discord alerts, custom rules prompt injection defense, and out-of-order race guard)
-- [ ] **Phase 8 (v0.5.0):** Multi-Model LLM Adapters & Enterprise Governance (Anthropic Claude, Google Gemini, Ollama/vLLM, automated patch retention purging)
+- [x] **Phase 8 (v0.5.0):** Multi-Model LLM Adapters & Enterprise Governance (Anthropic Claude 3.7/3.5, Google Gemini, OpenAI, self-hosted Ollama/vLLM with TLS verification, automated patch retention purging, one-click workspace purge, ZDR flags, and DORA velocity analytics)
 
 ---
 
@@ -287,6 +287,46 @@
   - P7-06: Slack & Discord webhook payload formatting and secret exclusion.
   - P7-07: Repository policy endpoints and RBAC protection.
 
+
+## Completed in Phase 8 (Multi-Model Adapter & Enterprise Governance)
+
+- [x] Provider-Agnostic LLM Adapters (`lib/ai/anthropic-reviewer.ts`, `lib/ai/self-hosted-reviewer.ts`, `lib/ai/fallback-chain-reviewer.ts`, `lib/ai/reviewer.ts`):
+  - Native Anthropic Claude Messages API adapter (`claude-3-7-sonnet-20250219`, `claude-3-5-haiku-20241022`) with Zero-Data-Retention beta header support.
+  - Native Google Gemini adapter (`gemini-2.5-flash`, `gemini-2.5-pro`).
+  - Native OpenAI Structured Outputs adapter (`gpt-4o`, `gpt-4o-mini`).
+  - Enterprise Self-Hosted adapter for OpenAI-compatible endpoints (Ollama, vLLM, Azure OpenAI).
+  - Autonomous Model Fallback Chain: automatically fails over to backup providers on rate limits (HTTP 429), outages (HTTP 500/502/503), or network interruptions with failover telemetry logs.
+  - Zero-Code Refactoring Guarantee: switching providers requires only setting `AI_PROVIDER` or workspace governance configuration.
+- [x] Self-Hosted TLS & Header Validation Guard (`lib/ai/self-hosted-reviewer.ts`):
+  - Rejects insecure non-TLS `http://` endpoints when enterprise TLS is enforced.
+  - Strips dangerous/hop-by-hop headers (`host`, `content-length`, `connection`, `transfer-encoding`).
+  - Rejects CRLF injection attempts (`\r`, `\n`) in headers.
+- [x] Automated Data Retention & Patch Purging Engine (`lib/governance/retention.ts`, `app/api/governance/retention/purge/route.ts`):
+  - Configurable patch retention window (30 / 60 / 90 days; or indefinite).
+  - Permanently purges cached diff hunks (`patch_text`) from closed/merged PRs while preserving PR metadata and findings.
+  - Supports scheduled cron invocation and on-demand manual maintenance.
+- [x] One-Click Workspace Purge for SOC2 Offboarding (`lib/governance/workspace-purge.ts`, `app/api/workspaces/current/purge/route.ts`):
+  - Irreversibly purges workspace records (pull requests, diffs, findings, review runs, internal notes, audit logs).
+  - Enforces workspace Owner-only authorization and explicit `confirmWorkspaceId` payload matching.
+- [x] Zero-Data-Retention (ZDR) Enterprise Compliance:
+  - Supports `zeroDataRetention: true` contract mode, transmitting provider privacy flags and suppressing diff persistence.
+- [x] Engineering Velocity & DORA Metrics Analytics Engine (`lib/analytics/dora.ts`, `app/api/analytics/dora/route.ts`):
+  - Computes 4 core velocity metrics: Time to First Review (TTFR), Review Cycle Time, AI Triage Resolution Rate, and Churn Velocity.
+  - Industry DORA classification rating: `elite` (&lt;4h TTFR, &lt;24h cycle), `high`, `medium`, `low`.
+  - Non-blocking read-optimized analytics queries that never lock write tables or block incoming GitHub webhooks.
+- [x] Enterprise Governance & Analytics UI Modals (`components/governance-modal.tsx`, `components/dora-metrics-modal.tsx`, `components/workspace-header.tsx`, `components/pr-workspace.tsx`):
+  - Interactive governance modal with provider picker, self-hosted TLS config, retention slider, patch purge button, and ZDR toggle.
+  - DORA velocity modal displaying real-time metrics cards and industry benchmarks.
+  - Workspace header integration with dedicated Governance and Analytics affordances.
+- [x] Comprehensive Acceptance Test Suite (`tests/phase8-enterprise-governance.test.ts`):
+  - P8-01: Provider-agnostic adapter switches providers with zero code refactoring.
+  - P8-02: Self-hosted endpoint validates TLS certificates and handles custom headers safely.
+  - P8-03: Model fallback chain automatically fails over on HTTP 429/503.
+  - P8-04: Automated retention policy permanently purges diffs older than retention window.
+  - P8-05: One-click workspace purge wipes workspace data with owner check.
+  - P8-06: DORA metrics calculations and performance tier assignment.
+  - P8-07: Enterprise governance REST API and RBAC protection.
+
 ## UI Polish & Ergonomic Improvements
 
 - [x] Header Centering: Centered `Summary | Code` segmented tabs in main content header.
@@ -327,7 +367,7 @@
 
 - `lint` (`npm run lint`): Passed (0 warnings, 0 errors).
 - `typecheck` (`npm run typecheck`): Passed (0 errors).
-- `test` (`npm run test`): Passed 102/102 acceptance tests across 11 test suites:
+- `test` (`npm run test`): Passed 119/119 acceptance tests across 12 test suites:
   - `tests/phase0-workspace.test.tsx` (9 tests)
   - `tests/phase1-state.test.ts` (5 tests)
   - `tests/phase1-github-sync.test.ts` (12 tests)
@@ -338,5 +378,6 @@
   - `tests/phase5-chat.test.ts` (9 tests)
   - `tests/phase6-collaboration.test.ts` (9 tests)
   - `tests/phase7-policy-bot.test.ts` (25 tests)
+  - `tests/phase8-enterprise-governance.test.ts` (17 tests)
   - `tests/live-ai-readiness.test.ts` (4 tests)
-- `build` (`npm run build`): Passed (31 dynamic API routes + static pages compiled successfully).
+- `build` (`npm run build`): Passed (34 dynamic API routes + 23 static pages compiled successfully).
