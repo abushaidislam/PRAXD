@@ -1,200 +1,99 @@
-# System Architecture — PRAXD
+# System Architecture — PRAXD Personal PR Workspace
 
-## 1. Architecture goals
+**Product:** PRAXD  
+**Edition:** Personal PR Management Workspace (Option B — Pure Git & PR Focus)  
+**Status:** Core Architectural Specification
 
-- Securely access GitHub installations and selected repositories.
-- Keep the UI responsive while GitHub synchronization and AI review run asynchronously.
-- Maintain a tenant-aware local read model for fast PR browsing.
-- Make GitHub and AI providers replaceable through adapters.
-- Validate every external boundary: user input, webhooks, GitHub responses and model output.
+---
 
-## 2. Recommended stack
+## 1. Architectural Goals
 
-| Layer | Choice | Responsibility |
+- **Zero AI Overhead:** Eliminate external AI provider dependencies, token costs, prompt latency, and chat drawers.
+- **Fast, Focused PR Triage:** Deliver instant inbox filtering, repository discovery, and PR navigation.
+- **High-Performance Diff Rendering:** Side-by-side split & unified diffs with synchronized horizontal scroll across Base and Head revisions.
+- **Authoritative GitHub Synchronization:** GitHub remains the sole authoritative source of truth; PRAXD maintains a fast, local synchronized read model.
+- **Strict Boundary Security:** Verify all webhook HMAC-SHA256 signatures, sanitize metadata, and keep GitHub App private keys strictly server-side.
+
+---
+
+## 2. Technical Stack
+
+| Layer | Technology | Role |
 |---|---|---|
-| Web | Next.js App Router + TypeScript | UI, server rendering, authenticated route handlers |
-| UI | Tailwind CSS + shadcn/ui + Lucide | Components, primitives, icon system |
-| Diff | Dedicated React diff viewer (evaluate `@git-diff-view/react` or equivalent) | Split/unified patch rendering |
-| Auth | Supabase Auth + `@supabase/ssr` | User sessions and server-side auth |
-| Database | Supabase PostgreSQL | Workspaces, synchronized GitHub read model, review history |
-| GitHub | GitHub App + Octokit | Installation auth, REST API and webhooks |
-| AI | OpenAI API behind provider adapter | Summary and structured code-review findings |
-| Jobs | Inngest or equivalent durable queue | PR sync, AI review, retries and scheduled reconciliation |
-| Deployment | Vercel | Next.js hosting; background worker deployment must support durable execution |
-| Observability | Structured logs + error monitor | Trace failures without logging secrets or source code |
+| **Web Framework** | Next.js (App Router) + TypeScript | React Server Components & client interaction layers |
+| **UI & Styling** | Tailwind CSS + Lucide Icons | Dark-themed design tokens (`#111111`, `#161616`) |
+| **Diff Engine** | Custom High-Performance Diff Viewer | Side-by-side split & unified diffs, synchronized scroll lockstep |
+| **Auth & Database** | Supabase (PostgreSQL with RLS) | Authenticated personal sessions, local cached PR read model |
+| **VCS Integration** | GitHub App + REST Client + Webhooks | RS256 App JWT auth, short-lived tokens, HMAC webhook verification |
+| **Deployment** | Vercel / Node.js | Edge-ready serverless and server-rendered execution |
 
-Select exact dependency versions when creating the app and commit the lockfile. Confirm runtime compatibility between Next.js hosting, Supabase and the chosen job runner.
+---
 
-## 3. High-level architecture
+## 3. High-Level Architecture Diagram
 
 ```mermaid
-flowchart LR
-  U[Developer] --> WEB[PRAXD Web App\nNext.js]
-  WEB --> AUTH[Supabase Auth]
-  WEB --> API[Server Route Handlers]
-  API --> DB[(Supabase PostgreSQL)]
-  API --> GH[GitHub Adapter / Octokit]
-  GH --> GITHUB[GitHub App + REST API]
-  GITHUB -->|signed webhooks| WH[Webhook Receiver]
-  WH --> VERIFY[Signature + delivery verification]
-  VERIFY --> QUEUE[Durable Job Queue]
-  QUEUE --> SYNC[GitHub Sync Worker]
-  QUEUE --> REVIEW[AI Review Worker]
-  SYNC --> GH
-  SYNC --> DB
-  REVIEW --> GH
-  REVIEW --> LLM[AI Provider Adapter]
-  REVIEW --> DB
-  WEB --> DB
+flowchart TD
+    subgraph Client["Developer Browser"]
+        Inbox["Left PR Inbox\n(All / Reviewing / Authored)"]
+        Header["Minimal Workspace Header\n(Title, Summary|Code, GitHub Link)"]
+        Diff["Synchronized Diff Viewer\n(Split & Unified, Line Folding)"]
+    end
+
+    subgraph Server["Next.js Server (App Router)"]
+        API["Route Handlers\n(/api/pull-requests, /api/repositories)"]
+        Webhook["Webhook Receiver\n(/api/webhooks/github)"]
+        SyncEngine["GitHub Sync Engine\n(lib/github/sync.ts)"]
+        AppAuth["GitHub App RS256 Auth\n(lib/github/app-auth.ts)"]
+    end
+
+    subgraph Data["Database & Storage"]
+        DB[(PostgreSQL / Supabase RLS)]
+    end
+
+    subgraph GitHub["GitHub Platform"]
+        GHApp["GitHub App & REST API"]
+        GHWebhook["GitHub Webhooks\n(pull_request, check_run, comment)"]
+    end
+
+    Client <--> API
+    API <--> DB
+    API <--> AppAuth
+    AppAuth <--> GHApp
+    GHWebhook -->|HMAC-SHA256 Signed| Webhook
+    Webhook --> SyncEngine
+    SyncEngine --> DB
+    SyncEngine <--> GHApp
 ```
 
-## 4. Application layers
+---
 
-### Presentation layer
+## 4. Application Layers
 
-- Renders PR inbox, Summary, Code, comments, checks, settings and AI review.
-- Uses server components for initial secure reads where appropriate.
-- Uses client components only for interactive controls, tabs, diff navigation and live states.
-- Never calls GitHub directly from the browser.
+### Presentation Layer
+- **Left PR Inbox (`components/pull-request-sidebar.tsx`):**
+  - Instant client-side search and filtering (`All`, `Reviewing`, `Authored`).
+  - Resizable sidebar with magnetic snap points (340px, 420px, 540px) and collapse shortcut (`Ctrl+B`).
+- **Clean Workspace Header (`components/workspace-header.tsx`):**
+  - Displays PR identity, branch comparison, centered `Summary | Code` toggle, external GitHub link, and safe merge button.
+  - Zero clutter: No enterprise team buttons, no presence avatars, no chat drawer button.
+- **Summary View (`components/summary-view.tsx`):**
+  - PR metadata, description markdown, CI/CD check runs list (`CheckRunList`), and activity timeline (`ActivityTimeline`).
+- **Code View & Diff Viewer (`components/code-view.tsx`, `components/diff-viewer.tsx`):**
+  - Side-by-side split and unified diff switching.
+  - Synchronized horizontal scroll lockstep across Base and Head revisions.
+  - Sticky multi-file selector dropdown with additions/deletions.
 
-### Domain/application layer
+### Server & Domain Layer
+- **`lib/github/sync.ts`:** Natural idempotency keys for repositories `(installation_id, github_repo_id)` and PRs `(repository_id, number)`.
+- **`lib/github/webhook-verify.ts`:** Constant-time buffer comparison of `X-Hub-Signature-256`.
+- **`lib/github/webhook-handlers.ts`:** Event handling for `pull_request`, `check_run`, `issue_comment`, `pull_request_review_comment`.
+- **`lib/github/app-auth.ts`:** Ephemeral installation access token caching with in-memory expiration guards.
 
-Suggested domain modules:
+---
 
-- `repositories`: repository list and installation scope.
-- `pull-requests`: PR list, summary, files, commits and state.
-- `reviews`: GitHub reviews/comments and AI review history.
-- `checks`: check runs and commit statuses.
-- `integrations/github`: OAuth/install callbacks, app auth, Octokit client and webhook parser.
-- `ai-review`: context builder, prompt templates, model adapter, output validator and finding normalizer.
-- `workspaces`: tenant membership and access control.
+## 5. Security & Isolation
 
-### Infrastructure layer
-
-- Supabase server/client utilities.
-- GitHub REST adapter.
-- Queue/event adapter.
-- AI provider adapter.
-- Encryption utilities.
-- Logging, tracing and error reporting.
-
-## 5. GitHub integration model
-
-Use a GitHub App installed on a personal account or organization. Store installation metadata, not long-lived plaintext credentials. Generate installation access tokens server-side when needed; keep them ephemeral/in-memory and refresh as required. Keep the GitHub App private key in the server's secret manager/environment, never in the database or client.
-
-The initial app permissions should be minimal:
-
-- Metadata: read (required baseline).
-- Contents: read (for bounded related source context if required).
-- Pull requests: read (PRs, changed files, reviews and review comments).
-- Checks: read (check runs).
-- Commit statuses: read (legacy commit status contexts if displayed).
-
-Only add `Pull requests: write` in a later phase if users explicitly enable publishing AI review comments. Do not request Contents write, Actions write, Administration or Merge write for MVP.
-
-Use REST API through an adapter. Where a required UI detail (e.g. review thread resolution state) is not exposed by the chosen REST endpoint, either use the appropriate supported GraphQL API or display the limitation clearly. Do not infer missing data.
-
-## 6. Primary data flows
-
-### 6.1 Initial connection
-
-```mermaid
-sequenceDiagram
-  participant User
-  participant App as PRAXD App
-  participant GH as GitHub
-  participant DB as Supabase DB
-  User->>App: Click Connect GitHub
-  App->>GH: Redirect to GitHub App installation
-  User->>GH: Choose account/repositories and install
-  GH->>App: Setup callback with installation context
-  App->>App: Validate state and installation context
-  App->>DB: Save installation metadata
-  App->>GH: Mint installation token (server-side)
-  App->>GH: List installation repositories
-  App->>DB: Upsert repository read model
-  App-->>User: Show connected repositories
-```
-
-### 6.2 Webhook synchronization
-
-```mermaid
-sequenceDiagram
-  participant GH as GitHub
-  participant WH as Webhook Route
-  participant DB as Supabase DB
-  participant Q as Job Queue
-  participant W as Sync Worker
-  GH->>WH: POST event + X-Hub-Signature-256
-  WH->>WH: Verify HMAC against raw body
-  WH->>DB: Insert delivery ID (unique)
-  alt New delivery
-    WH->>Q: Enqueue sync event
-    WH-->>GH: 202 Accepted
-  else Duplicate delivery
-    WH-->>GH: 202 Already processed
-  end
-  Q->>W: Execute idempotent sync
-  W->>GH: Fetch authoritative PR/review/check data
-  W->>DB: Upsert read model
-```
-
-### 6.3 Manual AI review
-
-```mermaid
-sequenceDiagram
-  participant User
-  participant App as PRAXD API
-  participant Q as Job Queue
-  participant W as AI Review Worker
-  participant GH as GitHub API
-  participant AI as AI Provider
-  participant DB as Database
-  User->>App: Request review for PR + head SHA
-  App->>App: Authorize workspace and installation
-  App->>DB: Create queued review run
-  App->>Q: Enqueue review job
-  App-->>User: Return reviewRunId
-  Q->>W: Start job
-  W->>GH: Fetch PR files/patches and bounded context
-  W->>W: Redact secrets and build context
-  W->>AI: Request structured review
-  AI-->>W: Candidate findings
-  W->>W: Validate schema, files, lines and evidence
-  W->>DB: Save completed run and findings
-  App-->>User: UI polls/subscribes for status
-```
-
-## 7. Synchronization strategy
-
-- Webhooks are the fast path; periodic reconciliation is the recovery path.
-- Store each GitHub `X-GitHub-Delivery` ID with uniqueness to make retries idempotent.
-- Acknowledge valid webhooks quickly after durable acceptance; do not wait for AI or broad API fetches.
-- Queue jobs with retry/backoff for 5xx, timeouts and rate limits. Do not retry permanent 4xx permission failures blindly.
-- Respect GitHub rate-limit headers and `Retry-After`/reset information.
-- Use conditional requests/ETags where supported and cache short-lived read responses.
-- Upsert records using GitHub IDs plus repository/PR identifiers.
-- Track last synced timestamp, sync cursor/page and last error.
-- Reconcile open PRs periodically; synchronize closed/merged events from webhooks.
-
-## 8. Data freshness
-
-The UI must show the last synchronized time where relevant. When a webhook is delayed or a manual refresh is requested, show stale/loading states instead of implying that cached data is live. AI results are tied to a specific PR `head.sha`; any later head SHA invalidates the review's currentness.
-
-## 9. API boundaries
-
-- Browser → PRAXD server only.
-- PRAXD server → GitHub using installation credentials.
-- GitHub → webhook receiver using signed requests.
-- PRAXD worker → AI provider using server-side provider key.
-- PRAXD server/worker → Supabase using server-side database access with explicit user/workspace authorization.
-
-## 10. Scaling notes
-
-- Paginate repository, PR, commit, check and file lists.
-- Load patches lazily per selected file; don't fetch every patch for every PR at first render.
-- Use background jobs for initial repository sync and AI analysis.
-- Batch AI review by file/context budget and merge findings after validation.
-- Keep large patch/code payloads out of routine logs.
-- Add storage retention limits for cached patch text and AI prompt snapshots.
-- If deployment runtime does not support durable long-running work, move workers to a dedicated queue/worker runtime instead of forcing long jobs into request handlers.
+- **Server-Only Credentials:** `GITHUB_APP_PRIVATE_KEY_BASE64` and `GITHUB_WEBHOOK_SECRET` stay exclusively on the server.
+- **No Prompt Injections or Model Leaks:** Without external AI models or chat engines, there is zero risk of prompt injection, secret exfiltration via LLMs, or token overages.
+- **Constant-Time Verification:** Webhook signatures are verified using `crypto.timingSafeEqual`.
+- **Read-Only Baseline:** PR review operations are read-only; destructive merge actions are safely guarded with links to GitHub.
