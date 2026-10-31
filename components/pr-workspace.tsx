@@ -185,6 +185,7 @@ export function PRWorkspace() {
               )
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-praxd-text-muted space-y-3 p-6 text-center">
+                <BrandLogo size={48} className="mb-1 opacity-90 shadow-lg" />
                 <p className="text-[14px] font-medium text-praxd-text">No pull requests found</p>
                 <p className="text-[12px] max-w-sm">
                   {isLiveMode

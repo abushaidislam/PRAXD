@@ -16,6 +16,7 @@
   - Summary view (exact reproduction of screenshots: title with shield icon, author metadata, branch comparison, requested reviewers, comments, checks, collapsible description with styled vulnerability breakdown, checks list, activity timeline, leave comment input)
   - Code view (breadcrumb toolbar with branch flow, sticky multi-file selector dropdown, split vs unified diff toggle, file header, unmodified lines folding, side-by-side split diff with independent line numbers and syntax highlighting, gutter comment hover `+` affordance, inline comment threads, PRAXD AI review finding callout anchor, fallback for binary/missing patch files)
   - Demo mode notice badge explicitly marking local fixture mode
+  - Official PRAXD brand logo integration across the workspace (`public/logo.png`, `public/favicon.ico`, `app/icon.png`, `app/apple-icon.png`, `components/brand-logo.tsx`) in layout metadata, top status badge, sidebar header, collapsed-header brand mark, connect modal, and empty states
 
 ## Completed in Phase 1
 
