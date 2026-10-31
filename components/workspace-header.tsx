@@ -7,10 +7,12 @@ import {
   GitMerge,
   ChevronDown,
   PanelLeftOpen,
+  Users,
 } from "lucide-react";
 import { PullRequest } from "@/types/pr";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/brand-logo";
+import { PresenceAvatars } from "@/components/presence-avatars";
 
 interface WorkspaceHeaderProps {
   pr: PullRequest | null;
@@ -20,6 +22,8 @@ interface WorkspaceHeaderProps {
   onToggleSidebar: () => void;
   isChatOpen?: boolean;
   onToggleChat?: () => void;
+  onOpenTeamModal?: () => void;
+  activeFile?: string | null;
 }
 
 export function WorkspaceHeader({
@@ -30,6 +34,8 @@ export function WorkspaceHeader({
   onToggleSidebar,
   isChatOpen = false,
   onToggleChat,
+  onOpenTeamModal,
+  activeFile,
 }: WorkspaceHeaderProps) {
   const hasShield = pr?.title.toLowerCase().includes("sentinel");
 
@@ -104,8 +110,28 @@ export function WorkspaceHeader({
         </div>
       </div>
 
-      {/* Right Actions: External link, Chat affordance, Merge guardrail button */}
+      {/* Right Actions: Presence, Team modal, External link, Chat affordance, Merge guardrail */}
       <div className="flex items-center justify-end gap-2 shrink-0 z-10 pl-3">
+        {/* Real-time Multiplayer Presence Indicator (Phase 6) */}
+        {pr && (
+          <PresenceAvatars
+            pullRequestId={pr.id}
+            activeView={activeView}
+            activeFile={activeFile}
+          />
+        )}
+
+        {/* Team Collaboration & Members button */}
+        <button
+          type="button"
+          onClick={onOpenTeamModal}
+          className="p-1.5 rounded-md hover:bg-[#202020] text-praxd-text-muted hover:text-praxd-text transition-colors"
+          title="Team members & invitations"
+          aria-label="Team collaboration settings"
+        >
+          <Users className="w-4 h-4" />
+        </button>
+
         {/* External GitHub link */}
         <a
           href={pr ? `https://github.com/${pr.repoOwner}/${pr.repoName}/pull/${pr.number}` : "#"}
@@ -118,7 +144,7 @@ export function WorkspaceHeader({
           <ExternalLink className="w-4 h-4" />
         </a>
 
-        {/* Interactive Chat affordance (Activated in Phase 5) */}
+        {/* Interactive Chat affordance (Phase 5) */}
         <button
           type="button"
           onClick={onToggleChat}

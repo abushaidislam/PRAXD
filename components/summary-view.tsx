@@ -15,6 +15,7 @@ import { PullRequest } from "@/types/pr";
 import { CheckRunList } from "./check-run-list";
 import { ActivityTimeline } from "./activity-timeline";
 import { AIReviewPanel } from "./ai-review-panel";
+import { InternalNotesPanel } from "./internal-notes-panel";
 import { FindingRecord } from "@/types/ai-review";
 import { cn } from "@/lib/utils";
 
@@ -101,84 +102,118 @@ export function SummaryView({ pr }: SummaryViewProps) {
     };
   }, [pr.id, pr.aiFindings]);
 
+  // Synchronize when parent PR findings update
+  React.useEffect(() => {
+    if (pr.aiFindings && pr.aiFindings.length > 0) {
+      const mapped: FindingRecord[] = pr.aiFindings.map((f) => ({
+        id: f.id,
+        reviewRunId: "run-fixture",
+        fingerprint: f.id,
+        severity: f.severity === "warning" ? "medium" : f.severity === "suggestion" ? "low" : (f.severity as any),
+        kind: "security",
+        title: f.title,
+        description: f.explanation,
+        impact: "Unsanitized input can cause security exploits or unexpected behavior.",
+        recommendation: f.suggestedFix || null,
+        confidence: f.confidence,
+        filePath: f.filePath,
+        lineStart: f.line || null,
+        lineEnd: f.line || null,
+        evidenceExcerpt: null,
+        verificationSteps: ["Verify that no dynamic string concatenation is used for style or DOM nodes."],
+        recommendedPatch: null,
+        status: "open",
+        isValidated: true,
+        createdAt: new Date().toISOString(),
+      }));
+      setActiveFindings(mapped);
+    }
+  }, [pr.aiFindings]);
+
   const handleTriggerReview = async () => {
     setIsReviewRunning(true);
     try {
       const res = await fetch(`/api/pull-requests/${pr.id}/ai-review`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
       });
       if (res.ok) {
-        // Fetch newly generated findings
-        const reviewRes = await fetch(`/api/pull-requests/${pr.id}/ai-review`);
-        if (reviewRes.ok) {
-          const reviewJson = await reviewRes.json();
-          if (reviewJson.data && reviewJson.data.findings) {
-            setActiveFindings(reviewJson.data.findings);
+        const json = await res.json();
+        // Immediately fetch newly created review run findings
+        const fetchRes = await fetch(`/api/pull-requests/${pr.id}/ai-review`);
+        if (fetchRes.ok) {
+          const fetchedJson = await fetchRes.json();
+          if (fetchedJson.data && fetchedJson.data.findings && fetchedJson.data.findings.length > 0) {
+            setActiveFindings(fetchedJson.data.findings);
+            return;
           }
+        }
+
+        if (json.data && json.data.findings && json.data.findings.length > 0) {
+          setActiveFindings(json.data.findings);
         }
       }
     } catch {
-      // Offline/demo fallback
+      // Keep existing findings on error
     } finally {
       setIsReviewRunning(false);
     }
   };
 
   return (
-    <div className="h-full overflow-y-auto px-4 md:px-8 py-6 select-text">
-      <div className="max-w-[780px] mx-auto space-y-6">
-        {/* PR Title & Edit Header */}
-        <div className="flex items-start justify-between gap-4">
+    <div className="h-full overflow-y-auto bg-praxd-bg select-text">
+      <div className="max-w-4xl mx-auto px-6 py-6 space-y-6">
+        {/* Title and PR Number Header */}
+        <div className="space-y-1.5">
           <div className="flex items-start gap-2.5">
             {hasShield && (
-              <ShieldAlert className="w-6 h-6 text-praxd-blue shrink-0 mt-0.5" />
+              <ShieldAlert className="w-5 h-5 text-praxd-blue shrink-0 mt-0.5" />
             )}
-            <h1 className="text-[22px] font-semibold text-praxd-text leading-snug">
+            <h1 className="text-[17px] font-semibold text-praxd-text leading-snug">
               {pr.title}
             </h1>
           </div>
-          <button
-            type="button"
-            className="p-1 rounded hover:bg-[#202020] text-praxd-text-muted hover:text-praxd-text transition-colors"
-            aria-label="Edit title"
-          >
-            <Pencil className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2 text-[12px] text-praxd-text-muted">
+            <span className="font-mono text-praxd-text-secondary">#{pr.number}</span>
+            <span>·</span>
+            <span>{pr.author.name || pr.author.login} wants to merge changes into</span>
+            <span className="px-1.5 py-0.5 rounded bg-[#1e1e1e] font-mono text-praxd-text-secondary text-[11px] border border-praxd-border-soft">
+              {pr.baseRef}
+            </span>
+            <span>from</span>
+            <span className="px-1.5 py-0.5 rounded bg-[#1e1e1e] font-mono text-praxd-text-secondary text-[11px] border border-praxd-border-soft">
+              {pr.headRef}
+            </span>
+          </div>
         </div>
 
-        {/* Author Line */}
-        <div className="flex items-center gap-2 text-[12px] text-praxd-text-muted">
-          <img
-            src={pr.author.avatarUrl}
-            alt={pr.author.login}
-            className="w-4 h-4 rounded-full bg-[#2a2a2a]"
-          />
-          <span className="font-medium text-praxd-text-secondary">{pr.author.login}</span>
-          <span>·</span>
-          <span>{pr.relativeTime}</span>
-        </div>
+        {/* Metadata Properties Grid */}
+        <div className="rounded-lg bg-[#141414] border border-praxd-border-soft p-4 space-y-3 text-[12px]">
+          {/* Author Row */}
+          <div className="flex items-center">
+            <div className="w-[120px] flex items-center gap-2 text-praxd-text-muted">
+              <div className="w-4 h-4 rounded-full bg-neutral-700 flex items-center justify-center text-[10px] text-white">
+                {pr.author.login[0]?.toUpperCase()}
+              </div>
+              <span>Author</span>
+            </div>
+            <div className="flex items-center gap-2 text-praxd-text">
+              <span className="font-medium">{pr.author.login}</span>
+              {pr.author.name && (
+                <span className="text-praxd-text-muted">({pr.author.name})</span>
+              )}
+            </div>
+          </div>
 
-        {/* Metadata Grid (Branch, Reviewers, Comments, Checks, Status) */}
-        <div className="space-y-3 py-2 text-[12px]">
-          {/* Branch Row */}
+          {/* Branch Comparison Row */}
           <div className="flex items-center">
             <div className="w-[120px] flex items-center gap-2 text-praxd-text-muted">
               <GitBranch className="w-3.5 h-3.5" />
               <span>Branch</span>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-mono text-praxd-text-secondary text-[11px] bg-[#1a1a1a] px-2 py-0.5 rounded border border-praxd-border-soft">
-                {pr.headRef}
-              </span>
+            <div className="flex items-center gap-1.5 text-praxd-text font-mono text-[11px]">
+              <span className="text-praxd-text-secondary">{pr.headRef}</span>
               <span className="text-praxd-text-muted">&gt;</span>
-              <span className="font-mono text-praxd-text-secondary text-[11px] bg-[#1a1a1a] px-2 py-0.5 rounded border border-praxd-border-soft">
-                {pr.baseRef}
-              </span>
-              <div className="flex items-center gap-1 font-mono text-[11px] ml-1">
-                <span className="text-praxd-green">+{pr.additions}</span>
-                <span className="text-praxd-red">-{pr.deletions}</span>
-              </div>
+              <span className="text-praxd-text-muted">{pr.baseRef}</span>
             </div>
           </div>
 
@@ -188,12 +223,23 @@ export function SummaryView({ pr }: SummaryViewProps) {
               <Users className="w-3.5 h-3.5" />
               <span>Reviewers</span>
             </div>
-            <button
-              type="button"
-              className="text-praxd-text-secondary hover:text-praxd-text hover:underline text-[12px] flex items-center gap-1"
-            >
-              <span>+ Request</span>
-            </button>
+            <div className="flex items-center gap-2 text-praxd-text">
+              {pr.reviewers && pr.reviewers.length > 0 ? (
+                pr.reviewers.map((r) => (
+                  <div key={r.login} className="flex items-center gap-1.5 bg-[#1e1e1e] px-2 py-0.5 rounded border border-praxd-border-soft text-[11px]">
+                    <div className="w-3.5 h-3.5 rounded-full bg-neutral-600 flex items-center justify-center text-[8px] text-white">
+                      {r.login[0]?.toUpperCase()}
+                    </div>
+                    <span>{r.login}</span>
+                    {r.state === "approved" && (
+                      <span className="text-emerald-400 text-[10px]">✓</span>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <span className="text-praxd-text-muted italic">No reviewers requested</span>
+              )}
+            </div>
           </div>
 
           {/* Comments Row */}
@@ -202,9 +248,7 @@ export function SummaryView({ pr }: SummaryViewProps) {
               <MessageSquare className="w-3.5 h-3.5" />
               <span>Comments</span>
             </div>
-            <span className="text-praxd-text-secondary">
-              {pr.comments.length} comments
-            </span>
+            <span className="text-praxd-text font-mono">{pr.comments?.length || 0}</span>
           </div>
 
           {/* Checks Row */}
@@ -312,6 +356,9 @@ export function SummaryView({ pr }: SummaryViewProps) {
           onTriggerReview={handleTriggerReview}
           isRunning={isReviewRunning}
         />
+
+        {/* Internal Team Discussion Section (Phase 6) */}
+        <InternalNotesPanel pullRequestId={pr.id} />
 
         {/* Checks Section */}
         <CheckRunList checks={pr.checks} />

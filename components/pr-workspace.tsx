@@ -11,10 +11,12 @@ import { DemoModeBadge } from "./demo-mode-badge";
 import { GitHubConnectModal } from "./github-connect-modal";
 import { BrandLogo } from "./brand-logo";
 import { PRChat } from "./pr-chat";
+import { TeamManagementModal } from "./team-management-modal";
 
 export function PRWorkspace() {
   const [isLiveMode, setIsLiveMode] = useState(false);
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [pullRequests, setPullRequests] = useState<PullRequest[]>(FIXTURE_PULL_REQUESTS);
   const [selectedPr, setSelectedPr] = useState<PullRequest>(FIXTURE_PULL_REQUESTS[0]);
   const [activeView, setActiveView] = useState<"summary" | "code">("code");
@@ -160,6 +162,12 @@ export function PRWorkspace() {
         onClose={() => setIsConnectModalOpen(false)}
       />
 
+      {/* Team Collaboration & Member Management Modal */}
+      <TeamManagementModal
+        isOpen={isTeamModalOpen}
+        onClose={() => setIsTeamModalOpen(false)}
+      />
+
       {/* Main Dual-Pane Workspace */}
       <div className="flex-1 flex min-h-0 overflow-hidden relative">
         {/* Left PR Inbox Sidebar */}
@@ -185,6 +193,8 @@ export function PRWorkspace() {
             onToggleSidebar={() => setIsSidebarOpen(true)}
             isChatOpen={isChatOpen}
             onToggleChat={() => setIsChatOpen((prev) => !prev)}
+            onOpenTeamModal={() => setIsTeamModalOpen(true)}
+            activeFile={focusedFilePath}
           />
 
           {/* Workspace Body: Summary or Code */}

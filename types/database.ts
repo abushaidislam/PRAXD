@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export type WorkspaceRole = "owner" | "admin" | "member";
+export type WorkspaceRole = "owner" | "admin" | "reviewer" | "viewer" | "member";
 export type GitHubInstallationStatus = "active" | "suspended" | "deleted" | "pending";
 export type PullRequestState = "open" | "closed" | "merged";
 export type PullRequestReviewState = "approved" | "changes_requested" | "commented" | "dismissed" | "pending" | "unknown";

@@ -1,9 +1,10 @@
 import { createServerComponentClient, createServiceRoleClient } from "./server";
+import { WorkspaceRole } from "@/lib/auth/rbac";
 
 export interface AuthenticatedContext {
   userId: string;
   workspaceId: string;
-  role: "owner" | "admin" | "member";
+  role: WorkspaceRole;
   isDemo?: boolean;
 }
 
@@ -13,8 +14,14 @@ export interface AuthenticatedContext {
  * Rejects unauthorized or cross-tenant access.
  */
 export async function getAuthenticatedContext(
-  requestedWorkspaceId?: string
+  requestedWorkspaceId?: string,
+  overrideRole?: WorkspaceRole
 ): Promise<AuthenticatedContext | null> {
+  const effectiveRole =
+    overrideRole ||
+    ((globalThis as any).__praxdTestRole as WorkspaceRole) ||
+    "owner";
+
   // If Supabase keys are not set up yet in environment, allow a bounded local development context
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -24,7 +31,7 @@ export async function getAuthenticatedContext(
     return {
       userId: "dev-user-0000-0000-000000000001",
       workspaceId: requestedWorkspaceId || "dev-workspace-0000-0000-000000000001",
-      role: "owner",
+      role: effectiveRole,
       isDemo: true,
     };
   }
@@ -42,7 +49,7 @@ export async function getAuthenticatedContext(
       return {
         userId: "dev-user-0000-0000-000000000001",
         workspaceId: requestedWorkspaceId || "dev-workspace-0000-0000-000000000001",
-        role: "owner",
+        role: effectiveRole,
         isDemo: true,
       };
     }
@@ -66,7 +73,7 @@ export async function getAuthenticatedContext(
       return {
         userId: user.id,
         workspaceId: requestedWorkspaceId,
-        role: member.role as "owner" | "admin" | "member",
+        role: (member.role as WorkspaceRole) || effectiveRole,
       };
     }
 
@@ -86,7 +93,7 @@ export async function getAuthenticatedContext(
     return {
       userId: user.id,
       workspaceId: defaultMember.workspace_id,
-      role: defaultMember.role as "owner" | "admin" | "member",
+      role: (defaultMember.role as WorkspaceRole) || effectiveRole,
     };
   } catch {
     return null;
