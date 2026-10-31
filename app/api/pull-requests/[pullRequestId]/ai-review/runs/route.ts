@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getAuthenticatedContext } from "@/lib/supabase/auth";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { liveReviewsStore } from "@/lib/ai/lifecycle";
 import { apiSuccess, apiError } from "@/lib/api-response";
 
 export async function GET(
@@ -11,6 +12,15 @@ export async function GET(
   const auth = await getAuthenticatedContext();
   if (!auth) {
     return apiError("UNAUTHORIZED", "Authentication required.", 401);
+  }
+
+  // Handle live PR runs
+  if (pullRequestId.startsWith("live__")) {
+    const liveData = liveReviewsStore.get(pullRequestId);
+    if (liveData) {
+      return apiSuccess({ runs: [liveData.run] });
+    }
+    return apiSuccess({ runs: [] });
   }
 
   const supabase = createServiceRoleClient();

@@ -1,5 +1,6 @@
 import React from "react";
 import { X, Github, ExternalLink, ShieldCheck, AlertCircle } from "lucide-react";
+import { BrandLogo } from "@/components/brand-logo";
 
 interface GitHubConnectModalProps {
   isOpen: boolean;
@@ -19,10 +20,10 @@ export function GitHubConnectModal({ isOpen, onClose }: GitHubConnectModalProps)
       <div className="w-full max-w-md bg-[#181818] border border-praxd-border rounded-xl shadow-2xl p-5 space-y-4 text-praxd-text">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-praxd-border-soft pb-3">
-          <div className="flex items-center gap-2">
-            <Github className="w-5 h-5 text-praxd-text" />
+          <div className="flex items-center gap-2.5">
+            <BrandLogo size={22} />
             <h2 id="connect-github-title" className="text-[14px] font-semibold">
-              Connect GitHub App
+              Connect to PRAXD via GitHub App
             </h2>
           </div>
           <button

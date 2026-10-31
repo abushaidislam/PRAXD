@@ -5,6 +5,8 @@ import { apiSuccess, apiError } from "@/lib/api-response";
 import { logAuditEvent } from "@/lib/audit/logger";
 import { getInstallationAccessToken } from "@/lib/github/app-auth";
 import { githubFetch } from "@/lib/github/client";
+import { liveReviewsStore } from "@/lib/ai/lifecycle";
+import { getActiveInstallation } from "@/lib/github/live";
 
 /**
  * Opt-in publication of an advisory AI finding to GitHub.
@@ -43,7 +45,83 @@ export async function POST(
 
   const supabase = createServiceRoleClient();
 
-  // Fetch finding with its review run and pull request
+  // 1. Check if finding exists in live reviews store
+  let liveFinding: any = null;
+  let livePrInfo: { owner: string; repo: string; pullNumber: number } | null = null;
+
+  for (const [prId, runData] of liveReviewsStore.entries()) {
+    const f = runData.findings.find((item: any) => item.id === findingId);
+    if (f) {
+      liveFinding = f;
+      const parts = prId.split("__");
+      if (parts.length === 4) {
+        livePrInfo = {
+          owner: parts[1],
+          repo: parts[2],
+          pullNumber: parseInt(parts[3], 10),
+        };
+      }
+      break;
+    }
+  }
+
+  if (liveFinding && livePrInfo) {
+    const commentMarkdown = [
+      `### 🤖 PRAXD AI Review Finding: ${liveFinding.title}`,
+      `**Severity:** \`${(liveFinding.severity || "").toUpperCase()}\` | **Category:** \`${liveFinding.kind}\``,
+      "",
+      liveFinding.description,
+      "",
+      "**Recommendation:**",
+      liveFinding.recommendation,
+      "",
+      `_Published by user via PRAXD_`,
+    ].join("\n");
+
+    let publishedCommentId: number | string = `mock-${Date.now()}`;
+    let publishMode: "live" | "simulated" = "simulated";
+
+    const install = await getActiveInstallation();
+    if (
+      install?.id &&
+      process.env.GITHUB_APP_PRIVATE_KEY_BASE64 &&
+      process.env.GITHUB_APP_ID
+    ) {
+      try {
+        const token = await getInstallationAccessToken(install.id);
+        const res = await githubFetch<{ id: number }>(
+          `https://api.github.com/repos/${livePrInfo.owner}/${livePrInfo.repo}/issues/${livePrInfo.pullNumber}/comments`,
+          token,
+          {
+            method: "POST",
+            body: JSON.stringify({ body: commentMarkdown }),
+          }
+        );
+
+        publishedCommentId = res.data.id;
+        publishMode = "live";
+      } catch (err: any) {
+        console.error("[PublishFinding] GitHub API publication error:", err.message);
+        return apiError(
+          "GITHUB_PUBLISH_FAILED",
+          `Failed to publish comment to GitHub: ${err.message}`,
+          502
+        );
+      }
+    }
+
+    return apiSuccess({
+      published: true,
+      publishedCommentId,
+      mode: publishMode,
+      message:
+        publishMode === "live"
+          ? "Comment successfully published to GitHub."
+          : "Simulated comment publication succeeded (fixture/dry-run mode).",
+    });
+  }
+
+  // 2. Fetch finding from Supabase with its review run and pull request
   const { data: rawFinding, error: findingError } = await supabase
     .from("ai_findings")
     .select(`
@@ -67,7 +145,7 @@ export async function POST(
           repository_id,
           repositories:repository_id (
             id,
-            owner,
+            owner_login,
             name,
             installation_id,
             github_installations:installation_id (
@@ -131,7 +209,7 @@ export async function POST(
     try {
       const token = await getInstallationAccessToken(installation.installation_id);
       const res = await githubFetch<{ id: number }>(
-        `https://api.github.com/repos/${repo.owner}/${repo.name}/issues/${pr.number}/comments`,
+        `https://api.github.com/repos/${repo.owner_login}/${repo.name}/issues/${pr.number}/comments`,
         token,
         {
           method: "POST",
@@ -161,7 +239,7 @@ export async function POST(
     metadata: {
       findingTitle: finding.title,
       pullRequestNumber: pr.number,
-      repository: `${repo.owner}/${repo.name}`,
+      repository: `${repo.owner_login}/${repo.name}`,
       publishedCommentId,
       publishMode,
     },

@@ -5,6 +5,27 @@ import { getAIReviewer, PROMPT_VERSION } from "./reviewer";
 import { validateAiReviewOutput } from "./validator";
 import { deriveFindingFingerprint } from "./fingerprint";
 import { logAuditEvent } from "../audit/logger";
+import { fetchLivePullRequestDetails } from "@/lib/github/live";
+
+export interface LiveReviewRunData {
+  run: {
+    id: string;
+    pull_request_id: string;
+    head_sha: string;
+    status: AIReviewStatus;
+    provider: string;
+    model: string;
+    summary?: string;
+    overall_risk?: string;
+    created_at: string;
+    completed_at?: string;
+    findings_count?: number;
+  };
+  findings: any[];
+}
+
+// In-memory store for reviews executed on live PRs without prior database ingestion
+export const liveReviewsStore = new Map<string, LiveReviewRunData>();
 
 export interface TriggerReviewParams {
   workspaceId: string;
@@ -28,6 +49,179 @@ export async function triggerAiReview(
   supabase: SupabaseClient<Database>,
   params: TriggerReviewParams
 ): Promise<ReviewTriggerResult> {
+  // Support live GitHub PRs directly
+  if (params.pullRequestId.startsWith("live__")) {
+    const parts = params.pullRequestId.split("__");
+    if (parts.length === 4) {
+      const owner = parts[1];
+      const repo = parts[2];
+      const pullNumber = parseInt(parts[3], 10);
+      const livePr = await fetchLivePullRequestDetails(owner, repo, pullNumber);
+      if (!livePr) {
+        throw new Error("Live pull request not found on GitHub.");
+      }
+
+      const currentHeadSha = livePr.headSha || "head";
+      const existing = liveReviewsStore.get(params.pullRequestId);
+      if (
+        existing &&
+        existing.run.status === "running" &&
+        existing.run.head_sha === currentHeadSha
+      ) {
+        return {
+          runId: existing.run.id,
+          status: "running",
+          isExistingActiveRun: true,
+          message: "An AI review run is already active for this pull request.",
+        };
+      }
+
+      const modelId =
+        params.preferredModel ||
+        process.env.GEMINI_MODEL ||
+        process.env.OPENAI_MODEL ||
+        "gemini-2.5-flash";
+      const runId = `live-run-${Date.now()}`;
+      const providerName =
+        process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY
+          ? "gemini"
+          : process.env.OPENAI_API_KEY
+          ? "openai"
+          : "deterministic";
+
+      liveReviewsStore.set(params.pullRequestId, {
+        run: {
+          id: runId,
+          pull_request_id: params.pullRequestId,
+          head_sha: currentHeadSha,
+          status: "running",
+          provider: providerName,
+          model: modelId,
+          created_at: new Date().toISOString(),
+        },
+        findings: [],
+      });
+
+      try {
+        const files = (livePr.files || []).map((f) => ({
+          file_path: f.filename,
+          previous_file_path: null,
+          change_status: f.status,
+          additions: f.additions,
+          deletions: f.deletions,
+          patch_text: f.patch || null,
+          patch_available: Boolean(f.patch && f.patch.length > 0),
+        }));
+
+        const context = buildReviewContext({
+          reviewRunId: runId,
+          promptVersion: PROMPT_VERSION,
+          repository: {
+            fullName: `${owner}/${repo}`,
+            primaryLanguage: "TypeScript",
+          },
+          pullRequest: {
+            number: livePr.number,
+            title: livePr.title,
+            body: livePr.body,
+            baseRef: livePr.baseRef || "main",
+            baseSha: livePr.baseSha || "base",
+            headRef: livePr.headRef || "head",
+            headSha: currentHeadSha,
+            draft: livePr.isDraft,
+          },
+          files,
+        });
+
+        const reviewer = getAIReviewer(modelId);
+        const result = await reviewer.executeReview(context);
+
+        const validation = validateAiReviewOutput(result, context);
+        if (!validation.isValid) {
+          throw new Error(`Output validation failed: ${validation.errorMessage}`);
+        }
+
+        const validatedFindings = validation.validatedFindings.map((finding) => {
+          const fingerprint = deriveFindingFingerprint({
+            repositoryId: `repo-${owner}-${repo}`,
+            pullRequestNumber: livePr.number,
+            kind: finding.kind,
+            filePath: finding.evidence.file_path,
+            ruleKey: finding.title,
+            lineStart: finding.evidence.line_start,
+          });
+
+          return {
+            id: `finding-${fingerprint.slice(0, 12)}`,
+            workspace_id: params.workspaceId,
+            review_run_id: runId,
+            fingerprint,
+            severity: finding.severity,
+            kind: finding.kind,
+            title: finding.title,
+            description: finding.description,
+            impact: finding.impact_summary,
+            recommendation: finding.recommendation,
+            confidence: finding.confidence,
+            file_path: finding.evidence.file_path,
+            line_start: finding.evidence.line_start,
+            line_end: finding.evidence.line_end,
+            evidence_excerpt: finding.evidence.excerpt,
+            verification_steps: finding.verification_steps,
+            status: "open",
+            is_validated: true,
+            created_at: new Date().toISOString(),
+          };
+        });
+
+        liveReviewsStore.set(params.pullRequestId, {
+          run: {
+            id: runId,
+            pull_request_id: params.pullRequestId,
+            head_sha: currentHeadSha,
+            status: "completed",
+            provider: providerName,
+            model: modelId,
+            summary: result.review_summary,
+            overall_risk: result.overall_risk,
+            created_at: new Date().toISOString(),
+            completed_at: new Date().toISOString(),
+            findings_count: validatedFindings.length,
+          },
+          findings: validatedFindings,
+        });
+
+        return {
+          runId,
+          status: "completed",
+          isExistingActiveRun: false,
+        };
+      } catch (err: any) {
+        liveReviewsStore.set(params.pullRequestId, {
+          run: {
+            id: runId,
+            pull_request_id: params.pullRequestId,
+            head_sha: currentHeadSha,
+            status: "failed",
+            provider: providerName,
+            model: modelId,
+            summary: err.message,
+            created_at: new Date().toISOString(),
+            completed_at: new Date().toISOString(),
+          },
+          findings: [],
+        });
+
+        return {
+          runId,
+          status: "failed",
+          isExistingActiveRun: false,
+          message: err.message,
+        };
+      }
+    }
+  }
+
   // 1. Fetch current pull request and its repository
   const { data: rawPr, error: prError } = await supabase
     .from("pull_requests")

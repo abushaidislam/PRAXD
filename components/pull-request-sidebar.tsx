@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { Search, Filter, ChevronDown, X, PanelLeftClose } from "lucide-react";
 import { PullRequest } from "@/types/pr";
 import { PullRequestListItem } from "./pull-request-list-item";
+import { BrandLogo } from "./brand-logo";
 import { cn } from "@/lib/utils";
 
 interface PullRequestSidebarProps {
@@ -152,6 +153,11 @@ export function PullRequestSidebar({
       {/* Top Header Region: Tabs & Sidebar close button */}
       <div className="p-3 pb-2 space-y-2.5 border-b border-praxd-border-soft">
         <div className="relative flex items-center justify-center min-h-[32px]">
+          {/* Brand Logo placed on the left for balance */}
+          <div className="absolute left-0 flex items-center gap-1.5" title="PRAXD PR Workspace">
+            <BrandLogo size={18} />
+          </div>
+
           {/* Centered Segmented Tabs: All / Reviewing / Authored */}
           <div
             role="tablist"

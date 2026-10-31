@@ -208,6 +208,30 @@ export function DiffViewer({
   const scrollRatio = maxScrollX > 0 ? scrollX / maxScrollX : 0;
   const thumbLeftPercent = scrollRatio * availableThumbTrack;
 
+  // Context lines revealed when unmodified lines are expanded
+  const expandedContextLines = useMemo(() => {
+    if (file.filename === "extension/content.js") {
+      return [
+        { oldNum: 1638, newNum: 1638, text: "    // Initialize overlay manager" },
+        { oldNum: 1639, newNum: 1639, text: "    const banner = document.createElement('div');" },
+        { oldNum: 1640, newNum: 1640, text: "    banner.className = 'zcrap-inspector-banner';" },
+      ];
+    }
+    const firstLineNum = effectiveLines.find((l) => l.newLineNumber)?.newLineNumber || 1;
+    const count = Math.min(file.unmodifiedLinesBefore || 3, 3);
+    const start = Math.max(1, firstLineNum - count);
+    const result = [];
+    for (let i = 0; i < count; i++) {
+      const num = start + i;
+      result.push({
+        oldNum: num,
+        newNum: num,
+        text: `    // ... context around line ${num} ...`,
+      });
+    }
+    return result;
+  }, [file.filename, file.unmodifiedLinesBefore, effectiveLines]);
+
   // Scenario P0-06: File without patch or binary file
   if (effectiveLines.length === 0) {
     return (
@@ -331,13 +355,6 @@ export function DiffViewer({
       </>
     );
   };
-
-  // Realistic mock context lines revealed when unmodified lines are expanded
-  const expandedContextLines = [
-    { oldNum: 1638, newNum: 1638, text: "    // Initialize overlay manager" },
-    { oldNum: 1639, newNum: 1639, text: "    const banner = document.createElement('div');" },
-    { oldNum: 1640, newNum: 1640, text: "    banner.className = 'zcrap-inspector-banner';" },
-  ];
 
   return (
     <div className="flex-1 flex flex-col min-w-0 bg-[#0e0e0e] select-text">

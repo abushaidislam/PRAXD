@@ -9,6 +9,7 @@ import { SummaryView } from "./summary-view";
 import { CodeView } from "./code-view";
 import { DemoModeBadge } from "./demo-mode-badge";
 import { GitHubConnectModal } from "./github-connect-modal";
+import { BrandLogo } from "./brand-logo";
 
 export function PRWorkspace() {
   const [isLiveMode, setIsLiveMode] = useState(false);
