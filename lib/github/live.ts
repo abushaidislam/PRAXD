@@ -282,7 +282,7 @@ export async function fetchLivePullRequestDetails(
   try {
     const token = await getInstallationAccessToken(install.id);
 
-    const [prRes, filesRes] = await Promise.all([
+    const [prRes, filesRes, commentsRes] = await Promise.all([
       fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -299,11 +299,34 @@ export async function fetchLivePullRequestDetails(
           "User-Agent": "PRAXD-PR-Workspace/0.1.0",
         },
       }),
+      fetch(`https://api.github.com/repos/${owner}/${repo}/issues/${pullNumber}/comments?per_page=50`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "User-Agent": "PRAXD-PR-Workspace/0.1.0",
+        },
+      }),
     ]);
 
     if (!prRes.ok) return null;
     const pr = await prRes.json();
     const rawFiles = filesRes.ok ? await filesRes.json() : [];
+    const rawComments = commentsRes.ok ? await commentsRes.json() : [];
+
+    const comments: PRComment[] = Array.isArray(rawComments)
+      ? rawComments.map((c: any) => ({
+          id: String(c.id),
+          author: {
+            login: c.user?.login || "unknown",
+            avatarUrl: c.user?.avatar_url || "https://github.com/ghost.png",
+            name: c.user?.login || "unknown",
+          },
+          body: c.body || "",
+          createdAt: c.created_at,
+          commentType: "issue" as const,
+        }))
+      : [];
 
     const files: ChangedFile[] = (rawFiles || []).map((f: any) => ({
       filename: f.filename,
@@ -353,7 +376,7 @@ export async function fetchLivePullRequestDetails(
           completedAt: pr.updated_at,
         },
       ],
-      comments: [],
+      comments,
       commits: [
         {
           sha: pr.head.sha.slice(0, 7),
@@ -370,5 +393,195 @@ export async function fetchLivePullRequestDetails(
     };
   } catch {
     return null;
+  }
+}
+
+/**
+ * Updates a live GitHub Pull Request (Title, Body/Description, State).
+ */
+export async function updateLivePullRequest(
+  owner: string,
+  repo: string,
+  pullNumber: number,
+  data: { title?: string; body?: string; state?: "open" | "closed" }
+): Promise<{ success: boolean; data?: any; error?: string }> {
+  const install = await getActiveInstallation();
+  if (!install) return { success: false, error: "No active GitHub App installation found" };
+
+  try {
+    const token = await getInstallationAccessToken(install.id);
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "PRAXD-PR-Workspace/0.1.0",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: res.statusText }));
+      return { success: false, error: err.message || "Failed to update pull request on GitHub" };
+    }
+
+    const updated = await res.json();
+    return { success: true, data: updated };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Network error updating pull request" };
+  }
+}
+
+/**
+ * Fetches issue comments (conversation timeline) for a live GitHub Pull Request.
+ */
+export async function fetchLivePullRequestComments(
+  owner: string,
+  repo: string,
+  pullNumber: number
+): Promise<PRComment[]> {
+  const install = await getActiveInstallation();
+  if (!install) return [];
+
+  try {
+    const token = await getInstallationAccessToken(install.id);
+    const res = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/issues/${pullNumber}/comments?per_page=100`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "User-Agent": "PRAXD-PR-Workspace/0.1.0",
+        },
+      }
+    );
+
+    if (!res.ok) return [];
+    const comments = await res.json();
+    if (!Array.isArray(comments)) return [];
+
+    return comments.map((c: any) => ({
+      id: String(c.id),
+      author: {
+        login: c.user?.login || "unknown",
+        avatarUrl: c.user?.avatar_url || "https://github.com/ghost.png",
+        name: c.user?.login || "unknown",
+      },
+      body: c.body || "",
+      createdAt: c.created_at,
+      commentType: "issue",
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Creates an issue comment on a live GitHub Pull Request.
+ */
+export async function createLivePullRequestComment(
+  owner: string,
+  repo: string,
+  pullNumber: number,
+  body: string
+): Promise<{ success: boolean; comment?: PRComment; error?: string }> {
+  const install = await getActiveInstallation();
+  if (!install) return { success: false, error: "No active GitHub App installation found" };
+
+  try {
+    const token = await getInstallationAccessToken(install.id);
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues/${pullNumber}/comments`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "PRAXD-PR-Workspace/0.1.0",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ body }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: res.statusText }));
+      return { success: false, error: err.message || "Failed to post comment on GitHub" };
+    }
+
+    const c = await res.json();
+    return {
+      success: true,
+      comment: {
+        id: String(c.id),
+        author: {
+          login: c.user?.login || install.login,
+          avatarUrl: c.user?.avatar_url || "https://github.com/ghost.png",
+          name: c.user?.login || install.login,
+        },
+        body: c.body || body,
+        createdAt: c.created_at || new Date().toISOString(),
+        commentType: "issue",
+      },
+    };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Network error posting comment" };
+  }
+}
+
+/**
+ * Merges a live GitHub Pull Request using the specified merge method.
+ */
+export async function mergeLivePullRequest(
+  owner: string,
+  repo: string,
+  pullNumber: number,
+  options: {
+    mergeMethod?: "merge" | "squash" | "rebase";
+    commitTitle?: string;
+    commitMessage?: string;
+  } = {}
+): Promise<{ success: boolean; merged?: boolean; message?: string; sha?: string; error?: string }> {
+  const install = await getActiveInstallation();
+  if (!install) return { success: false, error: "No active GitHub App installation found" };
+
+  try {
+    const token = await getInstallationAccessToken(install.id);
+    const payload: Record<string, string> = {
+      merge_method: options.mergeMethod || "merge",
+    };
+    if (options.commitTitle) payload.commit_title = options.commitTitle;
+    if (options.commitMessage) payload.commit_message = options.commitMessage;
+
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}/merge`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "PRAXD-PR-Workspace/0.1.0",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return {
+        success: false,
+        merged: false,
+        error: data.message || `Failed to merge PR: HTTP ${res.status}`,
+      };
+    }
+
+    return {
+      success: true,
+      merged: Boolean(data.merged),
+      message: data.message || "Pull Request successfully merged",
+      sha: data.sha || "",
+    };
+  } catch (err: any) {
+    return { success: false, merged: false, error: err.message || "Network error merging pull request" };
   }
 }

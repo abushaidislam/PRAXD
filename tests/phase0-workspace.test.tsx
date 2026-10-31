@@ -122,14 +122,20 @@ describe("Phase 0 — PR Workspace & Visual Contract Acceptance Tests", () => {
     expect(screen.getAllByText(/public\/icons\/logo\.png/i).length).toBeGreaterThan(0);
   });
 
-  it("P0-07: guards the Merge button safely in read-only MVP mode", () => {
+  it("P0-07: opens merge confirmation modal when clicking Merge button", () => {
     render(<PRWorkspace />);
 
     const mergeButton = screen.getByRole("button", {
-      name: /Merge pull request \(Disabled in read-only MVP\)/i,
+      name: /Merge pull request/i,
     });
-    expect(mergeButton).toBeDisabled();
-    expect(screen.getByText(/Merge is disabled in read-only MVP mode;/i)).toBeInTheDocument();
+    expect(mergeButton).toBeEnabled();
+
+    // Clicking Merge opens Merge modal
+    fireEvent.click(mergeButton);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText(/Create a merge commit/i)).toBeInTheDocument();
+    expect(screen.getByText(/Squash and merge/i)).toBeInTheDocument();
+    expect(screen.getByText(/Rebase and merge/i)).toBeInTheDocument();
   });
 
   it("P0-08: switches between Split and Unified diff modes cleanly", () => {

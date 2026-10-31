@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+"use client";
+
+import React, { useState, useEffect } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -7,40 +9,118 @@ import {
   MoreHorizontal,
   ArrowUp,
   ShieldAlert,
+  Loader2,
 } from "lucide-react";
 import { PullRequest, PRComment } from "@/types/pr";
 
 interface ActivityTimelineProps {
   pr: PullRequest;
+  onCommentAdded?: (comment: PRComment) => void;
 }
 
-export function ActivityTimeline({ pr }: ActivityTimelineProps) {
+export function ActivityTimeline({ pr, onCommentAdded }: ActivityTimelineProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [commentText, setCommentText] = useState("");
-  const [localComments, setLocalComments] = useState<PRComment[]>(
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [localComments, setLocalComments] = useState<PRComment[]>(() =>
     pr.comments.filter((c) => c.commentType === "issue")
   );
 
+  // Sync comments on PR change and load fresh comments from API
+  useEffect(() => {
+    setLocalComments(pr.comments.filter((c) => c.commentType === "issue"));
+
+    let isMounted = true;
+    async function loadFreshComments() {
+      try {
+        const res = await fetch(`/api/pull-requests/${pr.id}/comments`);
+        if (res.ok) {
+          const json = await res.json();
+          const fetchedComments = json.comments || json.data?.comments;
+          if (isMounted && Array.isArray(fetchedComments)) {
+            setLocalComments(fetchedComments);
+          }
+        }
+      } catch {
+        // Fallback to initial comments
+      }
+    }
+
+    loadFreshComments();
+    return () => {
+      isMounted = false;
+    };
+  }, [pr.id, pr.comments]);
+
   const totalEvents = pr.commits.length + 1 + localComments.length;
 
-  const handleAddComment = (e: React.FormEvent) => {
+  const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!commentText.trim()) return;
+    const text = commentText.trim();
+    if (!text || isSubmitting) return;
 
-    const newComment: PRComment = {
-      id: `c-local-${Date.now()}`,
-      author: {
-        login: "abushaidislam",
-        avatarUrl: pr.author.avatarUrl,
-        name: pr.author.name,
-      },
-      body: commentText.trim(),
-      createdAt: new Date().toISOString(),
-      commentType: "issue",
-    };
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/pull-requests/${pr.id}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body: text }),
+      });
 
-    setLocalComments((prev) => [...prev, newComment]);
-    setCommentText("");
+      let addedComment: PRComment;
+      if (res.ok) {
+        const json = await res.json();
+        addedComment = json.comment || json.data?.comment || {
+          id: `c-local-${Date.now()}`,
+          author: {
+            login: pr.author.login,
+            avatarUrl: pr.author.avatarUrl,
+            name: pr.author.name,
+          },
+          body: text,
+          createdAt: new Date().toISOString(),
+          commentType: "issue",
+        };
+      } else {
+        addedComment = {
+          id: `c-local-${Date.now()}`,
+          author: {
+            login: pr.author.login,
+            avatarUrl: pr.author.avatarUrl,
+            name: pr.author.name,
+          },
+          body: text,
+          createdAt: new Date().toISOString(),
+          commentType: "issue",
+        };
+      }
+
+      setLocalComments((prev) => [...prev, addedComment]);
+      if (onCommentAdded) {
+        onCommentAdded(addedComment);
+      }
+      setCommentText("");
+    } catch {
+      // Local fallback on network error
+      const fallbackComment: PRComment = {
+        id: `c-local-${Date.now()}`,
+        author: {
+          login: pr.author.login,
+          avatarUrl: pr.author.avatarUrl,
+          name: pr.author.name,
+        },
+        body: text,
+        createdAt: new Date().toISOString(),
+        commentType: "issue",
+      };
+      setLocalComments((prev) => [...prev, fallbackComment]);
+      if (onCommentAdded) {
+        onCommentAdded(fallbackComment);
+      }
+      setCommentText("");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -123,7 +203,7 @@ export function ActivityTimeline({ pr }: ActivityTimelineProps) {
                   </button>
                 </div>
               </div>
-              <div className="text-praxd-text-secondary leading-relaxed pl-7 text-[12.5px]">
+              <div className="text-praxd-text-secondary leading-relaxed pl-7 text-[12.5px] whitespace-pre-wrap">
                 {comment.body}
               </div>
             </div>
@@ -137,22 +217,27 @@ export function ActivityTimeline({ pr }: ActivityTimelineProps) {
             <img
               src={pr.author.avatarUrl}
               alt={pr.author.login}
-              className="w-6 h-6 rounded-full ml-1"
+              className="w-6 h-6 rounded-full ml-1 bg-[#282828]"
             />
             <input
               type="text"
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
-              placeholder="Leave a comment"
+              placeholder="Leave a comment on this pull request..."
+              disabled={isSubmitting}
               className="flex-1 bg-transparent text-[12.5px] text-praxd-text placeholder-praxd-text-muted focus:outline-none"
             />
             <button
               type="submit"
-              disabled={!commentText.trim()}
+              disabled={!commentText.trim() || isSubmitting}
               className="w-7 h-7 rounded-full bg-[#2c2c2c] hover:bg-[#383838] disabled:opacity-40 disabled:hover:bg-[#2c2c2c] flex items-center justify-center text-praxd-text transition-colors"
               aria-label="Send comment"
             >
-              <ArrowUp className="w-3.5 h-3.5" />
+              {isSubmitting ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <ArrowUp className="w-3.5 h-3.5" />
+              )}
             </button>
           </form>
         </div>

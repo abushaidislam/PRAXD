@@ -118,6 +118,16 @@ export function PRWorkspace() {
     }
   }, []);
 
+  // Update selected PR fields in local state
+  const handleUpdatePr = useCallback((updates: Partial<PullRequest>) => {
+    setSelectedPr((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...updates };
+      setPullRequests((prs) => prs.map((item) => (item.id === next.id ? next : item)));
+      return next;
+    });
+  }, []);
+
   // Keyboard shortcut listener: Cmd/Ctrl + B to toggle sidebar
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
@@ -169,6 +179,7 @@ export function PRWorkspace() {
             onViewChange={setActiveView}
             isSidebarOpen={isSidebarOpen}
             onToggleSidebar={() => setIsSidebarOpen(true)}
+            onMergeSuccess={() => handleUpdatePr({ state: "merged" })}
           />
 
           {/* Workspace Body: Summary or Code */}
@@ -179,7 +190,7 @@ export function PRWorkspace() {
               </div>
             ) : selectedPr ? (
               activeView === "summary" ? (
-                <SummaryView pr={selectedPr} />
+                <SummaryView pr={selectedPr} onUpdatePr={handleUpdatePr} />
               ) : (
                 <CodeView pr={selectedPr} />
               )
