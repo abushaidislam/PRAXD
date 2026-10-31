@@ -1,6 +1,7 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database, CommentType } from "@/types/database";
 import { mapPullRequestState, mapReviewState } from "./sync";
+import { handleAutomatedReviewTrigger } from "@/lib/policy/auto-reviewer";
 
 export interface WebhookProcessingResult {
   status: "processed" | "ignored" | "failed";
@@ -131,10 +132,55 @@ async function handlePullRequestEvent(
     synced_at: new Date().toISOString(),
   };
 
+  let savedPrId: string;
   if (existingPr) {
     await supabase.from("pull_requests").update(prPayload).eq("id", existingPr.id);
+    savedPrId = existingPr.id;
   } else {
-    await supabase.from("pull_requests").insert(prPayload);
+    const { data: inserted } = await supabase.from("pull_requests").insert(prPayload).select("id").maybeSingle();
+    savedPrId = inserted?.id || String(pr.id);
+  }
+
+  // Phase 7: Automated Policy Engine trigger for opened and synchronize events
+  if (action === "opened" || action === "synchronize") {
+    const { data: files } = await supabase
+      .from("pull_request_files")
+      .select("file_path, previous_file_path, change_status, additions, deletions, patch_text, patch_available")
+      .eq("pull_request_id", savedPrId);
+
+    const changedFiles = (files || []).map((f: any) => ({
+      file_path: f.file_path,
+      previous_file_path: f.previous_file_path,
+      change_status: f.change_status || "modified",
+      additions: f.additions || 0,
+      deletions: f.deletions || 0,
+      patch_text: f.patch_text || null,
+      patch_available: !!f.patch_available,
+    }));
+
+    handleAutomatedReviewTrigger({
+      repositoryId: localRepo.id,
+      workspaceId: localRepo.workspace_id,
+      pullRequest: {
+        id: savedPrId,
+        number: pr.number,
+        title: pr.title,
+        body: pr.body || null,
+        baseRef: pr.base?.ref || "main",
+        baseSha: pr.base?.sha || "base",
+        headRef: pr.head?.ref || "head",
+        headSha: pr.head?.sha || "head",
+        draft: !!pr.draft,
+        authorLogin: pr.user?.login || "unknown",
+        htmlUrl: pr.html_url || `https://github.com/${repo.full_name}/pull/${pr.number}`,
+      },
+      repoFullName: repo.full_name,
+      changedFiles,
+      eventAction: action,
+      supabase,
+    }).catch((err) => {
+      console.error("Automated review policy trigger encountered an error:", err);
+    });
   }
 
   return { status: "processed" };

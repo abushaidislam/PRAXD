@@ -2,6 +2,8 @@ import React from "react";
 import { GitPullRequest, ShieldAlert } from "lucide-react";
 import { PullRequest } from "@/types/pr";
 import { cn } from "@/lib/utils";
+import { computeRiskScore } from "@/lib/policy/risk-scoring";
+import { RiskBadge } from "./risk-badge";
 
 interface PullRequestListItemProps {
   pr: PullRequest;
@@ -20,6 +22,26 @@ export function PullRequestListItem({
 
   // Check if title mentions Sentinel or Shield
   const hasShield = pr.title.toLowerCase().includes("sentinel");
+
+  const risk = React.useMemo(() => {
+    return computeRiskScore({
+      additions: pr.additions || 0,
+      deletions: pr.deletions || 0,
+      files: (pr.files || []).map((f) => ({
+        path: f.filename,
+        additions: f.additions,
+        deletions: f.deletions,
+      })),
+      findings: (pr.aiFindings || []).map((f) => ({
+        severity:
+          f.severity === "warning"
+            ? "medium"
+            : f.severity === "suggestion"
+            ? "low"
+            : (f.severity as any),
+      })),
+    });
+  }, [pr.additions, pr.deletions, pr.files, pr.aiFindings]);
 
   return (
     <button
@@ -87,9 +109,12 @@ export function PullRequestListItem({
             </span>
           </div>
 
-          <div className="flex items-center gap-1 shrink-0 font-mono text-[10px]">
-            <span className="text-praxd-green">+{pr.additions}</span>
-            <span className="text-praxd-red">-{pr.deletions}</span>
+          <div className="flex items-center gap-2 shrink-0">
+            <RiskBadge risk={risk} compact />
+            <div className="flex items-center gap-1 font-mono text-[10px]">
+              <span className="text-praxd-green">+{pr.additions}</span>
+              <span className="text-praxd-red">-{pr.deletions}</span>
+            </div>
           </div>
         </div>
       </div>

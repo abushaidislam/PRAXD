@@ -7,10 +7,15 @@ import {
   GitMerge,
   ChevronDown,
   PanelLeftOpen,
+  Users,
+  Sliders,
 } from "lucide-react";
 import { PullRequest } from "@/types/pr";
+import { RiskScore } from "@/types/policy";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/brand-logo";
+import { PresenceAvatars } from "@/components/presence-avatars";
+import { RiskBadge } from "@/components/risk-badge";
 
 interface WorkspaceHeaderProps {
   pr: PullRequest | null;
@@ -20,6 +25,10 @@ interface WorkspaceHeaderProps {
   onToggleSidebar: () => void;
   isChatOpen?: boolean;
   onToggleChat?: () => void;
+  onOpenTeamModal?: () => void;
+  onOpenPolicyModal?: () => void;
+  activeFile?: string | null;
+  risk?: RiskScore | null;
 }
 
 export function WorkspaceHeader({
@@ -30,6 +39,10 @@ export function WorkspaceHeader({
   onToggleSidebar,
   isChatOpen = false,
   onToggleChat,
+  onOpenTeamModal,
+  onOpenPolicyModal,
+  activeFile,
+  risk,
 }: WorkspaceHeaderProps) {
   const hasShield = pr?.title.toLowerCase().includes("sentinel");
 
@@ -65,6 +78,9 @@ export function WorkspaceHeader({
           >
             {pr?.title || "Select a pull request"}
           </h1>
+
+          {/* Phase 7: Blast Radius & Risk Badge */}
+          {risk && <RiskBadge risk={risk} compact />}
         </div>
       </div>
 
@@ -104,8 +120,39 @@ export function WorkspaceHeader({
         </div>
       </div>
 
-      {/* Right Actions: External link, Chat affordance, Merge guardrail button */}
+      {/* Right Actions: Presence, Team modal, External link, Chat affordance, Merge guardrail */}
       <div className="flex items-center justify-end gap-2 shrink-0 z-10 pl-3">
+        {/* Real-time Multiplayer Presence Indicator (Phase 6) */}
+        {pr && (
+          <PresenceAvatars
+            pullRequestId={pr.id}
+            activeView={activeView}
+            activeFile={activeFile}
+          />
+        )}
+
+        {/* Team Collaboration & Members button */}
+        <button
+          type="button"
+          onClick={onOpenTeamModal}
+          className="p-1.5 rounded-md hover:bg-[#202020] text-praxd-text-muted hover:text-praxd-text transition-colors"
+          title="Team members & invitations"
+          aria-label="Team collaboration settings"
+        >
+          <Users className="w-4 h-4" />
+        </button>
+
+        {/* Phase 7: Policy & CI/CD Bot Settings button */}
+        <button
+          type="button"
+          onClick={onOpenPolicyModal}
+          className="p-1.5 rounded-md hover:bg-[#202020] text-praxd-text-muted hover:text-praxd-text transition-colors"
+          title="Policy Engine & CI/CD Bot configuration"
+          aria-label="Policy Engine settings"
+        >
+          <Sliders className="w-4 h-4" />
+        </button>
+
         {/* External GitHub link */}
         <a
           href={pr ? `https://github.com/${pr.repoOwner}/${pr.repoName}/pull/${pr.number}` : "#"}
@@ -118,7 +165,7 @@ export function WorkspaceHeader({
           <ExternalLink className="w-4 h-4" />
         </a>
 
-        {/* Interactive Chat affordance (Activated in Phase 5) */}
+        {/* Interactive Chat affordance (Phase 5) */}
         <button
           type="button"
           onClick={onToggleChat}

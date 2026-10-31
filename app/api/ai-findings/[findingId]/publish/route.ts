@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { getAuthenticatedContext } from "@/lib/supabase/auth";
+import { canPublishFinding } from "@/lib/auth/rbac";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { apiSuccess, apiError } from "@/lib/api-response";
 import { logAuditEvent } from "@/lib/audit/logger";
@@ -15,6 +16,7 @@ import { getActiveInstallation } from "@/lib/github/live";
  * - Requires explicit confirmation (`confirmed: true`).
  * - Strictly advisory: never called automatically.
  * - Requires workspace membership.
+ * - Enforces RBAC permissions (viewers cannot publish findings).
  * - Failure does not erase or corrupt the local finding.
  * - Records an immutable audit log entry.
  */
@@ -26,6 +28,11 @@ export async function POST(
   const auth = await getAuthenticatedContext();
   if (!auth) {
     return apiError("UNAUTHORIZED", "Authentication required.", 401);
+  }
+
+  // RBAC enforcement: Viewers cannot publish findings to GitHub
+  if (!canPublishFinding(auth.role)) {
+    return apiError("PERMISSION_DENIED", "Your role does not have permission to publish findings to GitHub.", 403);
   }
 
   let body: any = {};

@@ -11,10 +11,15 @@ import { DemoModeBadge } from "./demo-mode-badge";
 import { GitHubConnectModal } from "./github-connect-modal";
 import { BrandLogo } from "./brand-logo";
 import { PRChat } from "./pr-chat";
+import { TeamManagementModal } from "./team-management-modal";
+import { PolicyModal } from "./policy-modal";
+import { computeRiskScore } from "@/lib/policy/risk-scoring";
 
 export function PRWorkspace() {
   const [isLiveMode, setIsLiveMode] = useState(false);
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
   const [pullRequests, setPullRequests] = useState<PullRequest[]>(FIXTURE_PULL_REQUESTS);
   const [selectedPr, setSelectedPr] = useState<PullRequest>(FIXTURE_PULL_REQUESTS[0]);
   const [activeView, setActiveView] = useState<"summary" | "code">("code");
@@ -145,6 +150,27 @@ export function PRWorkspace() {
     setActiveView("code");
   }, []);
 
+  const currentRisk = React.useMemo(() => {
+    if (!selectedPr) return null;
+    return computeRiskScore({
+      additions: selectedPr.additions || 0,
+      deletions: selectedPr.deletions || 0,
+      files: (selectedPr.files || []).map((f) => ({
+        path: f.filename,
+        additions: f.additions,
+        deletions: f.deletions,
+      })),
+      findings: (selectedPr.aiFindings || []).map((f) => ({
+        severity:
+          f.severity === "warning"
+            ? "medium"
+            : f.severity === "suggestion"
+            ? "low"
+            : (f.severity as any),
+      })),
+    });
+  }, [selectedPr]);
+
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-praxd-bg text-praxd-text antialiased font-sans">
       {/* Workspace Connection Notice Badge */}
@@ -158,6 +184,19 @@ export function PRWorkspace() {
       <GitHubConnectModal
         isOpen={isConnectModalOpen}
         onClose={() => setIsConnectModalOpen(false)}
+      />
+
+      {/* Team Collaboration & Member Management Modal */}
+      <TeamManagementModal
+        isOpen={isTeamModalOpen}
+        onClose={() => setIsTeamModalOpen(false)}
+      />
+
+      {/* Automated Policy Engine & CI/CD Bot Modal (Phase 7) */}
+      <PolicyModal
+        isOpen={isPolicyModalOpen}
+        onClose={() => setIsPolicyModalOpen(false)}
+        repoName={selectedPr?.repoName}
       />
 
       {/* Main Dual-Pane Workspace */}
@@ -185,6 +224,10 @@ export function PRWorkspace() {
             onToggleSidebar={() => setIsSidebarOpen(true)}
             isChatOpen={isChatOpen}
             onToggleChat={() => setIsChatOpen((prev) => !prev)}
+            onOpenTeamModal={() => setIsTeamModalOpen(true)}
+            onOpenPolicyModal={() => setIsPolicyModalOpen(true)}
+            activeFile={focusedFilePath}
+            risk={currentRisk}
           />
 
           {/* Workspace Body: Summary or Code */}

@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { getAuthenticatedContext } from "@/lib/supabase/auth";
+import { canTriggerReview } from "@/lib/auth/rbac";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { triggerAiReview, liveReviewsStore } from "@/lib/ai/lifecycle";
 import { apiSuccess, apiError } from "@/lib/api-response";
@@ -12,6 +13,11 @@ export async function POST(
   const auth = await getAuthenticatedContext();
   if (!auth) {
     return apiError("UNAUTHORIZED", "Authentication required.", 401);
+  }
+
+  // RBAC enforcement: Viewers cannot trigger billable AI reviews
+  if (!canTriggerReview(auth.role)) {
+    return apiError("PERMISSION_DENIED", "Your role does not have permission to trigger AI reviews.", 403);
   }
 
   let body: any = {};

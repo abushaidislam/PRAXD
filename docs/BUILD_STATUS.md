@@ -1,15 +1,15 @@
 # PRAXD Build Status
 
 **Last updated:** 2026-10-31  
-**Current version:** v0.2.0 (Post-MVP Evolution)  
-**Current phase:** Phase 6 — Team Collaboration, GitHub SSO & Real-Time Presence (Next in Queue)  
-**Build status:** Phases 0, 1, 2, 3, 4 (MVP), and Phase 5 are 100% Complete & Verified (68/68 Automated Tests Passing)
+**Current version:** v0.4.0 (Post-MVP Evolution)  
+**Current phase:** Phase 8 — Multi-Model Adapter & Enterprise Governance (Next in Queue)  
+**Build status:** Phases 0, 1, 2, 3, 4 (MVP), Phase 5, Phase 6, and Phase 7 are 100% Complete & Verified (102/102 Automated Tests Passing)
 
 ## Active Post-MVP Roadmap (v0.2.0 — v0.5.0)
 
 - [x] **Phase 5 (v0.2.0):** Interactive PR Assistant & Contextual Chat (Header `Chat` affordance activated with slide-out drawer, streaming SSE, 32 KB diff-bounded reasoning, copy buttons, line-citation deep linking, and `/explain`, `/test-ideas`, `/draft-response`, `/security-audit` slash commands)
-- [ ] **Phase 6 (v0.3.0):** Team Collaboration, GitHub SSO & Real-Time Presence (Supabase Realtime WebSockets for active reviewer indicators, shared internal notes)
-- [ ] **Phase 7 (v0.4.0):** Automated Policy Engine, CI/CD Bot Mode & Risk Scoring (0–100 composite risk score, event-driven webhooks, Slack/Discord alerts)
+- [x] **Phase 6 (v0.3.0):** Team Collaboration, GitHub SSO & Real-Time Presence (GitHub OAuth profile hydration, real-time reviewer presence heartbeats with live file inspection pills, shared workspace-only internal notes with `@mention` tagging, and 5-role RBAC enforcement)
+- [x] **Phase 7 (v0.4.0):** Automated Policy Engine, CI/CD Bot Mode & Risk Scoring (0–100 composite risk score, event-driven webhooks, Slack/Discord alerts, custom rules prompt injection defense, and out-of-order race guard)
 - [ ] **Phase 8 (v0.5.0):** Multi-Model LLM Adapters & Enterprise Governance (Anthropic Claude, Google Gemini, Ollama/vLLM, automated patch retention purging)
 
 ---
@@ -208,6 +208,85 @@
   - P5-08: POST `/api/pull-requests/[pullRequestId]/chat/stream` emits SSE stream headers and valid events.
   - P5-09: GET and DELETE `/api/pull-requests/[pullRequestId]/chat/messages` routes manage history.
 
+## Completed in Phase 6 (Team Collaboration, GitHub SSO & Real-Time Presence)
+
+- [x] GitHub OAuth Social Login & Profile Onboarding (`lib/auth/github-sso.ts`):
+  - Seamless profile hydration (`display_name`, `avatar_url`, `login`) from GitHub OAuth session.
+  - Automatic workspace provisioning and membership initialization with `owner` role.
+- [x] Real-Time Multiplayer Presence Engine (`lib/realtime/presence.ts`, `app/api/pull-requests/[pullRequestId]/presence/route.ts`):
+  - In-memory WebSocket / subscription presence broker per PR.
+  - Live presence heartbeat tracking active reviewers, active view (`summary` vs `code`), and active inspected file/line.
+  - Automatic 15s inactivity stale presence pruning (`PRESENCE_TIMEOUT_MS`).
+- [x] Shared Team Internal Notes & Mentions (`lib/notes/internal-notes-store.ts`, `app/api/pull-requests/[pullRequestId]/internal-notes/route.ts`):
+  - Private workspace-only discussion threads that are NEVER published to GitHub.
+  - Automated regex `@mention` parsing (`@username`).
+  - Delete authorization enforced via `canDeleteNote`.
+- [x] Workspace Member Invitations & Management (`lib/auth/invitations.ts`, `app/api/workspaces/current/invitations/route.ts`, `app/api/workspaces/current/members/route.ts`):
+  - Cryptographically signed HMAC invitation tokens with 7-day expiration (`expiresInDays: 7`).
+  - Single-use redemption protection and tampering validation.
+  - Role assignment (`admin`, `reviewer`, `viewer`, `member`).
+- [x] Role-Based Access Control (RBAC) Enforcement (`lib/auth/rbac.ts`):
+  - Defined strict permission matrix across all 5 roles (`owner`, `admin`, `reviewer`, `member`, `viewer`).
+  - Guarded `POST /api/pull-requests/[pullRequestId]/ai-review`: `viewer` role blocked with HTTP 403 `PERMISSION_DENIED`.
+  - Guarded `POST /api/ai-findings/[findingId]/publish`: `viewer` role blocked with HTTP 403 `PERMISSION_DENIED`.
+- [x] Collaboration UI Components (`components/presence-avatars.tsx`, `components/internal-notes-panel.tsx`, `components/team-management-modal.tsx`):
+  - Live presence avatar pills in workspace header with inspection status tooltips.
+  - Team collaboration button in header to open member management & invite modal.
+  - Internal discussion panel embedded in `SummaryView` with private badge and `@mention` styling.
+- [x] Comprehensive Acceptance Test Suite (`tests/phase6-collaboration.test.ts`):
+  - P6-01: GitHub OAuth profile onboarding hydrates user profile and provisions default workspace.
+  - P6-02: Workspace member invitation creates cryptographically signed token with 7-day expiration.
+  - P6-03: Invitation redemption validates signature, rejects expired/tampered tokens, and enrolls member.
+  - P6-04: Real-time multiplayer presence tracks active reviewers, broadcasts file/line inspection, and prunes stale users.
+  - P6-05: Shared team internal notes extracts @mentions, persists notes per workspace, and isolates them from GitHub.
+  - P6-06: RBAC enforcement: Viewers cannot trigger billable AI reviews (HTTP 403 `PERMISSION_DENIED`).
+  - P6-07: RBAC enforcement: Viewers cannot publish findings to GitHub (HTTP 403 `PERMISSION_DENIED`).
+  - P6-08: RBAC permissions matrix correctly defines role boundaries across all roles.
+  - P6-09: Cross-tenant isolation guarantees notes and invitations from Workspace A cannot be read by Workspace B.
+
+
+## Completed in Phase 7 (Automated Policy Engine & CI/CD Bot Mode)
+
+- [x] Event-Driven Policy Trigger Rules & Pattern Matching (`lib/policy/policy-engine.ts`, `lib/policy/policy-store.ts`):
+  - Configurable branch globs (`main`, `master`, `release/*`) and file path globs (`auth/**`, `migrations/**`).
+  - Event trigger filtering: automates review runs exclusively on `pull_request.opened` and `pull_request.synchronize`.
+  - Author bot exclusion: automatically ignores dependabot, renovate, and github-actions bots.
+- [x] Review Focus Profiles & Prompt Injection Defense:
+  - 4 specialized review focus profiles: *Strict Security & Compliance*, *Performance & Memory*, *Style & Conventions*, and *Comprehensive*.
+  - Team custom rules manager: bounded to 10 active rules and 500 chars per rule.
+  - Robust prompt injection quarantine (`sanitizeCustomRule`): strips system/assistant role spoofing, instruction overrides (`ignore previous instructions`), and markdown fences.
+- [x] PR Blast Radius & Deterministic Composite Risk Scoring Engine (`lib/policy/risk-scoring.ts`):
+  - 0–100 composite scoring algorithm incorporating 5 objective factors:
+    1. Churn volume score (0–25 pts)
+    2. Sensitive core module blast radius (0–25 pts; auth, security, database, migrations, infrastructure)
+    3. Package dependency additions (0–15 pts)
+    4. Test coverage delta (0–15 pts; flags unverified executable changes)
+    5. AI finding severities (0–20 pts; critical = 20, high = 15, medium = 8)
+  - Objective risk tiering: Low (0–30), Medium (31–65), High (66–100).
+- [x] Out-of-Order Webhook Queue Guard & Concurrency Mutex (`lib/policy/auto-reviewer.ts`):
+  - Pinned head-SHA execution prevents race conditions when concurrent or out-of-order `synchronize` webhooks arrive.
+  - Superseded runs in queue are automatically skipped without running redundant reviews.
+- [x] Slack & Discord Webhook Notification Dispatcher (`lib/notifications/webhook-notifier.ts`):
+  - Slack Block Kit and Discord Embed payload formatters.
+  - Configurable notification severity thresholds (`critical`, `high`, `medium`, `all`, `none`).
+  - Strict confidentiality constraint: zero source code diffs, hunks, or tokens are transmitted in alert notifications.
+- [x] Policy UI Components & Header Integration (`components/risk-badge.tsx`, `components/policy-modal.tsx`, `components/workspace-header.tsx`, `components/summary-view.tsx`, `components/pull-request-list-item.tsx`):
+  - Interactive `PolicyModal` with sliders, rule adder/remover, profile selector, and webhook inputs.
+  - Compact `RiskBadge` displayed on PR list rows and workspace header with factor breakdown popover.
+  - Detailed PR Blast Radius & Risk Analysis card displayed in `SummaryView`.
+- [x] REST API Endpoints:
+  - `GET /api/repositories/[repositoryId]/policy`
+  - `PUT /api/repositories/[repositoryId]/policy` (enforces owner/admin RBAC permissions)
+  - `GET /api/pull-requests/[pullRequestId]/risk`
+- [x] Comprehensive Acceptance Test Suite (`tests/phase7-policy-bot.test.ts`):
+  - P7-01: Branch & file path pattern matching (exact, wildcards, globstars).
+  - P7-02: Event-driven trigger rules (branch, path, author, and action filters).
+  - P7-03: Out-of-order synchronize guard and queue concurrency.
+  - P7-04: Custom rules sanitizer and prompt injection defense.
+  - P7-05: PR blast radius and deterministic risk score computation across fixtures.
+  - P7-06: Slack & Discord webhook payload formatting and secret exclusion.
+  - P7-07: Repository policy endpoints and RBAC protection.
+
 ## UI Polish & Ergonomic Improvements
 
 - [x] Header Centering: Centered `Summary | Code` segmented tabs in main content header.
@@ -246,8 +325,9 @@
 
 ## Quality Checks & Verification
 
+- `lint` (`npm run lint`): Passed (0 warnings, 0 errors).
 - `typecheck` (`npm run typecheck`): Passed (0 errors).
-- `test` (`npm run test`): Passed 68/68 acceptance tests across 9 test suites:
+- `test` (`npm run test`): Passed 102/102 acceptance tests across 11 test suites:
   - `tests/phase0-workspace.test.tsx` (9 tests)
   - `tests/phase1-state.test.ts` (5 tests)
   - `tests/phase1-github-sync.test.ts` (12 tests)
@@ -256,5 +336,7 @@
   - `tests/phase3-ai-review.test.ts` (9 tests)
   - `tests/phase4-audit-hardening.test.ts` (7 tests)
   - `tests/phase5-chat.test.ts` (9 tests)
+  - `tests/phase6-collaboration.test.ts` (9 tests)
+  - `tests/phase7-policy-bot.test.ts` (25 tests)
   - `tests/live-ai-readiness.test.ts` (4 tests)
-- `build` (`npm run build`): Passed (24 dynamic API routes + static pages compiled successfully).
+- `build` (`npm run build`): Passed (31 dynamic API routes + static pages compiled successfully).
