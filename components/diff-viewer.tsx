@@ -661,8 +661,9 @@ export function DiffViewer({
                           <button
                             type="button"
                             onClick={() => setActiveCommentLine(row.left?.lineNumber!)}
-                            className="absolute inset-0 m-auto w-4 h-4 rounded bg-[#2b2b2b] text-praxd-text opacity-0 group-hover:opacity-100 flex items-center justify-center hover:bg-neutral-600 transition-all shadow-sm"
+                            className="absolute inset-0 m-auto w-4 h-4 rounded bg-[#2b2b2b] text-praxd-text opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-praxd-blue focus:outline-none flex items-center justify-center hover:bg-neutral-600 transition-all shadow-sm"
                             title={`Comment on line ${row.left.lineNumber}`}
+                            aria-label={`Comment on line ${row.left.lineNumber}`}
                           >
                             <Plus className="w-3 h-3" />
                           </button>
@@ -710,8 +711,9 @@ export function DiffViewer({
                           <button
                             type="button"
                             onClick={() => setActiveCommentLine(row.right?.lineNumber!)}
-                            className="absolute inset-0 m-auto w-4 h-4 rounded bg-[#2b2b2b] text-praxd-text opacity-0 group-hover:opacity-100 flex items-center justify-center hover:bg-praxd-blue hover:text-white transition-all shadow-sm"
+                            className="absolute inset-0 m-auto w-4 h-4 rounded bg-[#2b2b2b] text-praxd-text opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-praxd-blue focus:outline-none flex items-center justify-center hover:bg-praxd-blue hover:text-white transition-all shadow-sm"
                             title={`Comment on line ${row.right.lineNumber}`}
+                            aria-label={`Comment on line ${row.right.lineNumber}`}
                           >
                             <Plus className="w-3 h-3" />
                           </button>
@@ -887,7 +889,7 @@ export function DiffViewer({
                         <button
                           type="button"
                           onClick={() => setActiveCommentLine(lineNum)}
-                          className="absolute inset-0 m-auto w-4 h-4 rounded bg-[#2b2b2b] text-praxd-text opacity-0 group-hover:opacity-100 flex items-center justify-center hover:bg-praxd-blue hover:text-white transition-all shadow-sm"
+                          className="absolute inset-0 m-auto w-4 h-4 rounded bg-[#2b2b2b] text-praxd-text opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-praxd-blue focus:outline-none flex items-center justify-center hover:bg-praxd-blue hover:text-white transition-all shadow-sm"
                           title={`Comment on line ${lineNum}`}
                           aria-label={`Comment on line ${lineNum}`}
                         >
