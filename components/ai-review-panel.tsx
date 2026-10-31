@@ -13,9 +13,12 @@ import {
   Check,
   RefreshCw,
   Send,
+  Wrench,
+  GitCommit,
 } from "lucide-react";
 import { FindingRecord, OverallRisk, FindingSeverity } from "@/types/ai-review";
 import { cn } from "@/lib/utils";
+import { AutofixModal } from "./autofix-modal";
 
 interface AIReviewPanelProps {
   prId: string;
@@ -41,6 +44,10 @@ export function AIReviewPanel({
   const [publishingId, setPublishingId] = useState<string | null>(null);
   const [publishedIds, setPublishedIds] = useState<Set<string>>(new Set());
   const [confirmPublishId, setConfirmPublishId] = useState<string | null>(null);
+  const [autofixFinding, setAutofixFinding] = useState<FindingRecord | null>(null);
+  const [committedFindings, setCommittedFindings] = useState<
+    Map<string, { sha: string; branch: string }>
+  >(new Map());
 
   // Synchronize local findings when parent prop updates (e.g. newly completed AI review)
   React.useEffect(() => {
@@ -59,6 +66,15 @@ export function AIReviewPanel({
     setLocalFindings((prev) =>
       prev.map((f) => (f.id === findingId ? { ...f, status: newStatus } : f))
     );
+  };
+
+  const handleAutofixSuccess = (findingId: string, commitSha: string, branch: string) => {
+    setCommittedFindings((prev) => {
+      const updated = new Map(prev);
+      updated.set(findingId, { sha: commitSha, branch });
+      return updated;
+    });
+    handleUpdateStatus(findingId, "accepted");
   };
 
   const handlePublishFinding = async (findingId: string) => {
@@ -101,150 +117,219 @@ export function AIReviewPanel({
     }
   };
 
+  const criticalCount = localFindings.filter((f) => f.severity === "critical").length;
+  const highCount = localFindings.filter((f) => f.severity === "high").length;
+  const mediumCount = localFindings.filter((f) => f.severity === "medium").length;
+  const lowCount = localFindings.filter((f) => f.severity === "low").length;
+
   return (
-    <div className="rounded-xl bg-[#161616] border border-praxd-border-soft overflow-hidden space-y-3 p-4 select-text">
-      {/* Header Bar */}
-      <div className="flex items-center justify-between border-b border-praxd-border-soft pb-3">
+    <div className="flex flex-col h-full bg-[#161616] border border-praxd-border-soft rounded-lg overflow-hidden">
+      {/* Panel Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-praxd-border-soft bg-[#1c1c1c]">
         <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-praxd-blue/15 text-praxd-blue border border-praxd-blue/30">
-            <Sparkles className="w-4 h-4" />
-          </div>
-          <div>
-            <h3 className="text-[13px] font-semibold text-praxd-text flex items-center gap-2">
-              <span>PRAXD AI Code Review</span>
-              <span className="text-[10px] font-mono text-praxd-text-muted px-1.5 py-0.2 rounded bg-[#202020] border border-praxd-border-soft">
-                {headSha.slice(0, 7)}
-              </span>
-            </h3>
-            <p className="text-[11px] text-praxd-text-muted">
-              Advisory security, performance and correctness analysis.
-            </p>
-          </div>
+          <Sparkles className="w-4 h-4 text-praxd-blue animate-pulse" />
+          <h3 className="font-semibold text-xs tracking-wide text-praxd-text">
+            PRAXD AI Security & Quality Review
+          </h3>
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-praxd-blue/10 text-praxd-blue border border-praxd-blue/20">
+            Advisory
+          </span>
         </div>
 
-        {/* Trigger / Rerun Button */}
         <button
           type="button"
           onClick={onTriggerReview}
           disabled={isRunning}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#242424] hover:bg-[#2c2c2c] disabled:opacity-50 text-[12px] font-medium text-praxd-text border border-praxd-border-soft transition-colors shadow-sm"
+          className="flex items-center gap-1.5 px-3 py-1 bg-praxd-blue hover:bg-blue-600 disabled:opacity-50 text-white text-xs font-medium rounded transition-colors"
         >
-          <RefreshCw className={cn("w-3.5 h-3.5", isRunning && "animate-spin text-praxd-blue")} />
-          <span>{isRunning ? "Reviewing..." : findings.length > 0 ? "Rerun AI Review" : "Run AI Review"}</span>
+          {isRunning ? (
+            <>
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              <span>Analyzing...</span>
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Run AI Review</span>
+            </>
+          )}
         </button>
       </div>
 
-      {/* Running State Indicator */}
-      {isRunning && (
-        <div className="p-4 rounded-lg bg-[#141414] border border-praxd-border-soft flex items-center gap-3">
-          <Clock className="w-5 h-5 text-praxd-blue animate-pulse shrink-0" />
-          <div className="text-[12px] space-y-0.5">
-            <p className="font-medium text-praxd-text">Analyzing changed files and commit diffs...</p>
-            <p className="text-[11px] text-praxd-text-muted">
-              Verifying evidence anchors against current head SHA {headSha.slice(0, 7)}.
-            </p>
-          </div>
+      {/* Severity Filter Tabs */}
+      <div className="flex items-center gap-1 px-4 py-2 border-b border-praxd-border-soft bg-[#181818] overflow-x-auto text-xs">
+        <button
+          type="button"
+          onClick={() => setSelectedSeverity("all")}
+          className={cn(
+            "px-2.5 py-1 rounded transition-colors text-[11px]",
+            selectedSeverity === "all"
+              ? "bg-[#252525] text-praxd-text font-medium"
+              : "text-praxd-text-muted hover:text-praxd-text"
+          )}
+        >
+          All ({localFindings.length})
+        </button>
+        {criticalCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setSelectedSeverity("critical")}
+            className={cn(
+              "flex items-center gap-1 px-2.5 py-1 rounded transition-colors text-[11px]",
+              selectedSeverity === "critical"
+                ? "bg-praxd-red/20 text-praxd-red font-medium border border-praxd-red/40"
+                : "text-praxd-red hover:bg-praxd-red/10"
+            )}
+          >
+            Critical ({criticalCount})
+          </button>
+        )}
+        {highCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setSelectedSeverity("high")}
+            className={cn(
+              "flex items-center gap-1 px-2.5 py-1 rounded transition-colors text-[11px]",
+              selectedSeverity === "high"
+                ? "bg-orange-950/40 text-orange-400 font-medium border border-orange-800/40"
+                : "text-orange-400 hover:bg-orange-950/20"
+            )}
+          >
+            High ({highCount})
+          </button>
+        )}
+        {mediumCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setSelectedSeverity("medium")}
+            className={cn(
+              "flex items-center gap-1 px-2.5 py-1 rounded transition-colors text-[11px]",
+              selectedSeverity === "medium"
+                ? "bg-praxd-amber/20 text-praxd-amber font-medium border border-praxd-amber/40"
+                : "text-praxd-amber hover:bg-praxd-amber/10"
+            )}
+          >
+            Medium ({mediumCount})
+          </button>
+        )}
+        {lowCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setSelectedSeverity("low")}
+            className={cn(
+              "flex items-center gap-1 px-2.5 py-1 rounded transition-colors text-[11px]",
+              selectedSeverity === "low"
+                ? "bg-blue-950/30 text-praxd-blue font-medium border border-blue-800/30"
+                : "text-praxd-blue hover:bg-blue-950/20"
+            )}
+          >
+            Low ({lowCount})
+          </button>
+        )}
+      </div>
+
+      {/* Findings List */}
+      {filteredFindings.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-praxd-text-muted">
+          <CheckCircle className="w-8 h-8 text-praxd-green mb-2 opacity-80" />
+          <p className="text-sm font-medium text-praxd-text">No findings in this category</p>
+          <p className="text-xs mt-1">All verified patches pass automated security rules.</p>
         </div>
-      )}
-
-      {/* Findings Filters & Count */}
-      {!isRunning && localFindings.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1 text-[11px]">
-              {(["all", "critical", "medium", "low"] as const).map((sev) => (
-                <button
-                  key={sev}
-                  type="button"
-                  onClick={() => setSelectedSeverity(sev)}
-                  className={cn(
-                    "px-2.5 py-1 rounded capitalize transition-colors font-medium",
-                    selectedSeverity === sev
-                      ? "bg-[#282828] text-white"
-                      : "text-praxd-text-muted hover:text-praxd-text"
-                  )}
-                >
-                  {sev}
-                </button>
-              ))}
-            </div>
-
-            <span className="text-[11px] text-praxd-text-muted font-mono">
-              {filteredFindings.length} {filteredFindings.length === 1 ? "finding" : "findings"}
-            </span>
-          </div>
-
-          {/* Findings List */}
-          <div className="space-y-2">
+      ) : (
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div className="divide-y divide-praxd-border-soft border border-praxd-border-soft rounded-lg bg-[#141414] overflow-hidden">
             {filteredFindings.map((finding) => {
               const isExpanded = expandedFindingId === finding.id;
+              const isCommitted = committedFindings.has(finding.id);
+
               return (
-                <div
-                  key={finding.id}
-                  className="rounded-lg bg-[#1a1a1a] border border-praxd-border-soft overflow-hidden transition-colors"
-                >
-                  {/* Finding Title Row */}
-                  <button
-                    type="button"
-                    onClick={() => setExpandedFindingId(isExpanded ? null : finding.id)}
-                    className="w-full text-left p-3 flex items-start justify-between gap-3 hover:bg-[#202020] transition-colors"
+                <div key={finding.id} className="transition-colors hover:bg-[#181818]">
+                  {/* Finding Row Header */}
+                  <div
+                    onClick={() =>
+                      setExpandedFindingId(isExpanded ? null : finding.id)
+                    }
+                    className="flex items-center justify-between p-3 cursor-pointer select-none"
                   >
-                    <div className="flex items-start gap-2.5 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {isExpanded ? (
+                        <ChevronDown className="w-4 h-4 text-praxd-text-muted shrink-0" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 text-praxd-text-muted shrink-0" />
+                      )}
+
                       <span
                         className={cn(
-                          "px-1.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase border shrink-0 mt-0.5",
+                          "px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border shrink-0",
                           getSeverityBadge(finding.severity)
                         )}
                       >
                         {finding.severity}
                       </span>
-                      <div className="min-w-0">
-                        <p className="text-[12.5px] font-medium text-praxd-text truncate">
-                          {finding.title}
-                        </p>
-                        <p className="text-[11px] text-praxd-text-muted font-mono mt-0.5">
-                          {finding.filePath} {finding.lineStart && `:${finding.lineStart}`}
-                        </p>
-                      </div>
+
+                      <span className="text-xs font-medium text-praxd-text truncate">
+                        {finding.title}
+                      </span>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      {finding.status !== "open" && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#252525] text-praxd-text-muted capitalize">
-                          {finding.status}
+                      {isCommitted ? (
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-950/40 text-emerald-400 border border-emerald-800/40 flex items-center gap-1">
+                          <GitCommit className="w-3 h-3" />
+                          Fixed
+                        </span>
+                      ) : finding.status === "accepted" ? (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-praxd-green/10 text-praxd-green border border-praxd-green/20">
+                          Accepted
+                        </span>
+                      ) : finding.status === "dismissed" ? (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 text-praxd-text-muted">
+                          Dismissed
+                        </span>
+                      ) : null}
+
+                      {finding.filePath && (
+                        <span className="text-[11px] font-mono text-praxd-text-muted bg-[#202020] px-2 py-0.5 rounded">
+                          {finding.filePath.split("/").pop()}
+                          {finding.lineStart ? `:${finding.lineStart}` : ""}
                         </span>
                       )}
-                      {isExpanded ? (
-                        <ChevronDown className="w-4 h-4 text-praxd-text-muted" />
-                      ) : (
-                        <ChevronRight className="w-4 h-4 text-praxd-text-muted" />
-                      )}
                     </div>
-                  </button>
+                  </div>
 
-                  {/* Expanded Finding Detail */}
+                  {/* Finding Detailed Body */}
                   {isExpanded && (
-                    <div className="p-3.5 pt-0 border-t border-praxd-border-soft mt-2 space-y-3 text-[12px] text-praxd-text-secondary leading-relaxed">
-                      <div>
-                        <strong className="text-praxd-text block mb-1">Description:</strong>
-                        <p>{finding.description}</p>
-                      </div>
+                    <div className="px-4 pb-4 pt-1 space-y-3 bg-[#111111] border-t border-praxd-border-soft text-xs">
+                      <p className="text-praxd-text-muted leading-relaxed">
+                        {finding.description}
+                      </p>
 
-                      {finding.impact && (
-                        <div>
-                          <strong className="text-praxd-text block mb-1">Impact:</strong>
-                          <p>{finding.impact}</p>
+                      {/* Code Excerpt Snippet */}
+                      {finding.evidenceExcerpt && (
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-semibold text-praxd-text-muted uppercase tracking-wider">
+                            Cited Code Excerpt
+                          </span>
+                          <pre className="p-2.5 rounded bg-[#0a0a0a] border border-praxd-border-soft font-mono text-[11px] text-praxd-text overflow-x-auto leading-normal">
+                            <code>{finding.evidenceExcerpt}</code>
+                          </pre>
                         </div>
                       )}
 
+                      {/* AI Recommendation Details */}
                       {finding.recommendation && (
-                        <div className="p-2.5 rounded-lg bg-[#141414] border border-praxd-border-soft space-y-1.5">
-                          <div className="flex items-center justify-between text-praxd-green text-[11px] font-medium">
-                            <span>Recommended Fix:</span>
+                        <div className="p-3 rounded bg-praxd-blue/5 border border-praxd-blue/20 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-praxd-blue uppercase tracking-wider flex items-center gap-1">
+                              <Sparkles className="w-3 h-3" />
+                              Recommendation & Autofix
+                            </span>
                             <button
                               type="button"
-                              onClick={() => handleCopyRecommendation(finding.id, finding.recommendation!)}
-                              className="flex items-center gap-1 hover:text-white transition-colors"
+                              onClick={() =>
+                                handleCopyRecommendation(finding.id, finding.recommendation!)
+                              }
+                              className="flex items-center gap-1 text-[10px] text-praxd-text-muted hover:text-praxd-text transition-colors"
                             >
                               {copiedId === finding.id ? (
                                 <>
@@ -265,9 +350,26 @@ export function AIReviewPanel({
                         </div>
                       )}
 
-                      {/* User Actions: Accept / Dismiss / Publish (Advisory only) */}
-                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-praxd-border-soft">
-                        <div className="flex items-center gap-2">
+                      {/* User Actions: Apply Fix via Commit / Accept / Dismiss / Publish */}
+                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-praxd-border-soft flex-wrap">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {/* 1-Click Autonomous Autofix Button */}
+                          {isCommitted ? (
+                            <span className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium bg-emerald-950/30 px-2.5 py-1 rounded border border-emerald-800/40">
+                              <GitCommit className="w-3.5 h-3.5" />
+                              <span>Committed ({committedFindings.get(finding.id)!.sha.slice(0, 7)})</span>
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setAutofixFinding(finding)}
+                              className="flex items-center gap-1 px-2.5 py-1 rounded bg-praxd-blue/15 hover:bg-praxd-blue/25 text-[11px] text-praxd-blue font-medium border border-praxd-blue/30 transition-colors"
+                            >
+                              <Wrench className="w-3.5 h-3.5" />
+                              <span>Apply Fix via Commit</span>
+                            </button>
+                          )}
+
                           {publishedIds.has(finding.id) ? (
                             <span className="flex items-center gap-1 text-[11px] text-praxd-green font-medium">
                               <Check className="w-3.5 h-3.5" />
@@ -296,7 +398,7 @@ export function AIReviewPanel({
                             <button
                               type="button"
                               onClick={() => setConfirmPublishId(finding.id)}
-                              className="flex items-center gap-1 px-2.5 py-1 rounded bg-praxd-blue/15 hover:bg-praxd-blue/25 text-[11px] text-praxd-blue font-medium border border-praxd-blue/30 transition-colors"
+                              className="flex items-center gap-1 px-2.5 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-[11px] text-neutral-300 font-medium border border-neutral-700 transition-colors"
                             >
                               <Send className="w-3.5 h-3.5" />
                               <span>Publish to GitHub</span>
@@ -330,6 +432,19 @@ export function AIReviewPanel({
             })}
           </div>
         </div>
+      )}
+
+      {/* 1-Click Autonomous Autofix Modal */}
+      {autofixFinding && (
+        <AutofixModal
+          isOpen={Boolean(autofixFinding)}
+          onClose={() => setAutofixFinding(null)}
+          finding={autofixFinding}
+          headBranch="main"
+          onCommitSuccess={(sha, branch) =>
+            handleAutofixSuccess(autofixFinding.id, sha, branch)
+          }
+        />
       )}
     </div>
   );

@@ -17,7 +17,7 @@ import {
   getMigrationStatus,
   resetMigrationState,
 } from "../lib/db/migrator";
-import { securityHeaders } from "../next.config.mjs";
+import { securityHeaders } from "../lib/security/headers";
 
 describe("Phase 9: Production Cloud Deployment, CI/CD Pipeline & KMS Secret Management (P9-01 to P9-05)", () => {
   beforeEach(() => {

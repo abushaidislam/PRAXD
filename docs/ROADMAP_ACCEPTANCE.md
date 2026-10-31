@@ -441,10 +441,10 @@ Evolves AI findings from advisory comments into actionable code transformations 
 
 ### Acceptance criteria
 
-- [ ] Applying a fix requires explicit two-click confirmation modal with clear diff preview.
-- [ ] Malformed or syntax-breaking patches are caught and blocked before any Git commit occurs.
-- [ ] Commits are attributed cleanly to the user with PRAXD co-author attribution.
-- [ ] PR head SHA advances cleanly, automatically marking prior AI review findings as superseded.
+- [x] Applying a fix requires explicit two-click confirmation modal with clear diff preview.
+- [x] Malformed or syntax-breaking patches are caught and blocked before any Git commit occurs.
+- [x] Commits are attributed cleanly to the user with PRAXD co-author attribution.
+- [x] PR head SHA advances cleanly, automatically marking prior AI review findings as superseded.
 
 ---
 

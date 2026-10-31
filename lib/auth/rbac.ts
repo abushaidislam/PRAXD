@@ -4,6 +4,7 @@ export interface RolePermissions {
   canViewPR: boolean;
   canTriggerAIReview: boolean;
   canPublishFindings: boolean;
+  canCommitAutofix: boolean;
   canCreateInternalNotes: boolean;
   canDeleteInternalNotes: boolean;
   canManageMembers: boolean;
@@ -15,6 +16,7 @@ export const ROLE_PERMISSIONS: Record<WorkspaceRole, RolePermissions> = {
     canViewPR: true,
     canTriggerAIReview: true,
     canPublishFindings: true,
+    canCommitAutofix: true,
     canCreateInternalNotes: true,
     canDeleteInternalNotes: true,
     canManageMembers: true,
@@ -24,6 +26,7 @@ export const ROLE_PERMISSIONS: Record<WorkspaceRole, RolePermissions> = {
     canViewPR: true,
     canTriggerAIReview: true,
     canPublishFindings: true,
+    canCommitAutofix: true,
     canCreateInternalNotes: true,
     canDeleteInternalNotes: true,
     canManageMembers: true,
@@ -33,6 +36,7 @@ export const ROLE_PERMISSIONS: Record<WorkspaceRole, RolePermissions> = {
     canViewPR: true,
     canTriggerAIReview: true,
     canPublishFindings: true,
+    canCommitAutofix: true,
     canCreateInternalNotes: true,
     canDeleteInternalNotes: false,
     canManageMembers: false,
@@ -42,6 +46,7 @@ export const ROLE_PERMISSIONS: Record<WorkspaceRole, RolePermissions> = {
     canViewPR: true,
     canTriggerAIReview: true,
     canPublishFindings: true,
+    canCommitAutofix: true,
     canCreateInternalNotes: true,
     canDeleteInternalNotes: false,
     canManageMembers: false,
@@ -51,6 +56,7 @@ export const ROLE_PERMISSIONS: Record<WorkspaceRole, RolePermissions> = {
     canViewPR: true,
     canTriggerAIReview: false,
     canPublishFindings: false,
+    canCommitAutofix: false, // Viewers cannot commit code to repository
     canCreateInternalNotes: true, // Viewers can participate in internal team discussion
     canDeleteInternalNotes: false,
     canManageMembers: false,
@@ -70,6 +76,13 @@ export function canTriggerReview(role: WorkspaceRole): boolean {
  */
 export function canPublishFinding(role: WorkspaceRole): boolean {
   return ROLE_PERMISSIONS[role]?.canPublishFindings ?? false;
+}
+
+/**
+ * Checks if a given workspace role has permission to commit automated code fixes to repository.
+ */
+export function canCommitAutofix(role: WorkspaceRole): boolean {
+  return ROLE_PERMISSIONS[role]?.canCommitAutofix ?? false;
 }
 
 /**

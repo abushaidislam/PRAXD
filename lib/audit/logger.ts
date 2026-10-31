@@ -15,6 +15,7 @@ export interface LogAuditEventParams {
     | "ai_review.cancelled"
     | "ai_finding.status_updated"
     | "ai_finding.published_to_github"
+    | "ai_finding.autofix_committed"
     | "authorization.failure";
   resourceType?: string | null;
   resourceId?: string | null;

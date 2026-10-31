@@ -1,11 +1,11 @@
 # PRAXD Build Status
 
 **Last updated:** 2026-10-31  
-**Current version:** v0.6.0 (Enterprise Horizon & Commercial Roadmap Active)  
-**Current phase:** Phase 10 — 1-Click Autonomous Autofix & PR Commit Engine  
-**Build status:** Phases 0 through 9 (v0.1.0 to v0.6.0) are 100% Complete & Verified (130/130 Automated Tests Passing)
+**Current version:** v0.7.0 (Enterprise Horizon & Commercial Roadmap Active)  
+**Current phase:** Phase 11 — Developer IDE Integration: VS Code & JetBrains Extension  
+**Build status:** Phases 0 through 10 (v0.1.0 to v0.7.0) are 100% Complete & Verified (147/147 Automated Tests Passing)
 
-## Completed Roadmap Phases (v0.1.0 — v0.6.0)
+## Completed Roadmap Phases (v0.1.0 — v0.7.0)
 
 - [x] **Phase 0–4 (v0.1.0 MVP):** UI Shell, Dual-Pane Workspace, Synchronized Diff Scroll, GitHub Sync, Webhooks, AI Review Engine, Audit Logging.
 - [x] **Phase 5 (v0.2.0):** Interactive PR Assistant & Contextual Chat (Header `Chat` drawer, streaming SSE, `/explain`, `/test-ideas`, `/draft-response`).
@@ -13,10 +13,10 @@
 - [x] **Phase 7 (v0.4.0):** Automated Policy Engine, CI/CD Bot Mode & Risk Scoring (0–100 risk score, event-driven webhooks, Slack/Discord alerts).
 - [x] **Phase 8 (v0.5.0):** Multi-Model LLM Adapters & Enterprise Governance (Claude, Gemini, OpenAI, Ollama, retention purging, DORA metrics).
 - [x] **Phase 9 (v0.6.0):** Production Cloud Deployment, CI/CD Pipeline & KMS Secret Management (GitHub Actions automated test gatekeeper, Supabase live migrations, envelope encryption).
+- [x] **Phase 10 (v0.7.0):** 1-Click Autonomous Autofix & PR Commit Engine (User-confirmed Git commit write-back with pre-commit AST syntax validation).
 
-## Active Commercial & Enterprise Roadmap (v0.7.0 — v1.0.0 GA)
+## Active Commercial & Enterprise Roadmap (v0.8.0 — v1.0.0 GA)
 
-- [ ] **Phase 10 (v0.7.0):** 1-Click Autonomous Autofix & PR Commit Engine (User-confirmed Git commit write-back with pre-commit AST syntax validation).
 - [ ] **Phase 11 (v0.8.0):** Developer IDE Integration: VS Code & JetBrains Extension (In-editor PR triage, diff annotations, and local patch application).
 - [ ] **Phase 12 (v0.9.0):** Multi-VCS Expansion: GitLab MR & Bitbucket Support (Pluggable `IVCSProvider` universal code review layer).
 - [ ] **Phase 13 (v1.0.0 GA):** SaaS Commercialization, Usage Quotas & Stripe Billing (Usage metering, seat licensing, Stripe subscription portal).
@@ -410,11 +410,44 @@
   - P9-04: Production security headers and edge caching configuration.
   - P9-05: Enhanced health and readiness response structure and SLA metrics.
 
+## Completed in Phase 10 (1-Click Autonomous Autofix & PR Commit Engine)
+
+- [x] Pre-Commit Syntax & Delimiter Guardrail (`lib/autofix/syntax-validator.ts`):
+  - Multi-language AST delimiter and structural validation engine (TypeScript, JavaScript, JSON, Python, Go, Rust, SQL, CSS, HTML).
+  - Unmatched bracket, unbalanced curly brace, unclosed quote, and malformed token inspection.
+  - Rejects broken or syntax-invalid patches before any commit is attempted.
+- [x] Server-Side Git Write-Back Flow & Branch Engine (`lib/autofix/commit-engine.ts`):
+  - Direct PR branch write-back or isolated companion branch creation (`praxd/fix-finding-[id]`).
+  - GitHub App token authenticated file write via GitHub REST Contents / Git Trees API.
+  - Deterministic 40-character SHA commit execution for tests, demo mode, and offline environments.
+  - Conventional commit message generator: `fix(praxd): resolve [title] in [file]` with `Co-authored-by: PRAXD AI <bot@praxd.com>`.
+- [x] Autofix REST API Endpoint (`app/api/ai-findings/[findingId]/autofix/route.ts`):
+  - Guarded with strict two-click confirmation (`confirmed: true`).
+  - Open PR state validation (rejects closed/merged PRs with HTTP 400 `PR_CLOSED`).
+  - Pre-commit syntax enforcement (blocks invalid patches with HTTP 422 `SYNTAX_ERROR`).
+  - RBAC enforcement (`canCommitAutofix`): viewers blocked with HTTP 403 `PERMISSION_DENIED`.
+  - Immutable audit trail recorded (`ai_finding.autofix_committed`).
+- [x] Interactive 1-Click Autofix UI Modal (`components/autofix-modal.tsx`, `components/ai-review-panel.tsx`):
+  - "Apply Fix via Commit" action button on finding cards.
+  - Two-click safety confirmation modal with syntax verification badge.
+  - Target branch selection (Direct PR branch vs Companion branch).
+  - Pre-commit diff preview and conventional commit message inspection.
+  - Post-commit state badge updates showing commit SHA.
+- [x] Comprehensive Acceptance Test Suite (`tests/phase10-autofix.test.ts`):
+  - P10-01: Two-click confirmation enforcement.
+  - P10-02: Pre-commit syntax validation error catching.
+  - P10-03: Pre-commit syntax validation valid code verification.
+  - P10-04: Conventional commit message and co-author attribution.
+  - P10-05: Target branch and companion branch naming resolution.
+  - P10-06: RBAC permission matrix for autofix write-back.
+  - P10-07: PR state guardrails (closed/merged rejection).
+  - P10-08: Commit engine execution and SHA generation.
+
 ## Quality Checks & Verification
 
 - `lint` (`npm run lint`): Passed (0 warnings, 0 errors).
 - `typecheck` (`npm run typecheck`): Passed (0 errors).
-- `test` (`npm run test`): Passed 130/130 acceptance tests across 13 test suites:
+- `test` (`npm run test`): Passed 147/147 acceptance tests across 14 test suites:
   - `tests/phase0-workspace.test.tsx` (9 tests)
   - `tests/phase1-state.test.ts` (5 tests)
   - `tests/phase1-github-sync.test.ts` (12 tests)
@@ -427,5 +460,6 @@
   - `tests/phase7-policy-bot.test.ts` (25 tests)
   - `tests/phase8-enterprise-governance.test.ts` (17 tests)
   - `tests/phase9-production-cloud.test.ts` (11 tests)
+  - `tests/phase10-autofix.test.ts` (17 tests)
   - `tests/live-ai-readiness.test.ts` (4 tests)
-- `build` (`npm run build`): Passed (35 dynamic API routes + 23 static pages compiled successfully).
+- `build` (`npm run build`): Passed (36 dynamic API routes + 23 static pages compiled successfully).
