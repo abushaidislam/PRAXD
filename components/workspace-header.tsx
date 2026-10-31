@@ -8,11 +8,14 @@ import {
   ChevronDown,
   PanelLeftOpen,
   Users,
+  Sliders,
 } from "lucide-react";
 import { PullRequest } from "@/types/pr";
+import { RiskScore } from "@/types/policy";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/brand-logo";
 import { PresenceAvatars } from "@/components/presence-avatars";
+import { RiskBadge } from "@/components/risk-badge";
 
 interface WorkspaceHeaderProps {
   pr: PullRequest | null;
@@ -23,7 +26,9 @@ interface WorkspaceHeaderProps {
   isChatOpen?: boolean;
   onToggleChat?: () => void;
   onOpenTeamModal?: () => void;
+  onOpenPolicyModal?: () => void;
   activeFile?: string | null;
+  risk?: RiskScore | null;
 }
 
 export function WorkspaceHeader({
@@ -35,7 +40,9 @@ export function WorkspaceHeader({
   isChatOpen = false,
   onToggleChat,
   onOpenTeamModal,
+  onOpenPolicyModal,
   activeFile,
+  risk,
 }: WorkspaceHeaderProps) {
   const hasShield = pr?.title.toLowerCase().includes("sentinel");
 
@@ -71,6 +78,9 @@ export function WorkspaceHeader({
           >
             {pr?.title || "Select a pull request"}
           </h1>
+
+          {/* Phase 7: Blast Radius & Risk Badge */}
+          {risk && <RiskBadge risk={risk} compact />}
         </div>
       </div>
 
@@ -130,6 +140,17 @@ export function WorkspaceHeader({
           aria-label="Team collaboration settings"
         >
           <Users className="w-4 h-4" />
+        </button>
+
+        {/* Phase 7: Policy & CI/CD Bot Settings button */}
+        <button
+          type="button"
+          onClick={onOpenPolicyModal}
+          className="p-1.5 rounded-md hover:bg-[#202020] text-praxd-text-muted hover:text-praxd-text transition-colors"
+          title="Policy Engine & CI/CD Bot configuration"
+          aria-label="Policy Engine settings"
+        >
+          <Sliders className="w-4 h-4" />
         </button>
 
         {/* External GitHub link */}

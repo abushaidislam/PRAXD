@@ -17,6 +17,8 @@ import { ActivityTimeline } from "./activity-timeline";
 import { AIReviewPanel } from "./ai-review-panel";
 import { InternalNotesPanel } from "./internal-notes-panel";
 import { FindingRecord } from "@/types/ai-review";
+import { computeRiskScore } from "@/lib/policy/risk-scoring";
+import { RiskBadge } from "./risk-badge";
 import { cn } from "@/lib/utils";
 
 interface SummaryViewProps {
@@ -158,6 +160,19 @@ export function SummaryView({ pr }: SummaryViewProps) {
       setIsReviewRunning(false);
     }
   };
+
+  const risk = React.useMemo(() => {
+    return computeRiskScore({
+      additions: pr.additions || 0,
+      deletions: pr.deletions || 0,
+      files: (pr.files || []).map((f) => ({
+        path: f.filename,
+        additions: f.additions,
+        deletions: f.deletions,
+      })),
+      findings: activeFindings.map((f) => ({ severity: f.severity })),
+    });
+  }, [pr.additions, pr.deletions, pr.files, activeFindings]);
 
   return (
     <div className="h-full overflow-y-auto bg-praxd-bg select-text">
@@ -346,6 +361,43 @@ export function SummaryView({ pr }: SummaryViewProps) {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Phase 7: PR Blast Radius & Risk Assessment Card */}
+        <div className="p-4 rounded-lg bg-[#181818] border border-praxd-border-soft space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-[13px] font-semibold text-zinc-100">PR Blast Radius & Risk Analysis</span>
+              <RiskBadge risk={risk} />
+            </div>
+            <span className="font-mono text-xs text-zinc-400">Composite Score: {risk.score}/100</span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            <div className="p-2.5 rounded bg-zinc-900 border border-zinc-800">
+              <div className="text-[11px] text-zinc-400">Churn Volume</div>
+              <div className="font-semibold text-zinc-200 mt-0.5">{risk.factors.churnScore}/25 pts</div>
+              <div className="text-[10px] text-zinc-500 font-mono mt-0.5">+{pr.additions || 0} -{pr.deletions || 0}</div>
+            </div>
+
+            <div className="p-2.5 rounded bg-zinc-900 border border-zinc-800">
+              <div className="text-[11px] text-zinc-400">Core Modules</div>
+              <div className="font-semibold text-zinc-200 mt-0.5">{risk.factors.blastRadiusScore}/25 pts</div>
+              <div className="text-[10px] text-zinc-500 mt-0.5">{risk.factors.criticalFilesTouched.length} sensitive path(s)</div>
+            </div>
+
+            <div className="p-2.5 rounded bg-zinc-900 border border-zinc-800">
+              <div className="text-[11px] text-zinc-400">Dependencies</div>
+              <div className="font-semibold text-zinc-200 mt-0.5">{risk.factors.dependencyScore}/15 pts</div>
+              <div className="text-[10px] text-zinc-500 mt-0.5">{risk.factors.dependenciesTouched.length > 0 ? "Manifest modified" : "No deps changed"}</div>
+            </div>
+
+            <div className="p-2.5 rounded bg-zinc-900 border border-zinc-800">
+              <div className="text-[11px] text-zinc-400">Test Coverage</div>
+              <div className="font-semibold text-zinc-200 mt-0.5">{risk.factors.testCoverageScore === 0 ? "Passed (0 pts)" : "Untested (+15 pts)"}</div>
+              <div className="text-[10px] text-zinc-500 mt-0.5">{risk.factors.hasTests ? "Tests touched" : "No test updates"}</div>
+            </div>
+          </div>
         </div>
 
         {/* AI Review Panel Section */}

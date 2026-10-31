@@ -80,6 +80,13 @@ export function canManageMembers(role: WorkspaceRole): boolean {
 }
 
 /**
+ * Checks if a given workspace role has permission to configure repository policies and CI/CD bot mode.
+ */
+export function canManagePolicy(role: WorkspaceRole): boolean {
+  return ROLE_PERMISSIONS[role]?.canManageIntegrations ?? false;
+}
+
+/**
  * Checks if a given workspace role has permission to delete an internal note.
  */
 export function canDeleteNote(

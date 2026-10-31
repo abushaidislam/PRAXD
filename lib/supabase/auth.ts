@@ -99,3 +99,10 @@ export async function getAuthenticatedContext(
     return null;
   }
 }
+
+/**
+ * Sets test role override for integration tests.
+ */
+export function setTestRoleOverride(role: WorkspaceRole | null): void {
+  (globalThis as any).__praxdTestRole = role;
+}
