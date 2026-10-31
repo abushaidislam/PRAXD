@@ -90,7 +90,14 @@ export async function POST(
       const repo = parts[2];
       const pullNumber = parseInt(parts[3], 10);
       if (!isNaN(pullNumber) && owner && repo) {
-        const result = await createLivePullRequestComment(owner, repo, pullNumber, commentText);
+        const result = await createLivePullRequestComment(
+          owner,
+          repo,
+          pullNumber,
+          commentText,
+          body.profileType,
+          authorInfo.login
+        );
         if (!result.success || !result.comment) {
           return apiError("GITHUB_ERROR", result.error || "Failed to post comment to GitHub", 502);
         }

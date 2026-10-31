@@ -481,18 +481,36 @@ export async function fetchLivePullRequestComments(
 
 /**
  * Creates an issue comment on a live GitHub Pull Request.
+ * Supports using a Personal Access Token (GITHUB_PERSONAL_ACCESS_TOKEN) when commenting
+ * as a personal user, or the GitHub App installation token when commenting as a bot.
  */
 export async function createLivePullRequestComment(
   owner: string,
   repo: string,
   pullNumber: number,
-  body: string
+  body: string,
+  profileType: "personal" | "bot" = "personal",
+  authorLogin?: string
 ): Promise<{ success: boolean; comment?: PRComment; error?: string }> {
-  const install = await getActiveInstallation();
-  if (!install) return { success: false, error: "No active GitHub App installation found" };
+  // Check for personal token when commenting as personal profile
+  const userToken =
+    profileType === "personal"
+      ? process.env.GITHUB_PERSONAL_ACCESS_TOKEN || process.env.GITHUB_TOKEN
+      : null;
+
+  let token: string | null = null;
+  let isUsingUserToken = false;
+
+  if (userToken) {
+    token = userToken;
+    isUsingUserToken = true;
+  } else {
+    const install = await getActiveInstallation();
+    if (!install) return { success: false, error: "No active GitHub App installation found" };
+    token = await getInstallationAccessToken(install.id);
+  }
 
   try {
-    const token = await getInstallationAccessToken(install.id);
     const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues/${pullNumber}/comments`, {
       method: "POST",
       headers: {
@@ -516,9 +534,9 @@ export async function createLivePullRequestComment(
       comment: {
         id: String(c.id),
         author: {
-          login: c.user?.login || install.login,
+          login: c.user?.login || (isUsingUserToken ? (authorLogin || "abushaidislam") : "praxd-app[bot]"),
           avatarUrl: c.user?.avatar_url || "https://github.com/ghost.png",
-          name: c.user?.login || install.login,
+          name: c.user?.login || (isUsingUserToken ? (authorLogin || "abushaidislam") : "praxd-app[bot]"),
         },
         body: c.body || body,
         createdAt: c.created_at || new Date().toISOString(),
