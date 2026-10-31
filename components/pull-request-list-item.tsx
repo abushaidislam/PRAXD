@@ -9,7 +9,12 @@ interface PullRequestListItemProps {
   onSelect: (pr: PullRequest) => void;
 }
 
-export function PullRequestListItem({
+/**
+ * ⚡ Performance Optimization: Memoized with React.memo to avoid re-rendering
+ * all list items in the sidebar when resizing the inbox panel or selecting a different PR.
+ * Re-render count on PR selection drops from O(N) to O(1) (only previous & next selected item re-render).
+ */
+export const PullRequestListItem = React.memo(function PullRequestListItem({
   pr,
   isSelected,
   onSelect,
@@ -96,4 +101,4 @@ export function PullRequestListItem({
       </div>
     </button>
   );
-}
+});
