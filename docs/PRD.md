@@ -1,8 +1,8 @@
 # PRD — Product Requirements Document
 
 **Product:** PRAXD  
-**Document status:** v0.1.0 MVP Complete; v0.2.0 Post-MVP Evolution Proposed  
-**Version:** 0.2.0
+**Document status:** v0.1.0 MVP & v0.5.0 Post-MVP Complete; v0.6.0 Enterprise Horizon Proposed  
+**Version:** 0.6.0
 
 ## 1. Product summary
 
@@ -18,7 +18,7 @@ PRAXD solves this by providing a unified PR inbox and detail workspace, with opt
 
 ## 3. Goals
 
-### MVP Goals (Completed)
+### MVP Goals (Completed in v0.1.0)
 - Connect a GitHub account through a GitHub App installation.
 - List repositories the installation can access.
 - List, search and filter pull requests across connected repositories.
@@ -30,11 +30,18 @@ PRAXD solves this by providing a unified PR inbox and detail workspace, with opt
 - User-confirmed publishing of individual findings back to GitHub.
 - Provide a clear, screenshot-matched dark UI that works on desktop and smaller screens.
 
-### Post-MVP Evolution Goals (v0.2.0+)
-- **Interactive PR Assistant & Contextual Chat:** Activate the header **Chat** affordance into a streaming conversational assistant scoped to the current PR diff and repo context.
-- **Multiplayer Collaboration & Team Workspaces:** Support GitHub OAuth SSO, real-time presence indicators (who is currently reviewing), and internal workspace-only discussions.
-- **Automated Policy Trigger Rules & Risk Scoring:** Run autonomous AI reviews on PR events with custom team rules, risk blast radius scores (0–100), and Slack/Discord alerts.
-- **Enterprise Governance & Multi-Model Inference:** Support Anthropic Claude, Google Gemini, and self-hosted models (Ollama/vLLM) with automated patch retention policies.
+### Post-MVP Goals (Completed in v0.5.0)
+- **Interactive PR Assistant & Contextual Chat:** Header **Chat** drawer activated with SSE streaming, diff-bounded retrieval, and `/explain`, `/test-ideas`, `/draft-response` slash commands.
+- **Multiplayer Collaboration & Team Workspaces:** GitHub OAuth SSO, live reviewer presence indicators (WebSockets), and internal workspace-only discussions.
+- **Automated Policy Trigger Rules & Risk Scoring:** Event-driven reviews on PR open/sync, composite PR risk scoring (0–100), and Slack/Discord alerts.
+- **Enterprise Governance & Multi-Model Inference:** Multi-provider adapters (Anthropic Claude, Google Gemini, OpenAI, self-hosted Ollama/vLLM), automated patch retention purging, and DORA velocity analytics.
+
+### Enterprise Horizon Goals (v0.6.0 — v1.0.0 GA)
+- **Production CI/CD & Envelope Encryption:** GitHub Actions automated test gatekeeper (119 tests), live PostgreSQL migrations, and AWS KMS / Vault secret envelope encryption.
+- **1-Click Autonomous Autofix:** Write-back Git commit engine applying validated AI patches directly to companion branches with human confirmation.
+- **Developer IDE Integration:** Native VS Code and JetBrains extensions bringing PR triage and AI assistant into local code editors.
+- **Multi-VCS Platform Expansion:** Pluggable VCS adapter layer supporting GitLab Merge Requests and Bitbucket PRs.
+- **Commercial SaaS & Usage Metering:** Token usage quotas, workspace seat management, and Stripe subscription billing.
 
 ## 4. Non-goals for MVP
 
@@ -226,6 +233,36 @@ Uses a shared workspace, shared GitHub installation, reviewer assignments, notif
 - Automatic provider failover chain on rate limits (HTTP 429/503).
 - Configurable diff patch retention policies (e.g. auto-purge raw patches 30 days post-merge).
 - Engineering velocity and DORA metrics dashboard (cycle time, time-to-first-review).
+
+### FR-15 Automated CI/CD pipelines & KMS envelope encryption (v0.6.0)
+
+- GitHub Actions automated verification gatekeeper executing lint, strict typecheck, and full test suite on all PRs.
+- Automated idempotent database migration runner for PostgreSQL.
+- Envelope encryption of private keys and webhook secrets using AWS KMS / Vault / Vercel Secure Enclave with in-memory decryption.
+
+### FR-16 1-Click autonomous autofix & PR commit engine (v0.7.0)
+
+- Server-side Git write-back engine transforming AI suggestions into unified diffs.
+- Creates companion branches or pushes commits directly to source branch upon explicit user confirmation.
+- Pre-commit AST syntax validation to prevent committing broken code.
+
+### FR-17 Developer IDE extensions (v0.8.0)
+
+- Official VS Code extension and JetBrains plugin.
+- Direct PR triage inbox, inline diff gutter findings, and real-time streaming chat inside native editor.
+- 1-click local patch application with git stash safety.
+
+### FR-18 Universal multi-VCS layer (v0.9.0)
+
+- Generic VCS abstraction interface (`IVCSProvider`).
+- Native support for GitLab.com / GitLab Self-Managed Merge Requests.
+- Native support for Bitbucket Cloud Pull Requests.
+
+### FR-19 SaaS usage metering & Stripe subscriptions (v1.0.0 GA)
+
+- Workspace token consumption tracking and automated soft/hard quota caps.
+- Stripe billing integration with Free, Pro, and Team seat-based licensing.
+- Self-serve Customer Portal for invoices, payment method updates, and plan upgrades.
 
 ## 8. Non-functional requirements
 

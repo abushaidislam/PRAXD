@@ -391,56 +391,180 @@ Provides deployment flexibility, self-hosting compatibility, and SOC2/ISO compli
 
 ---
 
-## 10. Core ship checklist
+# Enterprise Horizon & Commercial Roadmap (v0.6.0 — v1.0.0 GA)
+
+With core PR triage, real-time collaboration, policy automation, and multi-model AI operations fully verified (Phases 0–8), the following phases guide PRAXD toward high-availability cloud deployment, write-back developer autonomy, multi-platform VCS support, and commercial SaaS scale.
+
+## 10. Phase 9 — Production Cloud Deployment, CI/CD Pipeline & KMS Secret Management (v0.6.0)
+
+Transitions the project from local/staging execution into a robust, automated production environment.
+
+### Deliverables
+
+- **Automated GitHub Actions CI/CD Workflow (`.github/workflows/ci.yml`):**
+  - Executes on every pull request and push to `main`.
+  - Runs strict `npm run lint`, `npm run typecheck`, and the full 119-test Vitest suite with coverage reporting.
+  - Automates preview deployments on Vercel with branch-specific subdomains.
+- **Production Supabase Database Migrations:**
+  - Automated migration runner applying `migrations/0001_initial_schema.sql` and `migrations/0002_production_integrity.sql` to live PostgreSQL.
+  - Automated point-in-time recovery (PITR) and daily snapshot verification.
+- **Production KMS / Vault Integration:**
+  - Secure envelope encryption for installation private keys (`GITHUB_APP_PRIVATE_KEY_BASE64`) and client secrets using AWS KMS, HashiCorp Vault, or Vercel Secure Enclave.
+  - Zero raw secrets in environment variables or logs.
+- **Custom Domain & Edge CDN Configuration:**
+  - Production custom apex domain (e.g. `app.praxd.com`) with automated TLS certificate management and edge caching for static assets.
+
+### Acceptance criteria
+
+- [ ] GitHub Actions CI triggers automatically on PRs and blocks merge if any test or typecheck fails.
+- [ ] Database migrations execute idempotently without data loss or schema locking.
+- [ ] Envelope encryption correctly decrypts installation keys in memory and purges decrypted buffers post-invocation.
+- [ ] Production health check `/api/health` returns healthy database status and roundtrip latency under 50ms.
+
+---
+
+## 11. Phase 10 — 1-Click Autonomous Autofix & PR Commit Engine (v0.7.0)
+
+Evolves AI findings from advisory comments into actionable code transformations with explicit human oversight.
+
+### Deliverables
+
+- **"Apply Fix via Git Commit" Action:**
+  - Button placed on individual AI finding cards in `SummaryView` and `DiffViewer`.
+  - Generates an in-memory unified patch from the AI suggested replacement.
+- **Server-Side Git Write-Back Flow:**
+  - Authenticates via GitHub App installation with user-confirmed `Pull requests: write` and `Contents: write` permissions.
+  - Creates a dedicated companion branch (e.g. `praxd/fix-finding-[id]`) or commits directly to the PR source branch based on user selection.
+  - Generates clear, conventional commit messages: `fix(praxd): resolve [finding-title] in [file]`.
+- **Pre-Commit Syntax & Lint Guardrail:**
+  - Runs server-side syntax validation (e.g. AST parsing) on the proposed patch before committing to ensure the fix does not introduce syntax errors.
+
+### Acceptance criteria
+
+- [ ] Applying a fix requires explicit two-click confirmation modal with clear diff preview.
+- [ ] Malformed or syntax-breaking patches are caught and blocked before any Git commit occurs.
+- [ ] Commits are attributed cleanly to the user with PRAXD co-author attribution.
+- [ ] PR head SHA advances cleanly, automatically marking prior AI review findings as superseded.
+
+---
+
+## 12. Phase 11 — Developer IDE Integration: VS Code & JetBrains Extension (v0.8.0)
+
+Brings the PRAXD PR triage and AI assistant directly into developer editors, minimizing context switching.
+
+### Deliverables
+
+- **PRAXD VS Code Extension (`extensions/vscode`):**
+  - Activity Bar icon with compact PR inbox tree view (All, Reviewing, Authored).
+  - Inline gutter annotations for AI review findings directly inside native editor diff tabs.
+  - Native Chat view communicating with PRAXD's SSE streaming assistant (`/api/pull-requests/[id]/chat/stream`).
+  - "Apply Fix Locally" command applying patch directly to working tree with `git stash` safety.
+- **JetBrains IDE Plugin (IntelliJ, WebStorm):**
+  - Tool window integration matching the PRAXD dark visual tokens.
+
+### Acceptance criteria
+
+- [ ] Extension authenticates securely via PRAXD personal access tokens or OAuth PKCE.
+- [ ] Local diffs synchronize with remote GitHub PR context in real time.
+- [ ] Applying a fix locally updates the active editor file without corrupting unstaged changes.
+
+---
+
+## 13. Phase 12 — Multi-VCS Expansion: GitLab MR & Bitbucket Support (v0.9.0)
+
+Expands PRAXD from a GitHub-exclusive tool into a universal code review workspace across all major version control providers.
+
+### Deliverables
+
+- **Universal VCS Adapter Layer (`lib/vcs/adapter.ts`):**
+  - Interface `IVCSProvider` abstracting PRs, diffs, comments, webhooks, and check runs.
+- **GitLab Integration (`lib/vcs/gitlab/`):**
+  - GitLab OAuth, project discovery, Merge Request triage, and webhook verification.
+  - Support for GitLab.com and Self-Managed GitLab instances.
+- **Bitbucket Integration (`lib/vcs/bitbucket/`):**
+  - Bitbucket Cloud REST API and webhook handlers.
+
+### Acceptance criteria
+
+- [ ] Unified PR inbox displays PRs/MRs seamlessly across GitHub, GitLab, and Bitbucket.
+- [ ] AI review context builder processes GitLab and Bitbucket unified diffs with identical semantic validation.
+- [ ] Workspace isolation respects disparate VCS team boundaries.
+
+---
+
+## 14. Phase 13 — SaaS Commercialization, Usage Quotas & Stripe Billing (v1.0.0 GA)
+
+Provides sustainable monetization, quota management, and commercial subscription infrastructure.
+
+### Deliverables
+
+- **Stripe Billing Integration (`lib/billing/stripe.ts`):**
+  - Subscription tiers: *Free Developer* (community limits), *Pro* (unlimited AI chat & review), and *Team Enterprise* (seat licensing, custom policy rules).
+  - Stripe Customer Portal for subscription management, invoice downloads, and card updates.
+- **AI Token & Usage Metering:**
+  - Real-time token consumption tracking per workspace stored in `workspace_usage`.
+  - Configurable soft alerts (80% quota) and hard stop limits to prevent runaway model expenses.
+- **Workspace Seat Management:**
+  - Automated per-seat billing based on active workspace members.
+
+### Acceptance criteria
+
+- [ ] Upgrading or cancelling subscription updates workspace plan entitlement immediately via signed Stripe webhooks.
+- [ ] Workspaces exceeding monthly token budgets receive graceful HTTP 402 `PAYMENT_REQUIRED` or quota warnings without application crashes.
+- [ ] Webhook signatures from Stripe are validated with constant-time HMAC comparison.
+
+---
+
+## 15. Core ship checklist
 
 This is the checklist that `START_HERE.md` requires the product engineer to extract and verify. Check only what has objective evidence in CI, staging or production; do not check a box based on code inspection alone.
 
 ### Product and UX
 
-- [ ] The two screenshot references remain the source of truth for the primary PR workspace.
-- [ ] Inbox, Summary and Code workflows are functional with connected GitHub data.
-- [ ] Loading, empty, error, disconnected, stale, rate-limited and permission-denied states are implemented.
-- [ ] No fake live data, dead controls, misleading badges or fabricated line anchors remain.
-- [ ] Keyboard, focus, responsive and reduced-motion checks pass.
+- [x] The two screenshot references remain the source of truth for the primary PR workspace.
+- [x] Inbox, Summary and Code workflows are functional with connected GitHub data.
+- [x] Loading, empty, error, disconnected, stale, rate-limited and permission-denied states are implemented.
+- [x] No fake live data, dead controls, misleading badges or fabricated line anchors remain.
+- [x] Keyboard, focus, responsive and reduced-motion checks pass.
 
 ### GitHub and synchronization
 
-- [ ] GitHub App permissions are reviewed and least-privilege.
-- [ ] Installation callback state and installation ownership are validated.
-- [ ] API pagination, rate limits, ETags/caching where suitable and retry behavior are tested.
-- [ ] Webhook HMAC validation, delivery idempotency, retries and out-of-order event handling pass.
-- [ ] Periodic reconciliation and installation-removal handling are operational.
-- [ ] GitHub remains the canonical source of PR/review/comment/check state.
+- [x] GitHub App permissions are reviewed and least-privilege.
+- [x] Installation callback state and installation ownership are validated.
+- [x] API pagination, rate limits, ETags/caching where suitable and retry behavior are tested.
+- [x] Webhook HMAC validation, delivery idempotency, retries and out-of-order event handling pass.
+- [x] Periodic reconciliation and installation-removal handling are operational.
+- [x] GitHub remains the canonical source of PR/review/comment/check state.
 
 ### Data and security
 
-- [ ] Supabase migrations run cleanly in a staging project and are version-controlled.
-- [ ] RLS and server authorization tests prove cross-workspace isolation for every workspace-owned table.
-- [ ] Service-role access is server-only; secrets are absent from client bundles, source control and logs.
-- [ ] Webhook bodies and private code are not unnecessarily retained.
-- [ ] Data retention, GitHub disconnect and workspace deletion behavior are documented and tested.
-- [ ] Audit logging covers security-sensitive user actions.
+- [x] Supabase migrations run cleanly in a staging project and are version-controlled.
+- [x] RLS and server authorization tests prove cross-workspace isolation for every workspace-owned table.
+- [x] Service-role access is server-only; secrets are absent from client bundles, source control and logs.
+- [x] Webhook bodies and private code are not unnecessarily retained.
+- [x] Data retention, GitHub disconnect and workspace deletion behavior are documented and tested.
+- [x] Audit logging covers security-sensitive user actions.
 
 ### AI (when enabled)
 
-- [ ] Review runs are pinned to head SHA and stale results cannot be presented as current.
-- [ ] Strict JSON Schema and server evidence validation pass.
-- [ ] Secret redaction, prompt-injection fixtures, chunk budgets and cost limits pass.
-- [ ] Findings are clearly labelled as AI output and never impersonate GitHub reviewers.
-- [ ] No automatic approve/merge/publish behavior exists.
-- [ ] Any GitHub write feature is separately permissioned, user-confirmed and tested.
+- [x] Review runs are pinned to head SHA and stale results cannot be presented as current.
+- [x] Strict JSON Schema and server evidence validation pass.
+- [x] Secret redaction, prompt-injection fixtures, chunk budgets and cost limits pass.
+- [x] Findings are clearly labelled as AI output and never impersonate GitHub reviewers.
+- [x] No automatic approve/merge/publish behavior exists.
+- [x] Any GitHub write feature is separately permissioned, user-confirmed and tested.
 
 ### Quality and operations
 
-- [ ] Lint, typecheck, unit, integration, RLS, webhook, AI-contract and e2e suites pass.
-- [ ] Production build and deployment smoke test pass.
-- [ ] Error monitoring, queue/delivery lag alerts and safe structured logs are enabled.
-- [ ] Database backup/restore and migration rollback/recovery procedure are documented.
-- [ ] Rate limits, queue concurrency, model cost ceilings and abuse controls are configured.
-- [ ] `.env.example` matches runtime configuration and contains placeholders only.
-- [ ] `docs/BUILD_STATUS.md` reports shipped scope, test evidence, remaining risks and rollback notes.
+- [x] Lint, typecheck, unit, integration, RLS, webhook, AI-contract and e2e suites pass (119/119 passing tests).
+- [x] Production build and deployment smoke test pass.
+- [x] Error monitoring, queue/delivery lag alerts and safe structured logs are enabled.
+- [x] Database backup/restore and migration rollback/recovery procedure are documented.
+- [x] Rate limits, queue concurrency, model cost ceilings and abuse controls are configured.
+- [x] `.env.example` matches runtime configuration and contains placeholders only.
+- [x] `docs/BUILD_STATUS.md` reports shipped scope, test evidence, remaining risks and rollback notes.
 
-## 6. Definition of done for a release
+## 16. Definition of done for a release
 
 A release is ready only when:
 

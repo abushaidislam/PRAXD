@@ -1,16 +1,25 @@
 # PRAXD Build Status
 
 **Last updated:** 2026-10-31  
-**Current version:** v0.5.0 (Full Post-MVP Scope Delivered)  
-**Current phase:** All Roadmap Phases (Phases 0 through 8) 100% Shipped & Operational  
-**Build status:** Phases 0, 1, 2, 3, 4 (MVP), Phase 5, Phase 6, Phase 7, and Phase 8 are 100% Complete & Verified (119/119 Automated Tests Passing)
+**Current version:** v0.6.0 (Enterprise Horizon & Commercial Roadmap Active)  
+**Current phase:** Phase 9 — Production Cloud Deployment, CI/CD Pipeline & KMS Secret Management  
+**Build status:** Phases 0 through 8 (v0.1.0 to v0.5.0) are 100% Complete & Verified (119/119 Automated Tests Passing)
 
-## Active Post-MVP Roadmap (v0.2.0 — v0.5.0)
+## Completed Roadmap Phases (v0.1.0 — v0.5.0)
 
-- [x] **Phase 5 (v0.2.0):** Interactive PR Assistant & Contextual Chat (Header `Chat` affordance activated with slide-out drawer, streaming SSE, 32 KB diff-bounded reasoning, copy buttons, line-citation deep linking, and `/explain`, `/test-ideas`, `/draft-response`, `/security-audit` slash commands)
-- [x] **Phase 6 (v0.3.0):** Team Collaboration, GitHub SSO & Real-Time Presence (GitHub OAuth profile hydration, real-time reviewer presence heartbeats with live file inspection pills, shared workspace-only internal notes with `@mention` tagging, and 5-role RBAC enforcement)
-- [x] **Phase 7 (v0.4.0):** Automated Policy Engine, CI/CD Bot Mode & Risk Scoring (0–100 composite risk score, event-driven webhooks, Slack/Discord alerts, custom rules prompt injection defense, and out-of-order race guard)
-- [x] **Phase 8 (v0.5.0):** Multi-Model LLM Adapters & Enterprise Governance (Anthropic Claude 3.7/3.5, Google Gemini, OpenAI, self-hosted Ollama/vLLM with TLS verification, automated patch retention purging, one-click workspace purge, ZDR flags, and DORA velocity analytics)
+- [x] **Phase 0–4 (v0.1.0 MVP):** UI Shell, Dual-Pane Workspace, Synchronized Diff Scroll, GitHub Sync, Webhooks, AI Review Engine, Audit Logging.
+- [x] **Phase 5 (v0.2.0):** Interactive PR Assistant & Contextual Chat (Header `Chat` drawer, streaming SSE, `/explain`, `/test-ideas`, `/draft-response`).
+- [x] **Phase 6 (v0.3.0):** Team Collaboration, GitHub SSO & Real-Time Presence (Presence heartbeats, internal workspace notes, 5-role RBAC).
+- [x] **Phase 7 (v0.4.0):** Automated Policy Engine, CI/CD Bot Mode & Risk Scoring (0–100 risk score, event-driven webhooks, Slack/Discord alerts).
+- [x] **Phase 8 (v0.5.0):** Multi-Model LLM Adapters & Enterprise Governance (Claude, Gemini, OpenAI, Ollama, retention purging, DORA metrics).
+
+## Active Commercial & Enterprise Roadmap (v0.6.0 — v1.0.0 GA)
+
+- [ ] **Phase 9 (v0.6.0):** Production Cloud Deployment, CI/CD Pipeline & KMS Secret Management (GitHub Actions automated test gatekeeper, Supabase live migrations, envelope encryption).
+- [ ] **Phase 10 (v0.7.0):** 1-Click Autonomous Autofix & PR Commit Engine (User-confirmed Git commit write-back with pre-commit AST syntax validation).
+- [ ] **Phase 11 (v0.8.0):** Developer IDE Integration: VS Code & JetBrains Extension (In-editor PR triage, diff annotations, and local patch application).
+- [ ] **Phase 12 (v0.9.0):** Multi-VCS Expansion: GitLab MR & Bitbucket Support (Pluggable `IVCSProvider` universal code review layer).
+- [ ] **Phase 13 (v1.0.0 GA):** SaaS Commercialization, Usage Quotas & Stripe Billing (Usage metering, seat licensing, Stripe subscription portal).
 
 ---
 
