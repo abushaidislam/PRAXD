@@ -98,10 +98,15 @@ In addition to core triage and diff inspection, PRAXD includes **direct personal
   - Rendered requested reviewers with avatar chips, status icons (approved, changes requested, pending).
   - Checks summary pill `(X/Y passed)`.
   - 1-click description markdown copy button with checkmark confirmation.
-- [x] **Code View & Diff Viewer:**
+- [x] **Code View & GitHub-Style Collapsible Multi-File Diff View:**
+  - Multi-file vertical stacked layout matching GitHub PR changes interface.
+  - Collapsible file headers with file type badges (`M↓`, `TS`, `JS`, `⚙`, `CSS`), basename, directory path, `+additions -deletions`, and chevron toggle (`>` / `⌵`).
+  - By default, the 1st file is expanded while subsequent files are collapsed to single lines.
+  - Clicking any file header toggles its expansion directly in place beneath its header.
+  - Added "Expand all" / "Collapse all" bulk toggle button to the top toolbar.
+  - File picker dropdown and Prev/Next keyboard navigation (`[` and `]`) smoothly scroll to and auto-expand target file diff.
+  - Sticky header bar keeps file context visible while scrolling through long diffs.
   - Enforced Impeccable craft floor: refined diff addition/deletion line borders to clean 1px (`border-l`).
-  - Added keyboard navigation (`[` for previous file, `]` for next file).
-  - Dynamic file extension badge (TS, JS, CSS, JSON, etc.) based on file type.
   - 1-click file path copy button with feedback.
 - [x] **Timeline & Modals:**
   - 1-click commit SHA copy button in activity timeline with feedback.
@@ -111,7 +116,7 @@ In addition to core triage and diff inspection, PRAXD includes **direct personal
 
 ## Quality Checks & Verification
 
-- `lint` (`npm run lint`): Passed (0 warnings, 0 errors).
-- `typecheck` (`npm run typecheck`): Passed (0 errors).
-- `test` (`npm run test`): Passed (71/71 tests passing across 10 test files).
-- `build` (`npm run build`): Passed (16 static pages, 20 dynamic API routes compiled cleanly in Next.js).
+- `lint` (`npm run lint`): Passed (`✔ No ESLint warnings or errors`).
+- `typecheck` (`npm run typecheck`): Passed (`tsc --noEmit` 0 errors).
+- `test` (`npm test`): Passed (75/75 tests passing across 11 test files, including dedicated `tests/collapsible-diff.test.tsx`).
+- `build` (`npm run build`): Passed (16 static pages, 20 dynamic API routes compiled cleanly in Next.js production build).

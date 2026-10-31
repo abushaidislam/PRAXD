@@ -10,18 +10,80 @@ import {
   Check,
   ArrowLeftRight,
   Copy,
+  Settings,
+  FileCode,
 } from "lucide-react";
 import { ChangedFile, PRComment, AIFinding, DiffLine } from "@/types/pr";
 import { AIReviewCard } from "./ai-review-card";
 import { buildSplitRows, parsePatchToLines, SplitRow } from "@/lib/diff-parser";
 import { cn } from "@/lib/utils";
 
-interface DiffViewerProps {
+export interface DiffViewerProps {
   file: ChangedFile;
   diffMode: "split" | "unified";
   comments: PRComment[];
   aiFindings?: AIFinding[];
   wrapLines?: boolean;
+  isCollapsible?: boolean;
+  isExpanded?: boolean;
+  onToggleExpand?: () => void;
+}
+
+export function parseFilePath(filePath: string) {
+  const parts = filePath.split("/");
+  const basename = parts.pop() || filePath;
+  const dirname = parts.join("/");
+  return { basename, dirname };
+}
+
+export function renderFileBadge(filename: string) {
+  const lower = filename.toLowerCase();
+  const ext = lower.split(".").pop() || "";
+
+  if (ext === "md" || ext === "markdown") {
+    return (
+      <span className="font-bold text-[11px] text-sky-400 font-mono tracking-tighter shrink-0 select-none">
+        M↓
+      </span>
+    );
+  }
+
+  if (ext === "ts" || ext === "tsx") {
+    return (
+      <span className="px-1 py-0.2 rounded text-[10px] bg-blue-950/60 text-blue-400 font-mono font-bold border border-blue-700/50 shrink-0 select-none">
+        TS
+      </span>
+    );
+  }
+
+  if (ext === "js" || ext === "jsx" || ext === "mjs" || ext === "cjs") {
+    return (
+      <span className="px-1 py-0.2 rounded text-[10px] bg-yellow-950/60 text-amber-300 font-mono font-bold border border-yellow-700/50 shrink-0 select-none">
+        JS
+      </span>
+    );
+  }
+
+  if (
+    ext === "json" ||
+    ext === "yml" ||
+    ext === "yaml" ||
+    ext === "toml" ||
+    lower.includes(".env") ||
+    lower.includes("config")
+  ) {
+    return <Settings className="w-3.5 h-3.5 text-neutral-400 shrink-0" />;
+  }
+
+  if (ext === "css" || ext === "scss" || ext === "sass" || ext === "less") {
+    return (
+      <span className="px-1 py-0.2 rounded text-[10px] bg-purple-950/60 text-purple-300 font-mono font-bold border border-purple-700/50 shrink-0 select-none">
+        CSS
+      </span>
+    );
+  }
+
+  return <FileCode className="w-3.5 h-3.5 text-neutral-400 shrink-0" />;
 }
 
 export function DiffViewer({
@@ -30,6 +92,9 @@ export function DiffViewer({
   comments,
   aiFindings = [],
   wrapLines = false,
+  isCollapsible = false,
+  isExpanded = true,
+  onToggleExpand,
 }: DiffViewerProps) {
   const [unmodifiedExpanded, setUnmodifiedExpanded] = useState(false);
   const [activeCommentLine, setActiveCommentLine] = useState<number | null>(null);
@@ -48,32 +113,6 @@ export function DiffViewer({
     }
   };
 
-  // Dynamic file extension badge
-  const fileExt = useMemo(() => {
-    const parts = file.filename.split(".");
-    if (parts.length > 1) {
-      return parts[parts.length - 1].toUpperCase();
-    }
-    return "FILE";
-  }, [file.filename]);
-
-  const fileExtColor = useMemo(() => {
-    switch (fileExt) {
-      case "TS":
-      case "TSX":
-        return "bg-blue-950/50 text-blue-300 border-blue-700/40";
-      case "JS":
-      case "JSX":
-        return "bg-yellow-950/50 text-amber-300 border-yellow-700/40";
-      case "JSON":
-        return "bg-emerald-950/50 text-emerald-300 border-emerald-700/40";
-      case "CSS":
-      case "SCSS":
-        return "bg-purple-950/50 text-purple-300 border-purple-700/40";
-      default:
-        return "bg-neutral-800 text-neutral-300 border-neutral-700/40";
-    }
-  }, [fileExt]);
 
   // Synchronized Dual-Pane Horizontal Scroll State
   const [scrollX, setScrollX] = useState(0);
@@ -270,22 +309,111 @@ export function DiffViewer({
     return result;
   }, [file.filename, file.unmodifiedLinesBefore, effectiveLines]);
 
-  // Scenario P0-06: File without patch or binary file
+  // Scenario P0-06: File without patch or binary file handling
+  const { basename, dirname } = parseFilePath(file.filename);
+
+  const renderHeader = (expanded: boolean) => (
+    <div
+      id={`file-diff-${encodeURIComponent(file.filename)}`}
+      className={cn(
+        "flex items-center justify-between px-4 py-2.5 border-b border-praxd-border-soft bg-[#141414] text-[12px] shrink-0 sticky top-0 z-20 backdrop-blur-sm select-none transition-colors",
+        isCollapsible && "cursor-pointer hover:bg-[#181818]"
+      )}
+      onClick={isCollapsible ? onToggleExpand : undefined}
+      role={isCollapsible ? "button" : undefined}
+      tabIndex={isCollapsible ? 0 : undefined}
+      onKeyDown={
+        isCollapsible
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onToggleExpand?.();
+              }
+            }
+          : undefined
+      }
+      aria-expanded={isCollapsible ? expanded : undefined}
+      aria-label={isCollapsible ? `${expanded ? "Collapse" : "Expand"} ${file.filename}` : undefined}
+    >
+      <div className="flex items-center gap-2.5 min-w-0">
+        <div className="shrink-0">{renderFileBadge(file.filename)}</div>
+        <span className="font-mono text-[13px] font-semibold text-neutral-200 truncate">
+          {basename}
+        </span>
+        {dirname && (
+          <span className="font-mono text-[12px] text-neutral-500 truncate">
+            {dirname}
+          </span>
+        )}
+        <span className="sr-only">{file.filename}</span>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleCopyPath();
+          }}
+          className="p-1 rounded hover:bg-[#252525] text-praxd-text-muted hover:text-praxd-text transition-colors shrink-0 ml-1"
+          title={copiedPath ? "Copied path!" : "Copy file path"}
+          aria-label="Copy file path"
+        >
+          {copiedPath ? (
+            <Check className="w-3.5 h-3.5 text-praxd-green" />
+          ) : (
+            <Copy className="w-3.5 h-3.5" />
+          )}
+        </button>
+      </div>
+
+      <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-1.5 font-mono text-[11px] tabular-nums font-semibold">
+          <span className="text-[#3fb950]">+{file.additions}</span>
+          <span className="text-[#f85149]">-{file.deletions}</span>
+        </div>
+        {isCollapsible ? (
+          <div className="p-0.5 text-neutral-400">
+            {expanded ? (
+              <ChevronDown className="w-4 h-4 text-neutral-300" />
+            ) : (
+              <ChevronRight className="w-4 h-4 text-neutral-400" />
+            )}
+          </div>
+        ) : (
+          <span className="text-[11px] text-praxd-text-muted font-mono">
+            {effectiveLines.length} diff lines
+          </span>
+        )}
+      </div>
+    </div>
+  );
+
+  // If collapsed in a multi-file list, render only the single-line header
+  if (isCollapsible && !isExpanded) {
+    return (
+      <div className="border-b border-praxd-border-soft bg-[#121212]">
+        {renderHeader(false)}
+      </div>
+    );
+  }
+
+  // Binary file or file without patch
   if (effectiveLines.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 text-center text-praxd-text-muted space-y-3 bg-[#131313] border border-praxd-border-soft rounded-lg m-4">
-        <FileX className="w-10 h-10 text-praxd-text-muted" />
-        <div className="space-y-1">
-          <p className="text-[14px] font-medium text-praxd-text">
-            Diff unavailable for this file
-          </p>
-          <p className="text-[12px] max-w-sm text-praxd-text-muted">
-            This file is binary or does not have a text patch available in this pull request.
-          </p>
+      <div className="flex flex-col border-b border-praxd-border-soft bg-[#0e0e0e]">
+        {renderHeader(true)}
+        <div className="flex flex-col items-center justify-center p-12 text-center text-praxd-text-muted space-y-3 bg-[#131313]">
+          <FileX className="w-10 h-10 text-praxd-text-muted" />
+          <div className="space-y-1">
+            <p className="text-[14px] font-medium text-praxd-text">
+              Diff unavailable for this file
+            </p>
+            <p className="text-[12px] max-w-sm text-praxd-text-muted">
+              This file is binary or does not have a text patch available in this pull request.
+            </p>
+          </div>
+          <span className="text-[11px] text-praxd-blue font-mono bg-[#1c1c1c] px-2.5 py-1 rounded border border-praxd-border-soft">
+            {file.filename}
+          </span>
         </div>
-        <span className="text-[11px] text-praxd-blue font-mono bg-[#1c1c1c] px-2.5 py-1 rounded border border-praxd-border-soft">
-          {file.filename}
-        </span>
       </div>
     );
   }
@@ -397,35 +525,7 @@ export function DiffViewer({
   return (
     <div className="flex-1 flex flex-col min-w-0 bg-[#0e0e0e] select-text">
       {/* File Header Bar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-praxd-border-soft bg-[#151515] text-[12px] shrink-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border", fileExtColor)}>
-            {fileExt}
-          </span>
-          <span className="font-mono text-praxd-text font-medium truncate">{file.filename}</span>
-          <button
-            type="button"
-            onClick={handleCopyPath}
-            className="p-1 rounded hover:bg-[#252525] text-praxd-text-muted hover:text-praxd-text transition-colors shrink-0"
-            title={copiedPath ? "Copied path!" : "Copy file path"}
-            aria-label="Copy file path"
-          >
-            {copiedPath ? (
-              <Check className="w-3.5 h-3.5 text-praxd-green" />
-            ) : (
-              <Copy className="w-3.5 h-3.5" />
-            )}
-          </button>
-          <div className="flex items-center gap-1 font-mono text-[11px] tabular-nums ml-1 shrink-0">
-            <span className="text-praxd-green font-medium">+{file.additions}</span>
-            <span className="text-praxd-red font-medium">-{file.deletions}</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 text-[11px] text-praxd-text-muted font-mono shrink-0">
-          <span>{effectiveLines.length} diff lines</span>
-        </div>
-      </div>
+      {renderHeader(true)}
 
       {/* Split Column Subheader Bar */}
       {diffMode === "split" && (
