@@ -3,7 +3,7 @@ import {
   GitPullRequest,
   ShieldAlert,
   ExternalLink,
-  MessageSquare,
+  Sparkles,
   GitMerge,
   ChevronDown,
   PanelLeftOpen,
@@ -18,6 +18,8 @@ interface WorkspaceHeaderProps {
   onViewChange: (view: "summary" | "code") => void;
   isSidebarOpen: boolean;
   onToggleSidebar: () => void;
+  isChatOpen?: boolean;
+  onToggleChat?: () => void;
 }
 
 export function WorkspaceHeader({
@@ -26,6 +28,8 @@ export function WorkspaceHeader({
   onViewChange,
   isSidebarOpen,
   onToggleSidebar,
+  isChatOpen = false,
+  onToggleChat,
 }: WorkspaceHeaderProps) {
   const hasShield = pr?.title.toLowerCase().includes("sentinel");
 
@@ -114,15 +118,21 @@ export function WorkspaceHeader({
           <ExternalLink className="w-4 h-4" />
         </a>
 
-        {/* Chat affordance (disabled in MVP per UI_UX_SPEC section 9) */}
+        {/* Interactive Chat affordance (Activated in Phase 5) */}
         <button
           type="button"
-          disabled
-          className="flex items-center gap-1 px-2.5 py-1 text-[12px] font-medium rounded-md bg-[#202020] border border-praxd-border-soft text-praxd-text-muted cursor-not-allowed opacity-70"
-          title="PR Chat assistant is coming in a later release"
-          aria-label="PR Chat assistant (Coming soon)"
+          onClick={onToggleChat}
+          className={cn(
+            "flex items-center gap-1.5 px-2.5 py-1 text-[12px] font-medium rounded-md border transition-all shadow-sm",
+            isChatOpen
+              ? "bg-praxd-blue/15 text-blue-300 border-praxd-blue/40 ring-1 ring-praxd-blue/30"
+              : "bg-[#202020] border-praxd-border-soft text-praxd-text hover:text-white hover:bg-[#282828]"
+          )}
+          title="Toggle PR Copilot Chat (Ctrl+K or Ctrl+J)"
+          aria-label="Toggle PR Copilot Chat"
+          aria-pressed={isChatOpen}
         >
-          <MessageSquare className="w-3.5 h-3.5" />
+          <Sparkles className={cn("w-3.5 h-3.5", isChatOpen ? "text-praxd-blue" : "text-praxd-text-muted")} />
           <span>Chat</span>
         </button>
 

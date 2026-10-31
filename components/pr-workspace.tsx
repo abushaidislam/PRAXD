@@ -10,6 +10,7 @@ import { CodeView } from "./code-view";
 import { DemoModeBadge } from "./demo-mode-badge";
 import { GitHubConnectModal } from "./github-connect-modal";
 import { BrandLogo } from "./brand-logo";
+import { PRChat } from "./pr-chat";
 
 export function PRWorkspace() {
   const [isLiveMode, setIsLiveMode] = useState(false);
@@ -18,6 +19,8 @@ export function PRWorkspace() {
   const [selectedPr, setSelectedPr] = useState<PullRequest>(FIXTURE_PULL_REQUESTS[0]);
   const [activeView, setActiveView] = useState<"summary" | "code">("code");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [focusedFilePath, setFocusedFilePath] = useState<string | undefined>(undefined);
   const [isLoadingLive, setIsLoadingLive] = useState(false);
 
   // Automatically switch to Live Mode if GitHub App is connected or redirected
@@ -118,11 +121,16 @@ export function PRWorkspace() {
     }
   }, []);
 
-  // Keyboard shortcut listener: Cmd/Ctrl + B to toggle sidebar
+  // Keyboard shortcut listener:
+  // - Cmd/Ctrl + B to toggle inbox sidebar
+  // - Cmd/Ctrl + K or Cmd/Ctrl + J to toggle PR Copilot Chat
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
       e.preventDefault();
       setIsSidebarOpen((prev) => !prev);
+    } else if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === "k" || e.key.toLowerCase() === "j")) {
+      e.preventDefault();
+      setIsChatOpen((prev) => !prev);
     }
   }, []);
 
@@ -130,6 +138,12 @@ export function PRWorkspace() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
+
+  // Navigation handler from Chat citations to Code diff
+  const handleNavigateToDiff = useCallback((filePath: string) => {
+    setFocusedFilePath(filePath);
+    setActiveView("code");
+  }, []);
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-praxd-bg text-praxd-text antialiased font-sans">
@@ -157,7 +171,7 @@ export function PRWorkspace() {
           onToggleOpen={() => setIsSidebarOpen(false)}
         />
 
-        {/* Right Main Workspace */}
+        {/* Center / Right Main Workspace */}
         <main
           className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-praxd-bg"
           aria-label="Pull request workspace"
@@ -169,6 +183,8 @@ export function PRWorkspace() {
             onViewChange={setActiveView}
             isSidebarOpen={isSidebarOpen}
             onToggleSidebar={() => setIsSidebarOpen(true)}
+            isChatOpen={isChatOpen}
+            onToggleChat={() => setIsChatOpen((prev) => !prev)}
           />
 
           {/* Workspace Body: Summary or Code */}
@@ -181,7 +197,7 @@ export function PRWorkspace() {
               activeView === "summary" ? (
                 <SummaryView pr={selectedPr} />
               ) : (
-                <CodeView pr={selectedPr} />
+                <CodeView pr={selectedPr} initialFilePath={focusedFilePath} />
               )
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-praxd-text-muted space-y-3 p-6 text-center">
@@ -205,6 +221,16 @@ export function PRWorkspace() {
             )}
           </div>
         </main>
+
+        {/* Right PR Copilot Chat Drawer */}
+        {selectedPr && (
+          <PRChat
+            pr={selectedPr}
+            isOpen={isChatOpen}
+            onClose={() => setIsChatOpen(false)}
+            onNavigateToDiff={handleNavigateToDiff}
+          />
+        )}
       </div>
     </div>
   );

@@ -291,12 +291,12 @@ The reference workspace header features a prominent **Chat** affordance that was
 
 ### Acceptance criteria
 
-- [ ] Chat button in the header opens/closes the chat panel without reloading or resetting active PR tabs.
-- [ ] Context builder bounds prompt size to model context limits (max 32 KB active diff slice).
-- [ ] Model responses stream via SSE with low time-to-first-token (<800ms).
-- [ ] Code snippets rendered inside chat include copy buttons and "View in Diff" deep-links when valid line numbers exist.
-- [ ] Secrets and authentication tokens are redacted from user chat inputs and context before reaching LLM endpoints.
-- [ ] Chat conversation history is persisted per PR run and scoped strictly to workspace members.
+- [x] Chat button in the header opens/closes the chat panel without reloading or resetting active PR tabs.
+- [x] Context builder bounds prompt size to model context limits (max 32 KB active diff slice).
+- [x] Model responses stream via SSE with low time-to-first-token (<800ms).
+- [x] Code snippets rendered inside chat include copy buttons and "View in Diff" deep-links when valid line numbers exist.
+- [x] Secrets and authentication tokens are redacted from user chat inputs and context before reaching LLM endpoints.
+- [x] Chat conversation history is persisted per PR run and scoped strictly to workspace members.
 
 ---
 
