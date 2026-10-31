@@ -78,11 +78,40 @@ In addition to core triage and diff inspection, PRAXD includes **direct personal
   - API route `POST /api/pull-requests/[pullRequestId]/comments` calling GitHub REST API `POST /repos/{owner}/{repo}/issues/{number}/comments`.
   - New comments immediately rendered in timeline with user avatar and relative timestamp.
 
+### 5. Impeccable Web UI/UX Craft Polish
+- [x] **Global Design System & Browser Surfaces:**
+  - Removed blanket `user-select: none` from body, restoring code, comment, commit SHA, and description selectable text.
+  - Custom themed selection (`::selection` & `::-moz-selection` with alpha brand blue).
+  - Themed caret color for text inputs and textareas.
+  - Firefox custom scrollbar matching WebKit scrollbars (`scrollbar-width: thin`).
+  - Text antialiasing and subpixel optimization.
+- [x] **Workspace Header & View Navigation:**
+  - Added PR number pill (`#<number>`) with mono styling.
+  - Added keyboard shortcut badges (`1` for Summary, `2` for Code) with global keydown navigation.
+  - Polished external GitHub link and high-contrast Merged/Closed status badges.
+- [x] **Left PR Inbox Sidebar & ListItem:**
+  - Real-time tab count badges (`All`, `Reviewing`, `Authored`).
+  - Keyboard navigation (`ArrowUp` / `ArrowDown`) through PR list.
+  - Active list item accent indicator bar with high contrast typography and `tabular-nums` diff metrics.
+- [x] **Summary View:**
+  - Refined branch flow arrow (`headRef → baseRef`) with 1-click branch name copy button.
+  - Rendered requested reviewers with avatar chips, status icons (approved, changes requested, pending).
+  - Checks summary pill `(X/Y passed)`.
+  - 1-click description markdown copy button with checkmark confirmation.
+- [x] **Code View & Diff Viewer:**
+  - Enforced Impeccable craft floor: refined diff addition/deletion line borders to clean 1px (`border-l`).
+  - Added keyboard navigation (`[` for previous file, `]` for next file).
+  - Dynamic file extension badge (TS, JS, CSS, JSON, etc.) based on file type.
+  - 1-click file path copy button with feedback.
+- [x] **Timeline & Modals:**
+  - 1-click commit SHA copy button in activity timeline with feedback.
+  - Modal keyboard `Escape` closing listeners and smooth entrance animations.
+
 ---
 
 ## Quality Checks & Verification
 
 - `lint` (`npm run lint`): Passed (0 warnings, 0 errors).
 - `typecheck` (`npm run typecheck`): Passed (0 errors).
-- `test` (`npm run test`): Passed (67/67 tests passing across 9 test files).
+- `test` (`npm run test`): Passed (71/71 tests passing across 10 test files).
 - `build` (`npm run build`): Passed (16 static pages, 20 dynamic API routes compiled cleanly in Next.js).
