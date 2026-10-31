@@ -47,7 +47,7 @@
 ### Phase 3 — Personal PR Workspace Simplification (Option B)
 - [x] **Workspace Header De-cluttering:**
   - Removed 6 enterprise buttons from the header: Team management, Policy bot, DORA analytics, Data retention governance, AI chat toggle, and Presence avatars.
-  - Kept essential personal controls: Sidebar collapse toggle (`Ctrl+B`), PR identity, Centered `Summary | Code` toggle, External GitHub link (`ExternalLink`), and safe Merge guardrail.
+  - Kept essential personal controls: Sidebar collapse toggle (`Ctrl+B`), PR identity, Centered `Summary | Code` toggle, External GitHub link (`ExternalLink`), and Merge action.
 - [x] **Summary View Streamlining:**
   - Removed internal team discussion panel (`InternalNotesPanel`).
   - Removed AI review panel (`AIReviewPanel`) and blast radius scoring.
@@ -59,6 +59,22 @@
 - [x] **API & Bundle Optimization:**
   - Disconnected AI chat SSE streams and message persistence routes.
   - Disconnected enterprise member invitations, presence heartbeats, and SOC2 workspace purges.
+
+### Phase 4 — Functional Personal PR Actions (Merge, Title/Body Edit, Conversation Comments)
+- [ ] **Interactive PR Merge Engine:**
+  - `Merge v` dropdown supporting `Create a merge commit` (`merge`), `Squash and merge` (`squash`), and `Rebase and merge` (`rebase`).
+  - Confirmation modal with commit title, message, and failing CI checks warning.
+  - API endpoint `PUT /api/pull-requests/[id]/merge` executing merge on GitHub and transitioning PR state to `merged`.
+  - Disabled state when PR is closed or merged.
+- [ ] **In-Place PR Title & Description Editing:**
+  - Inline title editing with pencil icon, `Save` and `Cancel` actions.
+  - In-place description markdown editor with preview and save actions.
+  - API endpoint `PATCH /api/pull-requests/[id]` updating PR title and body on GitHub.
+  - Updates local PR state across sidebar and header immediately.
+- [ ] **Live Conversation Messaging:**
+  - "Leave a comment" editor at the bottom of the discussion timeline.
+  - API endpoint `POST /api/pull-requests/[id]/comments` dispatching comment to GitHub.
+  - Optimistic timeline append displaying avatar, username, and formatted message.
 
 ---
 

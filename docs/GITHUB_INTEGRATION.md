@@ -54,15 +54,16 @@ Configure only the permissions needed by the enabled release features:
 
 The `issue_comment` event requires `Issues: Read`; `pull_request_review` and `pull_request_review_comment` require `Pull requests: Read`; `check_run` and `check_suite` require `Checks: Read`. Confirm the event-to-permission matrix against GitHub's current documentation immediately before registering the production App.
 
-### 3.2 Write permissions — disabled by default
+### 3.2 Personal PR Write Permissions
 
-| Permission | Level | Enable only when | What it permits |
+To power personal PR management actions (direct PR merge, in-place title/description editing, and conversation messaging), configure the following write permissions:
+
+| Permission | Level | Used for | What it permits |
 |---|---|---|---|
-| Pull requests | Read & write | A later release allows a user to publish selected PRAXD findings as a GitHub review/comment | Create a PR review and its comments. Keep the action user-selected and explicitly confirmed. |
+| Pull requests | Read & write | PR Merge & In-place title/body edits | Allows merging open PRs (`PUT /repos/{owner}/{repo}/pulls/{number}/merge`) with user-selected merge strategy (`merge`, `squash`, `rebase`), and editing PR title/description (`PATCH /repos/{owner}/{repo}/pulls/{number}`). |
+| Issues | Read & write | PR Conversation Messaging | Allows posting discussion comments (`POST /repos/{owner}/{repo}/issues/{number}/comments`) directly to the PR timeline. |
 
-Do **not** enable Contents: Write, Checks: Write, Actions: Write, Administration: Write, Issues: Write, or repository administration/merge permissions for the described MVP. PRAXD does not need to push a branch, change repository settings, rerun CI, approve, merge or close a PR.
-
-If publishing comments is enabled later, request the changed permission through the GitHub App permission update flow and require affected installations to approve the new permission. Do not quietly enable write access because the backend has a code path for it.
+All write actions require explicit human interaction and confirmation in the UI. No automated or background unattended merging or commenting is performed.
 
 ## 4. Webhook event subscriptions
 

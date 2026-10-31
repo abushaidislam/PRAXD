@@ -1,14 +1,19 @@
 # PRAXD Build Status — Personal PR Management Edition
 
 **Last updated:** 2026-10-31  
-**Current version:** v1.0.0-personal (Pure Git & PR Focus — Option B)  
-**Status:** Core Personal PR Workspace Verified & Ready
+**Current version:** v1.1.0-personal (Pure Git & PR Focus with Full Write Actions — Option B)  
+**Status:** In Progress — Implementing Functional Personal PR Write Actions (Merge, Title/Body Edit, Conversation Comments)
 
 ---
 
-## Architecture Overview (Option B: Pure Git & PR Focus)
+## Architecture Overview (Option B: Pure Git & PR Focus with Full Write Actions)
 
 PRAXD has been streamlined into a **Personal GitHub Pull Request Workspace** for individual developers and open-source maintainers. All enterprise bloat (multiplayer presence, team invitation tokens, 5-role RBAC, DORA analytics modals, data retention purges, and external AI chat drawers) has been removed to deliver a fast, quiet, and distraction-free code review environment.
+
+In addition to core triage and diff inspection, PRAXD includes **direct personal PR write actions**:
+1. **Interactive PR Merging:** `Merge v` action with method selection (Create merge commit, Squash and merge, Rebase and merge) and confirmation modal.
+2. **In-Place PR Title & Description Editing:** Edit PR title and description directly within the workspace and sync immediately to GitHub.
+3. **Live Conversation Messaging:** Reply and post discussion comments directly to the PR timeline without leaving the app.
 
 ---
 
@@ -25,7 +30,6 @@ PRAXD has been streamlined into a **Personal GitHub Pull Request Workspace** for
   - PR title and branch flow comparison.
   - Strictly centered `Summary | Code` segmented view toggle (`1` for Summary, `2` for Code).
   - Direct external link to GitHub PR (`ExternalLink`).
-  - Safe Merge button guardrail with read-only explanatory tooltip.
   - *Clean layout: Zero enterprise icons, no presence indicators, no chat drawer button.*
 - [x] **Comprehensive Summary View:**
   - Author details, branch flow (`head > base`), requested reviewers, and status.
@@ -56,6 +60,11 @@ PRAXD has been streamlined into a **Personal GitHub Pull Request Workspace** for
 - [x] Payload size cap (24 MB) and required header enforcement.
 - [x] Durable delivery deduplication preventing duplicate event execution.
 - [x] Event handlers for `pull_request`, `pull_request_review`, `pull_request_review_comment`, `issue_comment`, and `check_run`.
+
+### 4. Functional Personal PR Actions (Phase 4 — Active)
+- [ ] Interactive PR Merge Action with merge method selection (`merge`, `squash`, `rebase`) and confirmation modal.
+- [ ] In-Place PR Title & Description editing with instant GitHub synchronization.
+- [ ] Live conversation comment box in Activity Timeline posting directly to GitHub PR.
 
 ---
 

@@ -2,16 +2,16 @@
 
 **Product:** PRAXD  
 **Edition:** Personal PR Management Workspace  
-**Document status:** Core Personal Architecture (Option B — 100% Pure Git & PR Focus)  
-**Version:** 1.0.0-personal
+**Document status:** Core Personal Architecture (Option B — Pure Git & PR Focus with Full Write Actions)  
+**Version:** 1.1.0-personal
 
 ---
 
 ## 1. Product Summary
 
-PRAXD is a fast, focused, and distraction-free personal GitHub pull request workspace designed for individual developers and open-source maintainers. It brings repository discovery, pull-request triage, rich PR summaries, side-by-side code diffs, commit timelines, review comments, and CI/CD checks into one cohesive, high-information-density interface.
+PRAXD is a fast, focused, and distraction-free personal GitHub pull request workspace designed for individual developers and open-source maintainers. It brings repository discovery, pull-request triage, rich PR summaries, side-by-side code diffs, commit timelines, review comments, CI/CD checks, and **full personal PR write actions (merging, title/description editing, and conversation messaging)** into one cohesive, high-information-density interface.
 
-Inspired directly by the approved reference screenshots (`reference/`), PRAXD eliminates unnecessary enterprise bloat (such as team management matrices, complex subscription billing, and external AI chat sidebars) to deliver a lightning-fast, pure Git PR triage and diff inspection experience.
+Inspired directly by the approved reference screenshots (`reference/`), PRAXD eliminates unnecessary enterprise bloat (such as team management matrices, complex subscription billing, and external AI chat sidebars) to deliver a lightning-fast, pure Git PR triage, inspection, and execution experience.
 
 ---
 
@@ -21,9 +21,9 @@ Developers who maintain multiple personal or open-source repositories often stru
 - Context is scattered across multiple tabs (Conversation, Commits, Checks, Files Changed).
 - Diff viewers often suffer from desynchronized scrolling, slow file switching, and excessive whitespace.
 - Switching between multiple incoming and authored PRs requires frequent back-and-forth navigation.
-- Modern enterprise review tools are overburdened with multi-user team billing, complex RBAC roles, and invasive AI chat drawers that distract from pure code review.
+- Simple daily operations—like merging an approved PR, fixing a PR title typo, or responding to a reviewer comment—often force the developer to jump back into GitHub's slower web interface.
 
-PRAXD solves this by providing a unified, dual-pane personal PR workstation: a persistent left inbox for instant triage and a synchronized Summary/Code workspace on the right.
+PRAXD solves this by providing a unified, dual-pane personal PR workstation: a persistent left inbox for instant triage, a synchronized Summary/Code workspace, and **direct execution actions to merge PRs, edit titles/descriptions, and post comments without leaving the app**.
 
 ---
 
@@ -41,17 +41,19 @@ PRAXD solves this by providing a unified, dual-pane personal PR workstation: a p
    - Tabbed filtering: `All`, `Reviewing`, and `Authored` pull requests.
    - Instant search across PR title, number, branch, and author.
 
-3. **Ultra-Clean Minimal Workspace Header:**
-   - Clear PR title, branch flow indicator (`head > base`), and status badge.
+3. **Minimal Workspace Header & Functional Merge Action:**
+   - Clear PR title with inline editing affordance.
+   - Branch flow indicator (`head > base`) and state badge.
    - Centered `Summary | Code` segmented view switcher.
    - Direct external link to GitHub PR.
-   - Safe merge button guardrail (read-only protection directing user to GitHub).
+   - **Interactive Merge Engine:** Functional `Merge v` action with method selection (Create merge commit, Squash and merge, Rebase and merge), commit message customization, and confirmation modal.
 
-4. **Comprehensive Summary View:**
+4. **Comprehensive Summary View & Interactive Conversation:**
    - Author details, branch comparison, requested reviewers, and status.
-   - Collapsible PR description with styled markdown formatting.
-   - Real-time CI/CD check run list with status badges and duration.
+   - **In-Place PR Title & Description Editing:** Edit PR title and description directly within the workspace, immediately saved to GitHub.
+   - Real-time CI/CD check run list with status badges, duration, and logs.
    - Activity timeline tracking commits, reviews, and conversation comments.
+   - **Live Conversation Messaging:** Interactive comment box at the bottom of the discussion timeline to reply or leave review notes directly on GitHub.
 
 5. **High-Performance Code Diff Viewer:**
    - Split (side-by-side) and Unified diff switcher.
@@ -67,7 +69,7 @@ PRAXD solves this by providing a unified, dual-pane personal PR workstation: a p
 - **No External AI Chat or Review Overhead (Option B):** No LLM API calls, token metering, prompt injections, or AI chat drawers. The application is a pure, ultra-fast Git PR workspace.
 - **No Multi-User Team Administration:** No team member invitation tokens, seat licensing, or 5-role RBAC hierarchies. The workspace belongs directly to the authenticated developer.
 - **No Third-Party Notification Bots:** No Slack/Discord webhook alert dispatchers.
-- **No Git Hosting Replacement:** Source code hosting, branch creation, and merge execution remain authoritative on GitHub.
+- **No Unconfirmed Actions:** All write actions (merging, title editing, posting comments) require explicit human interaction and confirmation.
 
 ---
 
@@ -75,21 +77,25 @@ PRAXD solves this by providing a unified, dual-pane personal PR workstation: a p
 
 - **Persona:** Individual software engineer, consultant, or open-source repository maintainer.
 - **Authentication:** Personal GitHub OAuth / GitHub App session.
+- **Permissions Required:** GitHub App with `Pull requests: write` (for merge, title edits) and `Issues: write` (for PR conversation comments).
 - **Workspace:** Single personal workspace scoped directly to the authenticated developer's GitHub installations.
-- **Security:** Server-side GitHub App private keys, zero credentials in client bundles, and Row Level Security on local cache tables.
 
 ---
 
 ## 6. Primary User Journeys
 
-### Journey 1 — Triage & Review
-1. Developer opens PRAXD and instantly sees their active pull requests grouped in the left inbox.
-2. Filters by `Reviewing` to see PRs requesting their review, or uses search to find a specific feature branch.
-3. Clicks a PR to inspect its summary, checks status, and conversation history.
+### Journey 1 — Triage, Inspect & Edit PR
+1. Developer opens PRAXD and views active pull requests in the left inbox.
+2. Selects a PR to inspect summary, checks status, and conversation history.
+3. Notices a typo in the PR title or description; clicks the edit pencil icon, updates the text, and saves it directly to GitHub.
 
-### Journey 2 — In-Depth Code Diff Inspection
-1. Developer switches to the **Code** view (or presses keyboard shortcut).
-2. Uses the sticky multi-file picker to jump between touched files.
-3. Reads the side-by-side split diff with synchronized horizontal scroll across long lines without viewport misalignment.
-4. Collapses the left sidebar (`Ctrl+B`) for full-screen code focus.
-5. Clicks "Open on GitHub" to submit official review or merge.
+### Journey 2 — Conversation & Commenting
+1. Developer reads the discussion timeline in the Summary view.
+2. Types a message into the "Leave a comment" input box and clicks "Comment".
+3. The comment is instantly dispatched to GitHub via REST API and appended to the local timeline without page reload.
+
+### Journey 3 — Code Diff Review & 1-Click Merge
+1. Developer switches to the **Code** view to inspect split diffs with synchronized horizontal scroll.
+2. Verifies that all CI check runs are passing.
+3. Clicks **Merge**, selects preferred merge method (`Squash and merge` or `Create a merge commit`), enters commit title/message, and clicks **Confirm & Merge**.
+4. The PR status advances to `merged` on GitHub and in the PRAXD workspace.
