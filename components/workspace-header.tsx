@@ -70,6 +70,12 @@ export function WorkspaceHeader({
               {hasShield && <ShieldAlert className="w-4 h-4 text-praxd-blue" />}
             </div>
 
+            {pr && (
+              <span className="text-[11px] font-mono text-praxd-text-muted bg-[#1c1c1c] px-1.5 py-0.5 rounded border border-praxd-border-soft shrink-0">
+                #{pr.number}
+              </span>
+            )}
+
             <h1
               className="text-[13px] font-medium text-praxd-text truncate"
               title={pr?.title || "No PR Selected"}
@@ -88,29 +94,39 @@ export function WorkspaceHeader({
           >
             <button
               role="tab"
+              aria-label="Summary"
               aria-selected={activeView === "summary"}
               onClick={() => onViewChange("summary")}
               className={cn(
-                "px-3.5 py-1 text-[12px] font-medium rounded-md transition-all duration-150",
+                "flex items-center gap-1.5 px-3 py-1 text-[12px] font-medium rounded-md transition-all duration-150 focus:outline-none focus-visible:ring-1 focus-visible:ring-praxd-blue",
                 activeView === "summary"
                   ? "bg-[#2e2e2e] text-praxd-text shadow-sm"
                   : "text-praxd-text-muted hover:text-praxd-text-secondary hover:bg-[#252525]"
               )}
+              title="Summary View (Shortcut: 1)"
             >
-              Summary
+              <span>Summary</span>
+              <kbd className="hidden sm:inline-block text-[10px] font-mono px-1 py-0.2 rounded bg-black/40 border border-white/10 text-praxd-text-muted">
+                1
+              </kbd>
             </button>
             <button
               role="tab"
+              aria-label="Code"
               aria-selected={activeView === "code"}
               onClick={() => onViewChange("code")}
               className={cn(
-                "px-3.5 py-1 text-[12px] font-medium rounded-md transition-all duration-150",
+                "flex items-center gap-1.5 px-3 py-1 text-[12px] font-medium rounded-md transition-all duration-150 focus:outline-none focus-visible:ring-1 focus-visible:ring-praxd-blue",
                 activeView === "code"
                   ? "bg-[#2e2e2e] text-praxd-text shadow-sm"
                   : "text-praxd-text-muted hover:text-praxd-text-secondary hover:bg-[#252525]"
               )}
+              title="Code View (Shortcut: 2)"
             >
-              Code
+              <span>Code</span>
+              <kbd className="hidden sm:inline-block text-[10px] font-mono px-1 py-0.2 rounded bg-black/40 border border-white/10 text-praxd-text-muted">
+                2
+              </kbd>
             </button>
           </div>
         </div>

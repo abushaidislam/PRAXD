@@ -43,9 +43,18 @@ export function ActivityTimeline({ pr, onCommentAdded }: ActivityTimelineProps) 
   const [commentText, setCommentText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiedCommentId, setCopiedCommentId] = useState<string | null>(null);
+  const [copiedSha, setCopiedSha] = useState<string | null>(null);
   const [localComments, setLocalComments] = useState<PRComment[]>(() =>
     pr.comments.filter((c) => c.commentType === "issue")
   );
+
+  const handleCopySha = (sha: string) => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(sha);
+      setCopiedSha(sha);
+      setTimeout(() => setCopiedSha(null), 1500);
+    }
+  };
 
   // Sync comments on PR change and load fresh comments from API
   useEffect(() => {
@@ -176,15 +185,30 @@ export function ActivityTimeline({ pr, onCommentAdded }: ActivityTimelineProps) 
           {pr.commits.map((commit) => (
             <div
               key={commit.sha}
-              className="flex items-center justify-between p-2.5 rounded-lg bg-[#181818] border border-praxd-border-soft text-[12px]"
+              className="flex items-center justify-between p-2.5 rounded-lg bg-[#181818] border border-praxd-border-soft text-[12px] hover:border-praxd-border transition-colors"
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <GitCommit className="w-4 h-4 text-praxd-text-muted shrink-0" />
                 <ShieldAlert className="w-3.5 h-3.5 text-praxd-blue shrink-0" />
-                <span className="font-medium text-praxd-text truncate max-w-[420px]">{commit.message}</span>
+                <span className="font-medium text-praxd-text truncate max-w-[420px]" title={commit.message}>
+                  {commit.message}
+                </span>
               </div>
               <div className="flex items-center gap-2.5 shrink-0 text-praxd-text-muted text-[11px]">
-                <code className="font-mono text-praxd-text-secondary">{commit.shortSha}</code>
+                <button
+                  type="button"
+                  onClick={() => handleCopySha(commit.sha)}
+                  className="font-mono text-praxd-text-secondary hover:text-white px-1.5 py-0.5 rounded bg-[#1f1f1f] border border-praxd-border-soft flex items-center gap-1 transition-colors"
+                  title={copiedSha === commit.sha ? "Copied SHA!" : `Copy full SHA: ${commit.sha}`}
+                  aria-label={`Copy commit ${commit.shortSha}`}
+                >
+                  <span>{commit.shortSha}</span>
+                  {copiedSha === commit.sha ? (
+                    <Check className="w-2.5 h-2.5 text-praxd-green" />
+                  ) : (
+                    <Copy className="w-2.5 h-2.5 text-neutral-500" />
+                  )}
+                </button>
                 <img
                   src={commit.author.avatarUrl || "https://github.com/ghost.png"}
                   alt={commit.author.login}
@@ -193,7 +217,7 @@ export function ActivityTimeline({ pr, onCommentAdded }: ActivityTimelineProps) 
                   }}
                   className="w-4 h-4 rounded-full bg-[#2a2a2a]"
                 />
-                <span>{formatRelativeTime(commit.committedDate)}</span>
+                <span className="tabular-nums">{formatRelativeTime(commit.committedDate)}</span>
               </div>
             </div>
           ))}

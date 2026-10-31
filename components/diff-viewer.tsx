@@ -9,6 +9,7 @@ import {
   MessageSquare,
   Check,
   ArrowLeftRight,
+  Copy,
 } from "lucide-react";
 import { ChangedFile, PRComment, AIFinding, DiffLine } from "@/types/pr";
 import { AIReviewCard } from "./ai-review-card";
@@ -36,6 +37,43 @@ export function DiffViewer({
   const [localInlineComments, setLocalInlineComments] = useState<PRComment[]>(
     comments.filter((c) => c.commentType === "review" && c.path === file.filename)
   );
+
+  // File path copy feedback state
+  const [copiedPath, setCopiedPath] = useState(false);
+  const handleCopyPath = () => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(file.filename);
+      setCopiedPath(true);
+      setTimeout(() => setCopiedPath(false), 1500);
+    }
+  };
+
+  // Dynamic file extension badge
+  const fileExt = useMemo(() => {
+    const parts = file.filename.split(".");
+    if (parts.length > 1) {
+      return parts[parts.length - 1].toUpperCase();
+    }
+    return "FILE";
+  }, [file.filename]);
+
+  const fileExtColor = useMemo(() => {
+    switch (fileExt) {
+      case "TS":
+      case "TSX":
+        return "bg-blue-950/50 text-blue-300 border-blue-700/40";
+      case "JS":
+      case "JSX":
+        return "bg-yellow-950/50 text-amber-300 border-yellow-700/40";
+      case "JSON":
+        return "bg-emerald-950/50 text-emerald-300 border-emerald-700/40";
+      case "CSS":
+      case "SCSS":
+        return "bg-purple-950/50 text-purple-300 border-purple-700/40";
+      default:
+        return "bg-neutral-800 text-neutral-300 border-neutral-700/40";
+    }
+  }, [fileExt]);
 
   // Synchronized Dual-Pane Horizontal Scroll State
   const [scrollX, setScrollX] = useState(0);
@@ -360,18 +398,31 @@ export function DiffViewer({
     <div className="flex-1 flex flex-col min-w-0 bg-[#0e0e0e] select-text">
       {/* File Header Bar */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-praxd-border-soft bg-[#151515] text-[12px] shrink-0">
-        <div className="flex items-center gap-2">
-          <span className="px-1.5 py-0.5 rounded text-[10px] bg-yellow-950/50 text-amber-300 font-mono font-bold border border-yellow-700/40">
-            JS
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border", fileExtColor)}>
+            {fileExt}
           </span>
-          <span className="font-mono text-praxd-text font-medium">{file.filename}</span>
-          <div className="flex items-center gap-1 font-mono text-[11px] ml-1">
+          <span className="font-mono text-praxd-text font-medium truncate">{file.filename}</span>
+          <button
+            type="button"
+            onClick={handleCopyPath}
+            className="p-1 rounded hover:bg-[#252525] text-praxd-text-muted hover:text-praxd-text transition-colors shrink-0"
+            title={copiedPath ? "Copied path!" : "Copy file path"}
+            aria-label="Copy file path"
+          >
+            {copiedPath ? (
+              <Check className="w-3.5 h-3.5 text-praxd-green" />
+            ) : (
+              <Copy className="w-3.5 h-3.5" />
+            )}
+          </button>
+          <div className="flex items-center gap-1 font-mono text-[11px] tabular-nums ml-1 shrink-0">
             <span className="text-praxd-green font-medium">+{file.additions}</span>
             <span className="text-praxd-red font-medium">-{file.deletions}</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-[11px] text-praxd-text-muted font-mono">
+        <div className="flex items-center gap-2 text-[11px] text-praxd-text-muted font-mono shrink-0">
           <span>{effectiveLines.length} diff lines</span>
         </div>
       </div>
@@ -495,10 +546,10 @@ export function DiffViewer({
                     {/* LEFT COLUMN: Old Revision */}
                     <div
                       className={cn(
-                        "w-1/2 flex border-r border-praxd-border-soft/60 border-l-2 relative overflow-hidden",
+                        "w-1/2 flex border-r border-praxd-border-soft/60 border-l relative overflow-hidden",
                         row.left?.type === "deletion"
-                          ? "bg-[#281416]/50 border-praxd-red"
-                          : "border-transparent bg-transparent"
+                          ? "bg-[#281416]/50 border-l-praxd-red"
+                          : "border-l-transparent bg-transparent"
                       )}
                     >
                       {/* Pinned Gutter (Line Number + Comment Button) */}
@@ -544,10 +595,10 @@ export function DiffViewer({
                     {/* RIGHT COLUMN: New Revision */}
                     <div
                       className={cn(
-                        "w-1/2 flex border-l-2 relative overflow-hidden",
+                        "w-1/2 flex border-l relative overflow-hidden",
                         row.right?.type === "addition"
-                          ? "bg-[#122619]/50 border-praxd-green"
-                          : "border-transparent bg-transparent"
+                          ? "bg-[#122619]/50 border-l-praxd-green"
+                          : "border-l-transparent bg-transparent"
                       )}
                     >
                       {/* Pinned Gutter (Line Number + Comment Button) */}
@@ -714,12 +765,12 @@ export function DiffViewer({
                 <div key={`uni-${idx}`} className="flex flex-col">
                   <div
                     className={cn(
-                      "flex items-stretch group hover:bg-[#161616] transition-colors border-l-2 relative overflow-hidden",
+                      "flex items-stretch group hover:bg-[#161616] transition-colors border-l relative overflow-hidden",
                       isAddition
-                        ? "bg-[#122619]/50 border-praxd-green"
+                        ? "bg-[#122619]/50 border-l-praxd-green"
                         : isDeletion
-                        ? "bg-[#281416]/50 border-praxd-red"
-                        : "border-transparent"
+                        ? "bg-[#281416]/50 border-l-praxd-red"
+                        : "border-l-transparent"
                     )}
                   >
                     {/* Old line number */}

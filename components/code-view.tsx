@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   MoreHorizontal,
   Columns,
@@ -50,17 +50,41 @@ export function CodeView({ pr }: CodeViewProps) {
   const hasPrevFile = currentFileIndex > 0;
   const hasNextFile = currentFileIndex >= 0 && currentFileIndex < pr.files.length - 1;
 
-  const handlePrevFile = () => {
+  const handlePrevFile = useCallback(() => {
     if (hasPrevFile) {
       setSelectedFile(pr.files[currentFileIndex - 1]);
     }
-  };
+  }, [hasPrevFile, currentFileIndex, pr.files]);
 
-  const handleNextFile = () => {
+  const handleNextFile = useCallback(() => {
     if (hasNextFile) {
       setSelectedFile(pr.files[currentFileIndex + 1]);
     }
-  };
+  }, [hasNextFile, currentFileIndex, pr.files]);
+
+  // Keyboard navigation for changed files: [ for previous, ] for next
+  useEffect(() => {
+    const handleFileKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isEditing =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable);
+      if (isEditing) return;
+
+      if (e.key === "[" && hasPrevFile) {
+        e.preventDefault();
+        handlePrevFile();
+      } else if (e.key === "]" && hasNextFile) {
+        e.preventDefault();
+        handleNextFile();
+      }
+    };
+
+    window.addEventListener("keydown", handleFileKey);
+    return () => window.removeEventListener("keydown", handleFileKey);
+  }, [hasPrevFile, hasNextFile, handlePrevFile, handleNextFile]);
 
   return (
     <div className="h-full flex flex-col min-w-0 bg-[#0e0e0e]">
@@ -72,7 +96,7 @@ export function CodeView({ pr }: CodeViewProps) {
             <span className="text-praxd-text-secondary truncate max-w-[240px]">
               {pr.headRef}
             </span>
-            <span>&gt;</span>
+            <span className="text-neutral-500 font-mono select-none">→</span>
             <span className="text-praxd-text-muted">{pr.baseRef}</span>
           </div>
 

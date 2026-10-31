@@ -23,6 +23,17 @@ export function MergeModal({ pr, isOpen, onClose, onMergeSuccess }: MergeModalPr
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !isMerging) {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [isOpen, isMerging, onClose]);
+
   if (!isOpen) return null;
 
   const handleMethodChange = (method: MergeMethod) => {
@@ -77,12 +88,12 @@ export function MergeModal({ pr, isOpen, onClose, onMergeSuccess }: MergeModalPr
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm select-none"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm select-none animate-in fade-in duration-150"
       role="dialog"
       aria-modal="true"
       aria-labelledby="merge-modal-title"
     >
-      <div className="relative w-full max-w-[520px] rounded-xl bg-[#181818] border border-praxd-border-soft p-5 shadow-2xl text-praxd-text space-y-4">
+      <div className="relative w-full max-w-[520px] rounded-xl bg-[#181818] border border-praxd-border-soft p-5 shadow-2xl text-praxd-text space-y-4 animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-praxd-border-soft">
           <div className="flex items-center gap-2">

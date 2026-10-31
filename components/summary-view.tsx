@@ -15,6 +15,10 @@ import {
   X,
   Loader2,
   FileText,
+  Copy,
+  ArrowRight,
+  Clock,
+  AlertCircle,
 } from "lucide-react";
 import { PullRequest } from "@/types/pr";
 import { CheckRunList } from "./check-run-list";
@@ -39,6 +43,10 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
   const [bodyInput, setBodyInput] = useState(pr.body || "");
   const [isSavingBody, setIsSavingBody] = useState(false);
 
+  // Copy feedback state
+  const [copiedBranch, setCopiedBranch] = useState(false);
+  const [copiedDesc, setCopiedDesc] = useState(false);
+
   // Sync inputs when selected PR changes
   useEffect(() => {
     setTitleInput(pr.title);
@@ -48,6 +56,22 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
   }, [pr.id, pr.title, pr.body]);
 
   const hasShield = pr.title.toLowerCase().includes("sentinel");
+
+  const handleCopyBranch = () => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(pr.headRef);
+      setCopiedBranch(true);
+      setTimeout(() => setCopiedBranch(false), 1500);
+    }
+  };
+
+  const handleCopyDesc = () => {
+    if (typeof navigator !== "undefined" && navigator.clipboard && pr.body) {
+      navigator.clipboard.writeText(pr.body);
+      setCopiedDesc(true);
+      setTimeout(() => setCopiedDesc(false), 1500);
+    }
+  };
 
   // Save Title
   const handleSaveTitle = async () => {
@@ -196,16 +220,29 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
               <span>Branch</span>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-mono text-praxd-text-secondary text-[11px] bg-[#1a1a1a] px-2 py-0.5 rounded border border-praxd-border-soft">
-                {pr.headRef}
+              <span className="font-mono text-praxd-text-secondary text-[11px] bg-[#1a1a1a] px-2 py-0.5 rounded border border-praxd-border-soft flex items-center gap-1.5">
+                <span>{pr.headRef}</span>
+                <button
+                  type="button"
+                  onClick={handleCopyBranch}
+                  className="p-0.5 hover:bg-[#252525] rounded text-praxd-text-muted hover:text-praxd-text transition-colors"
+                  title={copiedBranch ? "Copied branch!" : "Copy branch name"}
+                  aria-label="Copy branch name"
+                >
+                  {copiedBranch ? (
+                    <Check className="w-3 h-3 text-praxd-green" />
+                  ) : (
+                    <Copy className="w-3 h-3" />
+                  )}
+                </button>
               </span>
-              <span className="text-praxd-text-muted">&gt;</span>
+              <span className="text-praxd-text-muted font-mono select-none">→</span>
               <span className="font-mono text-praxd-text-secondary text-[11px] bg-[#1a1a1a] px-2 py-0.5 rounded border border-praxd-border-soft">
                 {pr.baseRef}
               </span>
-              <div className="flex items-center gap-1 font-mono text-[11px] ml-1">
-                <span className="text-praxd-green">+{pr.additions}</span>
-                <span className="text-praxd-red">-{pr.deletions}</span>
+              <div className="flex items-center gap-1 font-mono text-[11px] tabular-nums ml-1">
+                <span className="text-praxd-green font-medium">+{pr.additions}</span>
+                <span className="text-praxd-red font-medium">-{pr.deletions}</span>
               </div>
             </div>
           </div>
@@ -216,12 +253,44 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
               <Users className="w-3.5 h-3.5" />
               <span>Reviewers</span>
             </div>
-            <button
-              type="button"
-              className="text-praxd-text-secondary hover:text-praxd-text hover:underline text-[12px] flex items-center gap-1"
-            >
-              <span>+ Request</span>
-            </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              {pr.reviewers && pr.reviewers.length > 0 ? (
+                pr.reviewers.map((rev) => (
+                  <div
+                    key={rev.login}
+                    className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#181818] border border-praxd-border-soft text-[11.5px]"
+                  >
+                    {rev.avatarUrl ? (
+                      <img
+                        src={rev.avatarUrl}
+                        alt={rev.login}
+                        className="w-3.5 h-3.5 rounded-full object-cover bg-[#252525]"
+                      />
+                    ) : (
+                      <div className="w-3.5 h-3.5 rounded-full bg-[#282828] text-[8px] flex items-center justify-center font-bold text-neutral-300">
+                        {rev.login.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className="text-praxd-text-secondary">{rev.login}</span>
+                    {rev.state === "approved" && (
+                      <span title="Approved"><CheckCircle2 className="w-3 h-3 text-praxd-green" /></span>
+                    )}
+                    {rev.state === "changes_requested" && (
+                      <span title="Changes requested"><AlertCircle className="w-3 h-3 text-praxd-amber" /></span>
+                    )}
+                    {rev.state === "pending" && (
+                      <span title="Review pending"><Clock className="w-3 h-3 text-praxd-text-muted" /></span>
+                    )}
+                  </div>
+                ))
+              ) : null}
+              <button
+                type="button"
+                className="text-praxd-text-secondary hover:text-praxd-text hover:underline text-[12px] flex items-center gap-1"
+              >
+                <span>+ Request</span>
+              </button>
+            </div>
           </div>
 
           {/* Comments Row */}
@@ -230,7 +299,7 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
               <MessageSquare className="w-3.5 h-3.5" />
               <span>Comments</span>
             </div>
-            <span className="text-praxd-text-secondary">
+            <span className="text-praxd-text-secondary tabular-nums">
               {pr.comments.length} comments
             </span>
           </div>
@@ -241,7 +310,14 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
               <CheckCircle2 className="w-3.5 h-3.5 text-praxd-green" />
               <span>Checks</span>
             </div>
-            <span className="text-praxd-green font-medium">Successful</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-praxd-green font-medium">Successful</span>
+              {pr.checks && pr.checks.length > 0 && (
+                <span className="text-praxd-text-muted text-[11px] tabular-nums font-mono">
+                  ({pr.checks.filter((c) => c.conclusion === "success").length}/{pr.checks.length} passed)
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Status Row */}
@@ -272,20 +348,37 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
                 <ChevronRight className="w-4 h-4 text-praxd-text-muted" />
               )}
             </button>
-            {!isEditingBody && (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsEditingBody(true);
-                  setIsDescriptionExpanded(true);
-                }}
-                className="p-1 rounded hover:bg-[#202020] text-praxd-text-muted hover:text-praxd-text transition-colors"
-                aria-label="Edit description"
-                title="Edit description"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-              </button>
-            )}
+            <div className="flex items-center gap-1.5">
+              {pr.body && !isEditingBody && (
+                <button
+                  type="button"
+                  onClick={handleCopyDesc}
+                  className="p-1 rounded hover:bg-[#202020] text-praxd-text-muted hover:text-praxd-text transition-colors"
+                  aria-label="Copy description"
+                  title={copiedDesc ? "Copied description!" : "Copy description markdown"}
+                >
+                  {copiedDesc ? (
+                    <Check className="w-3.5 h-3.5 text-praxd-green" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              )}
+              {!isEditingBody && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditingBody(true);
+                    setIsDescriptionExpanded(true);
+                  }}
+                  className="p-1 rounded hover:bg-[#202020] text-praxd-text-muted hover:text-praxd-text transition-colors"
+                  aria-label="Edit description"
+                  title="Edit description"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
 
           {isDescriptionExpanded && (

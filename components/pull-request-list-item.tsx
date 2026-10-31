@@ -15,18 +15,19 @@ export function PullRequestListItem({
   onSelect,
 }: PullRequestListItemProps) {
   const isSelectedStyle = isSelected
-    ? "bg-[#212121] border-praxd-border shadow-sm"
+    ? "bg-[#212121] border-praxd-border shadow-sm relative before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[2px] before:rounded-r before:bg-praxd-blue"
     : "hover:bg-[#1a1a1a] border-transparent";
 
   // Check if title mentions Sentinel or Shield
   const hasShield = pr.title.toLowerCase().includes("sentinel");
+  const isMerged = pr.state === "merged";
 
   return (
     <button
       type="button"
       onClick={() => onSelect(pr)}
       className={cn(
-        "w-full text-left p-2.5 rounded-lg border transition-colors flex items-start gap-2.5 group focus:outline-none focus-visible:ring-1 focus-visible:ring-praxd-blue",
+        "w-full text-left p-2.5 rounded-lg border transition-all flex items-start gap-2.5 group focus:outline-none focus-visible:ring-1 focus-visible:ring-praxd-blue",
         isSelectedStyle
       )}
       aria-selected={isSelected}
@@ -34,8 +35,8 @@ export function PullRequestListItem({
     >
       {/* PR Icon with state indicator */}
       <div className="relative mt-0.5 shrink-0 text-praxd-text-secondary group-hover:text-praxd-text">
-        <GitPullRequest className="w-4 h-4 text-[#8a8a8a]" />
-        {pr.checksStatus === "success" && (
+        <GitPullRequest className={cn("w-4 h-4", isMerged ? "text-praxd-purple" : "text-[#8a8a8a]")} />
+        {pr.checksStatus === "success" && !isMerged && (
           <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-praxd-green ring-2 ring-[#171717]" />
         )}
       </div>
@@ -50,14 +51,14 @@ export function PullRequestListItem({
             <span
               className={cn(
                 "text-[13px] font-medium truncate",
-                isSelected ? "text-praxd-text" : "text-[#d1d1d1] group-hover:text-praxd-text"
+                isSelected ? "text-praxd-text font-semibold" : "text-[#d1d1d1] group-hover:text-praxd-text"
               )}
               title={pr.title}
             >
               {pr.title}
             </span>
           </div>
-          <span className="text-[11px] text-praxd-text-muted shrink-0">
+          <span className="text-[11px] text-praxd-text-muted shrink-0 tabular-nums">
             {pr.relativeTime}
           </span>
         </div>
@@ -87,9 +88,9 @@ export function PullRequestListItem({
             </span>
           </div>
 
-          <div className="flex items-center gap-1 shrink-0 font-mono text-[10px]">
-            <span className="text-praxd-green">+{pr.additions}</span>
-            <span className="text-praxd-red">-{pr.deletions}</span>
+          <div className="flex items-center gap-1 shrink-0 font-mono text-[10px] tabular-nums">
+            <span className="text-praxd-green font-medium">+{pr.additions}</span>
+            <span className="text-praxd-red font-medium">-{pr.deletions}</span>
           </div>
         </div>
       </div>

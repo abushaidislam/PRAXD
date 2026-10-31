@@ -17,22 +17,48 @@
   --praxd-red: #f05252;
   --praxd-amber: #d6a344;
   --praxd-blue: #5a9cff;
+  --praxd-purple: #c084fc;
   --praxd-radius-sm: 6px;
   --praxd-radius-md: 9px;
   --praxd-radius-lg: 12px;
 }
 
+/* Base surface styling */
+html {
+  color-scheme: dark;
+  background-color: var(--praxd-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  text-underline-offset: 2px;
+}
+
 body {
   background-color: var(--praxd-bg);
   color: var(--praxd-text);
-  font-family: Inter, Geist, ui-sans-serif, system-ui, sans-serif;
+  font-family: Inter, Geist, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   overflow: hidden;
   height: 100vh;
   width: 100vw;
-  user-select: none;
 }
 
-/* Custom subtle scrollbars matching the screenshots */
+/* Browser surface polish: themed selection */
+::selection {
+  background-color: rgba(90, 156, 255, 0.28);
+  color: #ffffff;
+}
+
+::-moz-selection {
+  background-color: rgba(90, 156, 255, 0.28);
+  color: #ffffff;
+}
+
+/* Themed caret for text inputs and textareas */
+input, textarea {
+  caret-color: var(--praxd-blue);
+}
+
+/* Custom subtle scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -51,10 +77,21 @@ body {
   background: #4a4a4a;
 }
 
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #333333 transparent;
+}
+
 /* Code font styling */
 .font-code {
   font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-variant-ligatures: none;
+}
+
+/* Tabular figures for numbers, diff stats, counters */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Accessible focus ring */

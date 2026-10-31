@@ -23,8 +23,17 @@ export function FileTreeDropdown({
         setIsOpen(false);
       }
     }
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("keydown", handleEscape);
+    };
   }, []);
 
   return (
@@ -49,7 +58,7 @@ export function FileTreeDropdown({
         <div
           role="listbox"
           aria-label="Files changed in this pull request"
-          className="absolute left-0 top-full mt-1.5 w-80 max-h-72 overflow-y-auto rounded-lg bg-[#181818] border border-praxd-border shadow-xl z-50 p-1 space-y-0.5"
+          className="absolute left-0 top-full mt-1.5 w-80 max-h-72 overflow-y-auto rounded-lg bg-[#181818] border border-praxd-border shadow-xl z-50 p-1 space-y-0.5 animate-in fade-in zoom-in-95 duration-100 select-none"
         >
           <div className="px-2.5 py-1.5 text-[11px] font-semibold text-praxd-text-muted border-b border-praxd-border-soft flex items-center justify-between">
             <span>Files changed ({files.length})</span>

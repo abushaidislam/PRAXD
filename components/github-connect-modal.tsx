@@ -8,6 +8,17 @@ interface GitHubConnectModalProps {
 }
 
 export function GitHubConnectModal({ isOpen, onClose }: GitHubConnectModalProps) {
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
@@ -15,9 +26,9 @@ export function GitHubConnectModal({ isOpen, onClose }: GitHubConnectModalProps)
       role="dialog"
       aria-modal="true"
       aria-labelledby="connect-github-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150 select-none"
     >
-      <div className="w-full max-w-md bg-[#181818] border border-praxd-border rounded-xl shadow-2xl p-5 space-y-4 text-praxd-text">
+      <div className="w-full max-w-md bg-[#181818] border border-praxd-border rounded-xl shadow-2xl p-5 space-y-4 text-praxd-text animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-praxd-border-soft pb-3">
           <div className="flex items-center gap-2.5">

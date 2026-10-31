@@ -128,11 +128,29 @@ export function PRWorkspace() {
     });
   }, []);
 
-  // Keyboard shortcut listener: Cmd/Ctrl + B to toggle sidebar
+  // Keyboard shortcuts: Cmd/Ctrl + B to toggle sidebar, 1 for Summary, 2 for Code
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    const target = e.target as HTMLElement | null;
+    const isEditing =
+      target &&
+      (target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable);
+
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
       e.preventDefault();
       setIsSidebarOpen((prev) => !prev);
+      return;
+    }
+
+    if (!isEditing && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (e.key === "1") {
+        e.preventDefault();
+        setActiveView("summary");
+      } else if (e.key === "2") {
+        e.preventDefault();
+        setActiveView("code");
+      }
     }
   }, []);
 

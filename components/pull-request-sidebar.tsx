@@ -137,6 +137,32 @@ export function PullRequestSidebar({
     });
   }, [pullRequests, activeTab, searchQuery]);
 
+  // Tab counts for badge display
+  const tabCounts = useMemo(
+    () => ({
+      all: pullRequests.length,
+      reviewing: pullRequests.filter((p) => p.category === "reviewing").length,
+      authored: pullRequests.filter((p) => p.category === "authored").length,
+    }),
+    [pullRequests]
+  );
+
+  // Keyboard navigation for PR list
+  const handleListKeyDown = (e: React.KeyboardEvent) => {
+    if (filteredPrs.length === 0) return;
+    const currentIndex = filteredPrs.findIndex((p) => p.id === selectedPr?.id);
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      const nextIndex = currentIndex < filteredPrs.length - 1 ? currentIndex + 1 : 0;
+      onSelectPr(filteredPrs[nextIndex]);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      const prevIndex = currentIndex > 0 ? currentIndex - 1 : filteredPrs.length - 1;
+      onSelectPr(filteredPrs[prevIndex]);
+    }
+  };
+
   if (!isOpen) {
     return null;
   }
@@ -166,21 +192,33 @@ export function PullRequestSidebar({
           >
             {(["all", "reviewing", "authored"] as TabType[]).map((tab) => {
               const label = tab === "all" ? "All" : tab === "reviewing" ? "Reviewing" : "Authored";
+              const count = tabCounts[tab];
               const isActive = activeTab === tab;
               return (
                 <button
                   key={tab}
                   role="tab"
                   aria-selected={isActive}
+                  aria-label={label}
                   onClick={() => setActiveTab(tab)}
                   className={cn(
-                    "px-3 py-1 text-[12px] font-medium rounded-md transition-all duration-150 capitalize focus:outline-none focus-visible:ring-1 focus-visible:ring-praxd-blue",
+                    "flex items-center gap-1.5 px-2.5 py-1 text-[12px] font-medium rounded-md transition-all duration-150 capitalize focus:outline-none focus-visible:ring-1 focus-visible:ring-praxd-blue",
                     isActive
                       ? "bg-[#2e2e2e] text-praxd-text shadow-sm"
                       : "text-praxd-text-muted hover:text-praxd-text-secondary hover:bg-[#252525]"
                   )}
                 >
-                  {label}
+                  <span>{label}</span>
+                  <span
+                    className={cn(
+                      "text-[10px] px-1.5 py-0.2 rounded-full font-mono tabular-nums leading-none",
+                      isActive
+                        ? "bg-white/10 text-white"
+                        : "bg-neutral-800 text-neutral-400"
+                    )}
+                  >
+                    {count}
+                  </span>
                 </button>
               );
             })}
@@ -259,7 +297,9 @@ export function PullRequestSidebar({
       <div
         role="listbox"
         aria-label="Pull requests"
-        className="flex-1 overflow-y-auto p-2 space-y-1"
+        tabIndex={0}
+        onKeyDown={handleListKeyDown}
+        className="flex-1 overflow-y-auto p-2 space-y-1 focus:outline-none"
       >
         {filteredPrs.length === 0 ? (
           <div className="p-6 text-center text-praxd-text-muted space-y-1.5">
