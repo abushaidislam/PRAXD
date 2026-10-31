@@ -73,10 +73,13 @@ In addition to core triage and diff inspection, PRAXD includes **direct personal
   - Title input supports keyboard `Enter` to save and `Escape` to cancel.
   - Description textarea supports rich markdown text and quick save.
   - API route `PATCH /api/pull-requests/[pullRequestId]` syncing directly with GitHub REST API `PATCH /repos/{owner}/{repo}/pulls/{number}`.
-- [x] **PR Conversation Comments:**
-  - "Leave a comment" composer at the bottom of the activity timeline in `components/activity-timeline.tsx`.
-  - API route `POST /api/pull-requests/[pullRequestId]/comments` calling GitHub REST API `POST /repos/{owner}/{repo}/issues/{number}/comments`.
-  - New comments immediately rendered in timeline with user avatar and relative timestamp.
+- [x] **PR Conversation Comments & Multi-Line Markdown Composer:**
+  - Multi-line auto-expanding Markdown textarea composer replacing single-line input to preserve `\n` linebreaks, headings, bullet lists, and code blocks.
+  - Interactive segmented `Write` and `Preview` tabs with live Markdown preview before posting.
+  - Mini Profile Selector dropdown allowing toggle between Personal Profile (`abushaidislam`) and GitHub App Bot (`praxd-app[bot]`).
+  - Markdown helper toolbar buttons for quick formatting (Bold, Italic, Heading, Code, List, Quote).
+  - Keyboard shortcut `Ctrl+Enter` / `Cmd+Enter` to submit quickly without leaving the keyboard.
+  - API route `POST /api/pull-requests/[pullRequestId]/comments` accepting `profileType` and updating local timeline with proper author avatar and `BOT` / `Author` badge.
 
 ### 5. Impeccable Web UI/UX Craft Polish
 - [x] **Global Design System & Browser Surfaces:**
@@ -127,5 +130,5 @@ In addition to core triage and diff inspection, PRAXD includes **direct personal
 
 - `lint` (`npm run lint`): Passed (`✔ No ESLint warnings or errors`).
 - `typecheck` (`npm run typecheck`): Passed (`tsc --noEmit` 0 errors).
-- `test` (`npm test`): Passed (80/80 tests passing across 11 test files, including dedicated `tests/markdown-content.test.tsx` and `tests/collapsible-diff.test.tsx`).
+- `test` (`npm test`): Passed (82/82 tests passing across 11 test files, including dedicated `tests/markdown-content.test.tsx`, `tests/collapsible-diff.test.tsx`, and `tests/personal-write-actions.test.tsx`).
 - `build` (`npm run build`): Passed (16 static pages, 20 dynamic API routes compiled cleanly in Next.js production build).

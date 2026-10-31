@@ -53,7 +53,11 @@ export async function POST(
     return apiError("UNAUTHORIZED", "Authentication required.", 401);
   }
 
-  let body: { body?: string };
+  let body: {
+    body?: string;
+    profileType?: "personal" | "bot";
+    author?: { login?: string; avatarUrl?: string; name?: string };
+  };
   try {
     body = await req.json();
   } catch {
@@ -64,6 +68,19 @@ export async function POST(
   if (!commentText) {
     return apiError("BAD_REQUEST", "Comment body cannot be empty", 400);
   }
+
+  const isBotProfile = body.profileType === "bot";
+  const authorInfo = {
+    login: isBotProfile
+      ? "praxd-app[bot]"
+      : body.author?.login || auth.userId || "abushaidislam",
+    avatarUrl: isBotProfile
+      ? "/logo.png"
+      : body.author?.avatarUrl || "https://avatars.githubusercontent.com/u/104990928?v=4",
+    name: isBotProfile
+      ? "praxd-app[bot]"
+      : body.author?.name || body.author?.login || "abushaidislam",
+  };
 
   // Handle live PR comment creation directly on GitHub
   if (pullRequestId.startsWith("live__")) {
@@ -77,7 +94,12 @@ export async function POST(
         if (!result.success || !result.comment) {
           return apiError("GITHUB_ERROR", result.error || "Failed to post comment to GitHub", 502);
         }
-        return apiSuccess({ comment: result.comment });
+        return apiSuccess({
+          comment: {
+            ...result.comment,
+            author: authorInfo,
+          },
+        });
       }
     }
   }
@@ -94,8 +116,8 @@ export async function POST(
       comment_type: "issue",
       body: commentText,
       created_at_github: new Date().toISOString(),
-      author_login: auth.userId || "personal-user",
-      author_avatar_url: "https://github.com/ghost.png",
+      author_login: authorInfo.login,
+      author_avatar_url: authorInfo.avatarUrl,
     };
 
     const { data: created, error } = await (supabase.from("pull_request_comments") as any)
@@ -109,11 +131,7 @@ export async function POST(
         comment: {
           id: newCommentId,
           body: commentText,
-          author: {
-            login: "abushaidislam",
-            avatarUrl: "https://avatars.githubusercontent.com/u/104990928?v=4",
-            name: "abushaidislam",
-          },
+          author: authorInfo,
           createdAt: new Date().toISOString(),
           commentType: "issue",
         },
@@ -125,8 +143,8 @@ export async function POST(
         id: created.id,
         body: created.body,
         author: {
-          login: created.author_login || "user",
-          avatarUrl: created.author_avatar_url || "https://github.com/ghost.png",
+          login: created.author_login || authorInfo.login,
+          avatarUrl: created.author_avatar_url || authorInfo.avatarUrl,
         },
         createdAt: created.created_at_github,
         commentType: "issue",
@@ -137,11 +155,7 @@ export async function POST(
       comment: {
         id: `c-local-${Date.now()}`,
         body: commentText,
-        author: {
-          login: "abushaidislam",
-          avatarUrl: "https://avatars.githubusercontent.com/u/104990928?v=4",
-          name: "abushaidislam",
-        },
+        author: authorInfo,
         createdAt: new Date().toISOString(),
         commentType: "issue",
       },

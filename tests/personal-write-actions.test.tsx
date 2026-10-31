@@ -138,6 +138,53 @@ describe("Personal PR Write Actions Suite", () => {
         expect(screen.getByText("Looks great, ready to merge!")).toBeInTheDocument();
       });
     });
+
+    it("switches between Write and Preview tabs in the comment composer", () => {
+      render(<ActivityTimeline pr={samplePr} />);
+
+      const input = screen.getByPlaceholderText(/Leave a comment on this pull request/i);
+      fireEvent.change(input, { target: { value: "### Review Note\n\n- [x] Verified" } });
+
+      const previewTab = screen.getByRole("button", { name: /Preview/i });
+      fireEvent.click(previewTab);
+
+      // In Preview tab, markdown should be rendered via MarkdownContent
+      expect(screen.getByText("Review Note")).toBeInTheDocument();
+      expect(screen.getByText("Verified")).toBeInTheDocument();
+
+      const writeTab = screen.getByRole("button", { name: /Write/i });
+      fireEvent.click(writeTab);
+      expect(screen.getByPlaceholderText(/Leave a comment on this pull request/i)).toBeInTheDocument();
+    });
+
+    it("allows switching comment profile between personal and praxd-app[bot]", async () => {
+      render(<ActivityTimeline pr={samplePr} />);
+
+      const profileBtn = screen.getByRole("button", { name: /Select comment profile/i });
+      expect(profileBtn).toBeInTheDocument();
+
+      // Open profile dropdown
+      fireEvent.click(profileBtn);
+
+      const botOption = screen.getByRole("button", { name: /praxd-app\[bot\]/i });
+      expect(botOption).toBeInTheDocument();
+
+      fireEvent.click(botOption);
+
+      // Now profile button should show praxd-app[bot]
+      expect(screen.getByRole("button", { name: /Select comment profile/i })).toHaveTextContent("praxd-app[bot]");
+
+      // Write and submit comment as bot
+      const input = screen.getByPlaceholderText(/Leave a comment on this pull request/i);
+      fireEvent.change(input, { target: { value: "Automated review finished." } });
+
+      const submitBtn = screen.getByRole("button", { name: /Send comment/i });
+      fireEvent.click(submitBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText("Automated review finished.")).toBeInTheDocument();
+      });
+    });
   });
 
   describe("PR Merge Modal & Strategy Execution", () => {
