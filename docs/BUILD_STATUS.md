@@ -1,10 +1,20 @@
 # PRAXD Build Status
 
-**Last updated:** 2026-10-30  
-**Current phase:** Phase 4 — Publishing, Audit Logs & Production Hardening Complete  
-**Build status:** All Phases (0, 1, 2, 3, and 4) 100% Complete & Verified
+**Last updated:** 2026-10-31  
+**Current version:** v0.2.0 (Post-MVP Evolution)  
+**Current phase:** Phase 6 — Team Collaboration, GitHub SSO & Real-Time Presence (Next in Queue)  
+**Build status:** Phases 0, 1, 2, 3, 4 (MVP), and Phase 5 are 100% Complete & Verified (68/68 Automated Tests Passing)
 
-## Completed in Phase 0
+## Active Post-MVP Roadmap (v0.2.0 — v0.5.0)
+
+- [x] **Phase 5 (v0.2.0):** Interactive PR Assistant & Contextual Chat (Header `Chat` affordance activated with slide-out drawer, streaming SSE, 32 KB diff-bounded reasoning, copy buttons, line-citation deep linking, and `/explain`, `/test-ideas`, `/draft-response`, `/security-audit` slash commands)
+- [ ] **Phase 6 (v0.3.0):** Team Collaboration, GitHub SSO & Real-Time Presence (Supabase Realtime WebSockets for active reviewer indicators, shared internal notes)
+- [ ] **Phase 7 (v0.4.0):** Automated Policy Engine, CI/CD Bot Mode & Risk Scoring (0–100 composite risk score, event-driven webhooks, Slack/Discord alerts)
+- [ ] **Phase 8 (v0.5.0):** Multi-Model LLM Adapters & Enterprise Governance (Anthropic Claude, Google Gemini, Ollama/vLLM, automated patch retention purging)
+
+---
+
+## Completed in Phase 0 (MVP Shell)
 
 - [x] Product requirements and MVP scope (updated with UX ergonomics & safe merge guardrails)
 - [x] Screenshot-derived UI/UX specification (`docs/UI_UX_SPEC.md`)
@@ -151,6 +161,53 @@
   - P4-06: Strictly bounded audit pagination parameters
   - P4-07: Conforming system health response structure
 
+## Completed in Phase 5 (Interactive PR Assistant & Contextual Chat)
+
+- [x] Slide-out / Split-pane PR Chat Drawer (`components/pr-chat.tsx`):
+  - Accessible via header **Chat** button and `Cmd/Ctrl + K` or `Cmd/Ctrl + J` shortcut.
+  - Dark, information-dense UI styled in `#111111` / `#161616` matching the approved PRAXD design language.
+  - Streaming Markdown renderer supporting headers, bullet points, blockquotes, and inline code.
+  - Syntax-highlighted code blocks with language badge and one-click "Copy" confirmation.
+  - Interactive "View in Diff" deep-links from cited code lines (e.g. `extension/content.js:1644`) that navigate to the Code view and focus the cited file.
+  - Expandable / collapsible reasoning step pills ("Analyzing diff...", "Scanning touched files...").
+  - Stop generation button (`Square` icon) to cleanly abort active streams without error states.
+- [x] Streaming Server-Sent Events (SSE) Route (`app/api/pull-requests/[pullRequestId]/chat/stream/route.ts`):
+  - Next.js App Router streaming endpoint using Node.js runtime (`export const runtime = 'nodejs'`).
+  - Emits real-time event types: `status`, `reasoning`, `delta`, `citation`, `done`, and `error`.
+  - Multi-provider support via `lib/ai/chat-stream.ts`:
+    - Google Gemini Streaming (`gemini-2.5-flash` via `streamGenerateContent?alt=sse`)
+    - OpenAI Streaming (`gpt-4o` via Chat Completions SSE)
+    - Deterministic chunked generator for offline demo mode, fixture mode, and CI test suites
+- [x] Context-Hydrated Retrieval & Strict 32 KB Bounding (`lib/ai/chat-context.ts`):
+  - Ingestion of active PR metadata (title, body, author, branches, head SHA, checks summary, prior AI findings).
+  - Strict diff patch slice bounding (`CHAT_MAX_DIFF_BYTES = 32768`).
+  - Omitted file tracking and coverage notice banner when diffs exceed 32 KB.
+  - Automatic token and credential sanitization (`[REDACTED_SECRET]`) across all user messages and diff content.
+  - System instruction boundary safety: PR titles, descriptions, and patch contents quarantined as untrusted DATA ONLY.
+- [x] Actionable Copilot Slash Commands (`types/chat.ts`):
+  - `/explain` — Architectural walkthrough and structural impact analysis.
+  - `/test-ideas` — Unit, edge-case, and boundary test recommendations.
+  - `/draft-response` — Empathetic, constructive GitHub review comment drafts.
+  - `/security-audit` — Deep-dive taint analysis on user inputs and DOM manipulation sinks.
+- [x] Chat History Store & REST Endpoints (`lib/ai/chat-store.ts`, `app/api/pull-requests/[pullRequestId]/chat/messages/route.ts`):
+  - Multi-tenant workspace and PR scoping (`workspaceId:pullRequestId`).
+  - `GET /api/pull-requests/[pullRequestId]/chat/messages` for loading persisted conversation history.
+  - `DELETE /api/pull-requests/[pullRequestId]/chat/messages` for clearing conversation history.
+- [x] Workspace Header & Code Navigation Integration (`components/workspace-header.tsx`, `components/pr-workspace.tsx`, `components/code-view.tsx`):
+  - Enabled active header `Chat` affordance with visual indicator, icon, and pressed state.
+  - Integrated keyboard shortcuts (`Cmd/Ctrl+K` and `Cmd/Ctrl+J`).
+  - Integrated deep-link file navigation into `CodeView`.
+- [x] Comprehensive Acceptance Test Suite (`tests/phase5-chat.test.ts`):
+  - P5-01: Context builder bounds prompt size to 32 KB active diff slice.
+  - P5-02: Secrets and sensitive tokens are redacted from user chat inputs and context (`[REDACTED_SECRET]`).
+  - P5-03: Code citation extraction correctly identifies file paths and line ranges.
+  - P5-04: Actionable slash commands trigger specialized reasoning and outputs.
+  - P5-05: Untrusted PR data boundary validation quarantines prompt injections.
+  - P5-06: Chat conversation history persists per PR and enforces workspace isolation.
+  - P5-07: Chat history deletion clears PR messages cleanly.
+  - P5-08: POST `/api/pull-requests/[pullRequestId]/chat/stream` emits SSE stream headers and valid events.
+  - P5-09: GET and DELETE `/api/pull-requests/[pullRequestId]/chat/messages` routes manage history.
+
 ## UI Polish & Ergonomic Improvements
 
 - [x] Header Centering: Centered `Summary | Code` segmented tabs in main content header.
@@ -190,7 +247,7 @@
 ## Quality Checks & Verification
 
 - `typecheck` (`npm run typecheck`): Passed (0 errors).
-- `test` (`npm run test`): Passed 59/59 acceptance tests across 8 test suites:
+- `test` (`npm run test`): Passed 68/68 acceptance tests across 9 test suites:
   - `tests/phase0-workspace.test.tsx` (9 tests)
   - `tests/phase1-state.test.ts` (5 tests)
   - `tests/phase1-github-sync.test.ts` (12 tests)
@@ -198,5 +255,6 @@
   - `tests/phase2-webhooks.test.ts` (11 tests)
   - `tests/phase3-ai-review.test.ts` (9 tests)
   - `tests/phase4-audit-hardening.test.ts` (7 tests)
+  - `tests/phase5-chat.test.ts` (9 tests)
   - `tests/live-ai-readiness.test.ts` (4 tests)
-- `build` (`npm run build`): Passed (22 dynamic API routes + static pages compiled successfully in 89s).
+- `build` (`npm run build`): Passed (24 dynamic API routes + static pages compiled successfully).

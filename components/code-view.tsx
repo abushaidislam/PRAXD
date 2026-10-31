@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-  MoreHorizontal,
   Columns,
   AlignJustify,
   WrapText,
@@ -15,9 +14,10 @@ import { cn } from "@/lib/utils";
 
 interface CodeViewProps {
   pr: PullRequest;
+  initialFilePath?: string;
 }
 
-export function CodeView({ pr }: CodeViewProps) {
+export function CodeView({ pr, initialFilePath }: CodeViewProps) {
   const [selectedFile, setSelectedFile] = useState<ChangedFile>(
     pr.files[0] || {
       filename: "no-files-changed",
@@ -32,12 +32,19 @@ export function CodeView({ pr }: CodeViewProps) {
   const [diffMode, setDiffMode] = useState<"split" | "unified">("split");
   const [wrapLines, setWrapLines] = useState(false);
 
-  // Synchronize selected file whenever the active PR changes
+  // Synchronize selected file whenever active PR or initialFilePath changes
   useEffect(() => {
+    if (initialFilePath) {
+      const match = pr.files.find((f) => f.filename === initialFilePath);
+      if (match) {
+        setSelectedFile(match);
+        return;
+      }
+    }
     if (pr.files.length > 0) {
       setSelectedFile(pr.files[0]);
     }
-  }, [pr.id, pr.files]);
+  }, [pr.id, pr.files, initialFilePath]);
 
   // Keep selectedFile valid if file exists in current fileset
   const activeFile =

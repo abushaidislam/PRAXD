@@ -236,7 +236,156 @@ AI reviews are tied to an immutable PR head SHA. A run against an old SHA must n
 
 **Exit gate:** AI schema, evidence, prompt-injection, stale-head, deduplication, authorization, budget and failure-mode tests pass. A human reviewer inspects a representative set of model findings before production release. Provider/model and prompt version are observable for every run.
 
-## 5. Core ship checklist
+## 5. Phase 4 — Publishing, Audit Logs & Production Hardening (MVP Completion)
+
+Status: **100% Completed & Shipped in v0.1.0**
+
+This phase bridges internal AI findings to user-confirmed repository interactions while establishing enterprise auditability and system reliability.
+
+### Deliverables
+
+- Immutable Workspace Audit Logging System (`lib/audit/logger.ts`) writing to `audit_logs` table.
+- Automatic credential and secret redaction (`[REDACTED]`) from all audit event payloads.
+- Bounded workspace audit log endpoint (`GET /api/workspaces/current/audit-logs`) with strict pagination (limit 1..100).
+- Opt-in user-confirmed GitHub finding publication (`POST /api/ai-findings/[findingId]/publish`).
+- PR open state verification and non-destructive failure preservation of local findings.
+- System health and database latency endpoint (`GET /api/health`).
+- High-density UX ergonomics: Resizable inbox sidebar with magnetic snap points (340px, 420px, 540px), centered navigation tabs, and synchronized dual-pane horizontal scrolling.
+
+### Acceptance criteria
+
+- [x] Audit logger handles database failures gracefully without throwing unhandled exceptions.
+- [x] All tokens and passwords in audit metadata are redacted before insertion.
+- [x] Finding publication requires explicit `confirmed: true` payload parameter.
+- [x] Publication is rejected if the target PR is merged or closed.
+- [x] Failed GitHub API calls preserve the local finding record intact.
+- [x] Health endpoint returns valid JSON with database connectivity status and roundtrip latency.
+- [x] 54/54 automated tests pass across all phases.
+
+---
+
+# Post-MVP Evolution Roadmap (v0.2.0 — v0.5.0)
+
+With the foundational PR workspace, GitHub App sync, webhooks, and core advisory AI review complete, the following phases define PRAXD's expansion into an active, collaborative developer intelligence hub.
+
+## 6. Phase 5 — Interactive PR Assistant & Contextual Chat (v0.2.0)
+
+The reference workspace header features a prominent **Chat** affordance that was disabled in the MVP. Phase 5 activates this affordance into a full conversational PR companion.
+
+### Deliverables
+
+- **Slide-out or Split-pane PR Chat Drawer:**
+  - Accessible via the header **Chat** button and keyboard shortcut (`Cmd/Ctrl + K` or `Cmd/Ctrl + J`).
+  - Dark, information-dense UI styled in `#111111` / `#171717` with streaming Markdown responses.
+- **Context-Hydrated Retrieval:**
+  - Automatically loads the active PR's metadata, branch diff, modified AST symbols, check statuses, and prior AI findings into the chat context window.
+  - Multi-file code context querying (e.g. "What breaking changes does `extension/content.js` introduce?").
+- **Streaming Response Architecture:**
+  - Server-Sent Events (SSE) route: `POST /api/pull-requests/[pullRequestId]/chat/stream`.
+  - Token-by-token streaming with visible reasoning states ("Analyzing diff...", "Verifying references...").
+- **Actionable Copilot Commands:**
+  - `/explain` — Plain-language architectural summary of the PR.
+  - `/test-ideas` — Suggests edge-case unit/integration tests for touched functions.
+  - `/draft-response` — Generates a polite, constructive review comment draft for selected lines.
+  - `/security-audit` — Deep-dive taint analysis across user input paths in the diff.
+
+### Acceptance criteria
+
+- [x] Chat button in the header opens/closes the chat panel without reloading or resetting active PR tabs.
+- [x] Context builder bounds prompt size to model context limits (max 32 KB active diff slice).
+- [x] Model responses stream via SSE with low time-to-first-token (<800ms).
+- [x] Code snippets rendered inside chat include copy buttons and "View in Diff" deep-links when valid line numbers exist.
+- [x] Secrets and authentication tokens are redacted from user chat inputs and context before reaching LLM endpoints.
+- [x] Chat conversation history is persisted per PR run and scoped strictly to workspace members.
+
+---
+
+## 7. Phase 6 — Team Collaboration, GitHub SSO & Real-Time Presence (v0.3.0)
+
+Transforms PRAXD from a single-user inspection tool into a real-time multiplayer code review environment.
+
+### Deliverables
+
+- **GitHub OAuth Social Login:**
+  - One-click "Sign in with GitHub" via Supabase Auth, linking user identity directly to GitHub logins and avatars.
+  - Automatic workspace onboarding and membership hydration.
+- **Real-Time Multiplayer Presence:**
+  - Supabase Realtime WebSocket presence channels (`pr:pr_id`).
+  - Shows active reviewers currently looking at the Summary or Code view with avatar indicator pills in the header.
+  - Live cursor/line highlight indicator showing which file/line a teammate is inspecting.
+- **Team Workspaces & Role-Based Access Control (RBAC):**
+  - Workspace management UI: invite members via email/GitHub handle.
+  - Roles: `Owner`, `Admin`, `Reviewer`, `Viewer`.
+  - Permission matrix governing AI review triggers, finding publication, and repository connections.
+- **Shared Team Review Notes & Bookmarks:**
+  - Internal workspace-only discussion threads that are not published to GitHub.
+  - Ability to tag teammates (`@mention`) for internal second-opinions before posting public GitHub reviews.
+
+### Acceptance criteria
+
+- [ ] Users can sign in with GitHub OAuth and have their profile automatically populated.
+- [ ] Inviting a user sends a secure magic link / invitation with workspace-scoped token.
+- [ ] When two users view the same PR simultaneously, both see live presence avatar badges within 1s.
+- [ ] Internal review notes are visible only to workspace members and never pushed to GitHub.
+- [ ] Viewers cannot trigger billable AI reviews or publish comments to GitHub.
+
+---
+
+## 8. Phase 7 — Automated Policy Engine & CI/CD Bot Mode (v0.4.0)
+
+Enables engineering teams to set autonomous quality and security guardrails that run on webhook triggers without manual user clicks.
+
+### Deliverables
+
+- **Event-Driven Policy Trigger Rules:**
+  - Configure automated review triggers based on branch patterns (`main`, `release/*`), author teams, or file paths (e.g. `auth/**`, `migrations/**`).
+  - Event triggers: `pull_request.opened`, `pull_request.synchronize`.
+- **Configurable Review Profiles:**
+  - Choose review focus per repository: *Strict Security & Compliance*, *Performance & Memory*, *Style & Conventions*, or *Comprehensive*.
+  - Team custom rules: Upload custom markdown rules (e.g. "Ensure all React components use forwardRef" or "Flag any unindexed foreign keys in migrations").
+- **PR Blast Radius & Risk Scoring Engine:**
+  - Computes composite risk score (0–100) based on churn volume, touched core modules, dependency additions, test coverage delta, and AI finding severities.
+  - Surfaces a compact risk badge (`Low Risk`, `Medium Risk`, `High Risk`) directly in the PR list row.
+- **Slack & Discord Webhook Notifications:**
+  - Instant notifications for `Critical` or `High` security findings detected in incoming pull requests.
+
+### Acceptance criteria
+
+- [ ] Automated review runs only for configured repositories and branches.
+- [ ] Out-of-order `synchronize` webhooks safely queue head-sha reviews without race conditions.
+- [ ] Custom rules are safely injected into system prompts without permitting prompt injections.
+- [ ] Risk score calculation is deterministic and tested against standard fixtures.
+- [ ] Slack/Discord notifications fire only on configured severity thresholds and omit sensitive code.
+
+---
+
+## 9. Phase 8 — Multi-Model Adapter & Enterprise Governance (v0.5.0)
+
+Provides deployment flexibility, self-hosting compatibility, and SOC2/ISO compliance for enterprise engineering teams.
+
+### Deliverables
+
+- **Provider-Agnostic LLM Adapters:**
+  - Native support for Anthropic Claude (Claude 3.7 Sonnet / 3.5 Haiku), Google Gemini (Gemini 2.5 Flash / Pro via `@google/genai`), and OpenAI (GPT-4o).
+  - Support for self-hosted / on-premise inference engines via OpenAI-compatible endpoints (Ollama, vLLM, Azure OpenAI).
+  - Model fallback chain: automatic failover if primary provider experiences outage or rate limit (HTTP 429/503).
+- **Data Retention & Privacy Controls:**
+  - Automated patch purging policy (configurable: delete diff caches 30/60/90 days after PR merge).
+  - One-click "Purge Workspace Data" for SOC2 compliance and offboarding.
+  - Zero-Data-Retention (ZDR) verification flags for enterprise contracts.
+- **Engineering Velocity & Review Analytics:**
+  - DORA metrics dashboard: Time to First Review, Review Cycle Time, AI Assisted Triage Resolution Rate, and Churn Velocity.
+
+### Acceptance criteria
+
+- [ ] Switching AI provider requires only an environment or workspace configuration change with zero code refactoring.
+- [ ] Self-hosted endpoints validate TLS certificates and handle custom headers safely.
+- [ ] Scheduled cron job permanently purges diffs older than retention window.
+- [ ] Analytics queries run against read-optimized indexes and never block live PR sync.
+
+---
+
+## 10. Core ship checklist
 
 This is the checklist that `START_HERE.md` requires the product engineer to extract and verify. Check only what has objective evidence in CI, staging or production; do not check a box based on code inspection alone.
 

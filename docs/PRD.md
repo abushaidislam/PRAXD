@@ -1,32 +1,40 @@
 # PRD — Product Requirements Document
 
 **Product:** PRAXD  
-**Document status:** Proposed / pre-build  
-**Version:** 0.1.0
+**Document status:** v0.1.0 MVP Complete; v0.2.0 Post-MVP Evolution Proposed  
+**Version:** 0.2.0
 
 ## 1. Product summary
 
-PRAXD is a GitHub-connected pull request workspace. It brings repository discovery, pull-request triage, PR summaries, code diffs, commits, reviews, comments, CI checks and AI-assisted code analysis into one focused interface.
+PRAXD is a GitHub-connected pull request workspace. It brings repository discovery, pull-request triage, PR summaries, code diffs, commits, reviews, comments, CI checks, evidence-grounded AI-assisted code analysis, and conversational PR intelligence into one focused interface.
 
 The product is inspired by the supplied reference screenshots' workflow and information hierarchy. It is not a GitHub replacement: GitHub remains the authoritative system for source code, branches, pull request state, review state and checks.
 
 ## 2. Problem statement
 
-Developers who maintain multiple repositories need to move between repositories and pull requests to understand what changed, inspect code, find review discussion and evaluate CI status. Large PRs and scattered context increase review time. Existing AI summaries can help, but the user still needs a trustworthy, evidence-linked view of the actual diff and review history.
+Developers who maintain multiple repositories need to move between repositories and pull requests to understand what changed, inspect code, find review discussion and evaluate CI status. Large PRs and scattered context increase review time. Existing AI summaries can help, but the user still needs a trustworthy, evidence-linked view of the actual diff, conversational exploration, and review history.
 
 PRAXD solves this by providing a unified PR inbox and detail workspace, with optional AI analysis grounded in changed code and relevant repository context.
 
 ## 3. Goals
 
+### MVP Goals (Completed)
 - Connect a GitHub account through a GitHub App installation.
 - List repositories the installation can access.
 - List, search and filter pull requests across connected repositories.
 - Provide a PR detail view with metadata, branches, reviewers, comments, checks and description.
-- Render changed files and readable side-by-side/unified diffs.
+- Render changed files and readable side-by-side/unified diffs with synchronized horizontal scrolling.
 - Show comments at the correct file/line context and keep human/AI sources distinct.
 - Run a manual AI review and show actionable, evidence-based findings.
-- Synchronize relevant GitHub changes through webhooks.
+- Synchronize relevant GitHub changes through webhooks with deduplication and reconciliation.
+- User-confirmed publishing of individual findings back to GitHub.
 - Provide a clear, screenshot-matched dark UI that works on desktop and smaller screens.
+
+### Post-MVP Evolution Goals (v0.2.0+)
+- **Interactive PR Assistant & Contextual Chat:** Activate the header **Chat** affordance into a streaming conversational assistant scoped to the current PR diff and repo context.
+- **Multiplayer Collaboration & Team Workspaces:** Support GitHub OAuth SSO, real-time presence indicators (who is currently reviewing), and internal workspace-only discussions.
+- **Automated Policy Trigger Rules & Risk Scoring:** Run autonomous AI reviews on PR events with custom team rules, risk blast radius scores (0–100), and Slack/Discord alerts.
+- **Enterprise Governance & Multi-Model Inference:** Support Anthropic Claude, Google Gemini, and self-hosted models (Ollama/vLLM) with automated patch retention policies.
 
 ## 4. Non-goals for MVP
 
@@ -88,6 +96,22 @@ Uses a shared workspace, shared GitHub installation, reviewer assignments, notif
 5. PRAXD validates every finding against actual changed files and line ranges.
 6. Findings are saved against the exact PR head SHA and displayed in an AI Review panel.
 7. If the PR head changes, the UI marks the prior review as stale and offers a rerun.
+
+### Journey D — Interactive PR Assistant (v0.2.0)
+
+1. User opens a complex PR and clicks the **Chat** button in the header (or presses `Cmd/Ctrl + K`).
+2. A contextual slide-out chat drawer opens, pre-hydrated with the PR diff, description, checks, and prior AI findings.
+3. User asks: *"Does this PR introduce breaking API changes to `/api/webhooks`?"*
+4. The assistant streams a token-by-token response referencing exact file lines with clickable deep-links to the diff.
+5. User highlights a 10-line block in the diff and clicks *"Draft review response"*; assistant generates a constructive review snippet ready to copy.
+
+### Journey E — Collaborative Team Review (v0.3.0)
+
+1. Reviewer A opens the PR workspace; teammate Reviewer B opens the same PR simultaneously.
+2. Real-time presence indicators show both teammates' avatars in the top header.
+3. Reviewer A leaves an internal workspace note (`@mentioning` Reviewer B) asking for a second pair of eyes on an authentication check.
+4. Reviewer B receives a notification, inspects the line anchor, and marks the note as resolved.
+5. After team consensus, Reviewer A selects the verified AI security finding and clicks **Publish to GitHub**, posting the comment directly to GitHub PR discussion.
 
 ## 7. Functional requirements
 
@@ -172,6 +196,36 @@ Uses a shared workspace, shared GitHub installation, reviewer assignments, notif
 - Process webhook events idempotently.
 - Queue synchronization; do not perform slow AI work inside webhook requests.
 - Provide manual refresh fallback and periodic reconciliation job.
+
+### FR-11 Contextual PR chat assistant (v0.2.0)
+
+- Activate header **Chat** button into a persistent PR-scoped chat drawer.
+- Pre-load current PR metadata, modified files, diff hunks, and AI findings into context.
+- Stream model responses via Server-Sent Events (SSE) with progressive reasoning display.
+- Support slash commands: `/explain`, `/test-ideas`, `/draft-response`, `/security-audit`.
+- Link code mentions back to specific diff line numbers with jump-to-line navigation.
+- Redact secrets from user inputs and prompt buffers before dispatching to LLM APIs.
+
+### FR-12 Team workspaces & real-time presence (v0.3.0)
+
+- Social login via GitHub OAuth (Supabase Auth).
+- Multi-user workspace member invitations and role management (`Owner`, `Admin`, `Reviewer`, `Viewer`).
+- Real-time presence indicators via WebSockets showing active reviewers per PR.
+- Workspace-only internal review notes and mentions that do not publish to GitHub.
+
+### FR-13 Automated policy trigger rules & risk scoring (v0.4.0)
+
+- Event-driven review triggers for specific branches (e.g. `main`, `release/*`) and file paths.
+- Team custom rule-sets (Markdown-defined compliance, architectural patterns, test requirements).
+- Composite PR risk score (0–100) and visual risk badge (`Low`, `Medium`, `High`) based on blast radius, churn, and finding severity.
+- Slack and Discord webhook alert integrations.
+
+### FR-14 Multi-model adapters & enterprise governance (v0.5.0)
+
+- Provider-agnostic LLM interface supporting OpenAI, Anthropic Claude, Google Gemini, and local/on-prem endpoints (Ollama/vLLM).
+- Automatic provider failover chain on rate limits (HTTP 429/503).
+- Configurable diff patch retention policies (e.g. auto-purge raw patches 30 days post-merge).
+- Engineering velocity and DORA metrics dashboard (cycle time, time-to-first-review).
 
 ## 8. Non-functional requirements
 
