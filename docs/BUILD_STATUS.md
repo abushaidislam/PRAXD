@@ -110,6 +110,15 @@ In addition to core triage and diff inspection, PRAXD includes **direct personal
   - 1-click file path copy button with feedback.
 - [x] **Timeline & Modals:**
   - 1-click commit SHA copy button in activity timeline with feedback.
+  - Full GitHub-Flavored Markdown (GFM) and safe HTML rendering engine (`components/markdown-content.tsx`).
+  - Interactive collapsible accordions for `<details>` and `<summary>` blocks (e.g. Codex connector bot comments).
+  - Native embedded HTML element handling inside tables and comments (`<a>`, `<img>`, `<sup>`, `<sub>`, `<kbd>`, `<br>`).
+  - GitHub custom web component `<relative-time datetime="...">` formatted with clock icon, relative time, and full ISO tooltip.
+  - Markdown images (`![alt](url)`) and status badges rendered inline rather than as broken link text.
+  - One-click copy code button on fenced code blocks with language indicator.
+  - GitHub alert callouts (`> [!NOTE]`, `> [!TIP]`, `> [!IMPORTANT]`, `> [!WARNING]`, `> [!CAUTION]`).
+  - Task list checkboxes (`- [ ]`, `- [x]`) and common GitHub emoji shortcodes (`:white_check_mark:`, `:eyes:`, `:thumbsup:`, etc.).
+  - Bot comment metadata stripping (`[vc]: #...` and `<!-- ... -->`) and strict URL sanitization.
   - Modal keyboard `Escape` closing listeners and smooth entrance animations.
 
 ---
@@ -118,5 +127,5 @@ In addition to core triage and diff inspection, PRAXD includes **direct personal
 
 - `lint` (`npm run lint`): Passed (`✔ No ESLint warnings or errors`).
 - `typecheck` (`npm run typecheck`): Passed (`tsc --noEmit` 0 errors).
-- `test` (`npm test`): Passed (75/75 tests passing across 11 test files, including dedicated `tests/collapsible-diff.test.tsx`).
+- `test` (`npm test`): Passed (80/80 tests passing across 11 test files, including dedicated `tests/markdown-content.test.tsx` and `tests/collapsible-diff.test.tsx`).
 - `build` (`npm run build`): Passed (16 static pages, 20 dynamic API routes compiled cleanly in Next.js production build).

@@ -4,30 +4,17 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { CodeView } from "@/components/code-view";
 import { PullRequest } from "@/types/pr";
 
+import { FIXTURE_PULL_REQUESTS } from "@/lib/fixtures/pull-requests";
+
 const mockMultiFilePR: PullRequest = {
+  ...FIXTURE_PULL_REQUESTS[0],
   id: "pr-multi-collapsible",
   number: 101,
   title: "feat: add multi-file vertical diff viewing",
-  description: "Demonstrating vertical collapsible diffs",
+  body: "Demonstrating vertical collapsible diffs",
   state: "open",
-  createdAt: "2026-10-31T12:00:00Z",
-  updatedAt: "2026-10-31T12:00:00Z",
-  author: {
-    login: "abushaidislam",
-    avatarUrl: "https://avatars.githubusercontent.com/u/1024025?v=4",
-  },
-  baseRef: "main",
   headRef: "feature/collapsible-diffs",
-  additions: 31,
-  deletions: 8,
-  changedFiles: 3,
-  commitsCount: 2,
-  reviewDecision: "review_required",
-  labels: [{ id: "l1", name: "enhancement", color: "a2eeef" }],
-  assignees: [],
-  reviewers: [],
-  comments: [],
-  checkRuns: [],
+  baseRef: "main",
   files: [
     {
       filename: "docs/UI_UX_SPEC.md",
