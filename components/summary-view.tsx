@@ -19,6 +19,7 @@ import {
 import { PullRequest } from "@/types/pr";
 import { CheckRunList } from "./check-run-list";
 import { ActivityTimeline } from "./activity-timeline";
+import { MarkdownContent } from "./markdown-content";
 
 interface SummaryViewProps {
   pr: PullRequest;
@@ -332,8 +333,8 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
                   </div>
                 </div>
               ) : pr.body && pr.body.trim().length > 0 ? (
-                <div className="whitespace-pre-wrap space-y-2 text-praxd-text-secondary leading-relaxed">
-                  {pr.body}
+                <div className="select-text">
+                  <MarkdownContent content={pr.body} />
                 </div>
               ) : (
                 <div className="py-4 text-center text-praxd-text-muted space-y-2">
