@@ -5,14 +5,13 @@ import {
   ExternalLink,
   ChevronRight,
   Clock,
-  Copy,
-  Check,
   Info,
   Lightbulb,
   AlertCircle,
   TriangleAlert,
   ShieldAlert,
 } from "lucide-react";
+import { CopyIcon } from "./copy-icon";
 
 interface MarkdownContentProps {
   content: string;
@@ -237,12 +236,18 @@ function CodeBlock({ code, lang }: { code: string; lang?: string }) {
         <button
           type="button"
           onClick={handleCopy}
-          className="flex items-center gap-1 hover:text-white transition-colors p-1 rounded"
+          className="flex items-center gap-1 hover:text-white transition-colors p-1 rounded group/btn"
           title={copied ? "Copied!" : "Copy code"}
           aria-label="Copy code"
         >
-          {copied ? <Check className="w-3 h-3 text-praxd-green" /> : <Copy className="w-3 h-3" />}
-          <span>{copied ? "Copied" : "Copy"}</span>
+          <CopyIcon
+            as="span"
+            copied={copied}
+            size={12}
+            strokeWidth={2}
+            className="p-0 pointer-events-none"
+          />
+          <span className={copied ? "text-praxd-green" : ""}>{copied ? "Copied" : "Copy"}</span>
         </button>
       </div>
       <pre className="p-3.5 text-[12px] font-mono text-praxd-text overflow-x-auto leading-relaxed">

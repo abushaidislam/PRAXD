@@ -9,7 +9,6 @@ import {
   MoreHorizontal,
   ShieldAlert,
   Loader2,
-  Copy,
   Check,
   Send,
   Eye,
@@ -23,6 +22,7 @@ import {
 } from "lucide-react";
 import { PullRequest, PRComment } from "@/types/pr";
 import { MarkdownContent } from "./markdown-content";
+import { CopyIcon } from "./copy-icon";
 
 interface ActivityTimelineProps {
   pr: PullRequest;
@@ -273,16 +273,19 @@ export function ActivityTimeline({
                 <button
                   type="button"
                   onClick={() => handleCopySha(commit.sha)}
-                  className="font-mono text-praxd-text-secondary hover:text-white px-1.5 py-0.5 rounded bg-[#1f1f1f] border border-praxd-border-soft flex items-center gap-1 transition-colors"
+                  className="font-mono text-praxd-text-secondary hover:text-white px-1.5 py-0.5 rounded bg-[#1f1f1f] border border-praxd-border-soft flex items-center gap-1 transition-colors group"
                   title={copiedSha === commit.sha ? "Copied SHA!" : `Copy full SHA: ${commit.sha}`}
                   aria-label={`Copy commit ${commit.shortSha}`}
                 >
                   <span>{commit.shortSha}</span>
-                  {copiedSha === commit.sha ? (
-                    <Check className="w-2.5 h-2.5 text-praxd-green" />
-                  ) : (
-                    <Copy className="w-2.5 h-2.5 text-neutral-500" />
-                  )}
+                  <CopyIcon
+                    as="span"
+                    value={commit.sha}
+                    copied={copiedSha === commit.sha}
+                    size={11}
+                    strokeWidth={2}
+                    className="p-0 pointer-events-none text-neutral-400 group-hover:text-white"
+                  />
                 </button>
                 <img
                   src={commit.author.avatarUrl || "https://github.com/ghost.png"}
@@ -353,19 +356,16 @@ export function ActivityTimeline({
 
                   <div className="flex items-center gap-2 text-praxd-text-muted text-[11.5px] shrink-0">
                     <span>{formatRelativeTime(comment.createdAt)}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleCopyComment(comment.id, comment.body)}
+                    <CopyIcon
+                      value={comment.body}
+                      copied={isCopied}
+                      size={14}
+                      strokeWidth={2}
                       className="p-1 rounded hover:bg-[#282828] text-praxd-text-muted hover:text-praxd-text transition-colors"
                       title={isCopied ? "Copied!" : "Copy comment markdown"}
                       aria-label="Copy comment"
-                    >
-                      {isCopied ? (
-                        <Check className="w-3.5 h-3.5 text-praxd-green" />
-                      ) : (
-                        <Copy className="w-3.5 h-3.5" />
-                      )}
-                    </button>
+                      onClick={() => handleCopyComment(comment.id, comment.body)}
+                    />
                   </div>
                 </div>
 

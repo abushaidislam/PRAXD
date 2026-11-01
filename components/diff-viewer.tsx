@@ -9,7 +9,6 @@ import {
   MessageSquare,
   Check,
   ArrowLeftRight,
-  Copy,
   Settings,
   FileCode,
 } from "lucide-react";

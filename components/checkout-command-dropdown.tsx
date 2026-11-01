@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Terminal, ChevronDown, Check, Copy } from "lucide-react";
+import { Terminal, ChevronDown } from "lucide-react";
 import { PullRequest } from "@/types/pr";
 import { useToast } from "@/components/toast";
+import { CopyIcon } from "@/components/copy-icon";
 import { cn } from "@/lib/utils";
 
 interface CheckoutCommandDropdownProps {
@@ -154,17 +155,23 @@ export function CheckoutCommandDropdown({
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
-                      {isCopied ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 bg-emerald-950/60 border border-emerald-700/50 px-1.5 py-0.2 rounded">
-                          <Check className="w-3 h-3 text-emerald-400" />
-                          <span>Copied</span>
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-[10px] text-neutral-500 group-hover:text-neutral-300 transition-colors opacity-70 group-hover:opacity-100">
-                          <Copy className="w-3 h-3" />
-                          <span>Copy</span>
-                        </span>
-                      )}
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1 text-[10px] rounded px-1.5 py-0.5 transition-colors",
+                          isCopied
+                            ? "font-medium text-emerald-400 bg-emerald-950/60 border border-emerald-700/50"
+                            : "text-neutral-500 group-hover:text-neutral-300 opacity-70 group-hover:opacity-100"
+                        )}
+                      >
+                        <CopyIcon
+                          as="span"
+                          copied={isCopied}
+                          size={11}
+                          strokeWidth={2}
+                          className="p-0 pointer-events-none"
+                        />
+                        <span>{isCopied ? "Copied" : "Copy"}</span>
+                      </span>
                     </div>
                   </div>
 

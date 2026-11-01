@@ -17,7 +17,9 @@ export interface CopyIconProps
   copied?: boolean;
   onCopyChange?: (copied: boolean) => void;
   timeout?: number;
-  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  onClick?: (event: React.MouseEvent<HTMLElement>) => void;
+  as?: "button" | "span" | "div";
+  children?: React.ReactNode;
 }
 
 const springConfig: Transition = {
@@ -38,6 +40,8 @@ const CopyIcon = React.forwardRef<CopyIconHandle, CopyIconProps>(
       className,
       onClick,
       disabled,
+      as = "button",
+      children,
       ...props
     },
     ref
@@ -86,7 +90,7 @@ const CopyIcon = React.forwardRef<CopyIconHandle, CopyIconProps>(
       };
     }, []);
 
-    const handleClick = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    const handleClick = async (event: React.MouseEvent<HTMLElement>) => {
       if (disabled) return;
       onClick?.(event);
 
@@ -101,22 +105,23 @@ const CopyIcon = React.forwardRef<CopyIconHandle, CopyIconProps>(
       triggerSuccess();
     };
 
+    const isButton = as === "button";
+    const MotionComponent = as === "span" ? motion.span : as === "div" ? motion.div : motion.button;
+
     return (
-      <motion.button
-        type="button"
-        role="button"
-        aria-label={isCopied ? "Copied" : "Copy to clipboard"}
-        disabled={disabled}
+      <MotionComponent
+        {...(isButton ? { type: "button", role: "button" } : { "aria-hidden": props["aria-label"] ? undefined : true })}
+        aria-label={props["aria-label"] || (isButton ? (isCopied ? "Copied" : "Copy to clipboard") : undefined)}
+        disabled={isButton ? disabled : undefined}
         onClick={handleClick}
-        whileTap={{ scale: disabled ? 1 : 0.92 }}
+        whileTap={isButton ? { scale: disabled ? 1 : 0.92 } : undefined}
         className={cn(
-          "inline-flex items-center justify-center rounded-md p-2 text-muted-foreground transition-colors outline-none",
-          "hover:bg-muted hover:text-foreground",
-          "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-          "disabled:pointer-events-none disabled:opacity-50",
+          isButton
+            ? "inline-flex items-center justify-center rounded-md p-2 text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+            : "inline-flex items-center justify-center",
           className
         )}
-        {...props}
+        {...(props as any)}
       >
         <motion.svg
           xmlns="http://www.w3.org/2000/svg"
@@ -179,7 +184,8 @@ const CopyIcon = React.forwardRef<CopyIconHandle, CopyIconProps>(
             style={{ transformOrigin: "12px 12px" }}
           />
         </motion.svg>
-      </motion.button>
+        {children}
+      </MotionComponent>
     );
   }
 );
