@@ -1,4 +1,4 @@
-# PRAXD — Personal GitHub PR Management & Code Diff Workspace
+# Praxd — Personal GitHub PR Management & Code Diff Workspace
 
 **Product:** PRAXD  
 **Description:** Fast, focused, and distraction-free personal GitHub Pull Request workspace  
@@ -8,6 +8,14 @@
 PRAXD is a personal web application for developers and maintainers to connect GitHub repositories, triage pull requests, inspect rich PR summaries, explore side-by-side split & unified code diffs with synchronized horizontal scrolling, and monitor commit activity and CI checks without the distraction of bloated enterprise suites or external AI dependencies.
 
 The product's workspace faithfully follows the approved reference screenshots: a persistent pull-request inbox on the left and a high-performance Summary/Code workspace on the right.
+
+---
+
+## Workspace Preview
+
+| Pull Request Summary Workspace | Code Diff Workspace |
+| :---: | :---: |
+| ![PRAXD Pull Request Workspace](public/PRAXD%20Pull%20Request%20Workspace.png) | *Coming soon / refer to UI spec* |
 
 ---
 
@@ -72,4 +80,3 @@ npm run lint
 npm run typecheck
 npm run test
 npm run build
-```
