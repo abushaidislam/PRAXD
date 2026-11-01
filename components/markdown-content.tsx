@@ -129,12 +129,15 @@ function formatTimestamp(dateStr?: string): { relative: string; full: string } {
 }
 
 /**
- * Strips hidden metadata comments commonly injected by bots like Vercel:
- * e.g. `[vc]: #...` or HTML comments `<!-- ... -->` and resolves emojis.
+ * Strips hidden metadata comments commonly injected by bots (Dependabot, Renovate, Vercel):
+ * e.g. `[//]: # (dependabot-automerge-start)`, `[vc]: #...`, or HTML comments `<!-- ... -->`
+ * and resolves emojis.
  */
 function cleanCommentText(raw: string): string {
   if (!raw) return "";
   let text = raw
+    // Remove markdown comments: e.g. [//]: # (dependabot-automerge-start) or [anything]: # ...
+    .replace(/\[[\w\/\.\-]+\]:\s*#[^\n)]*\)?/g, "")
     // Remove reference link definition comments: e.g. [vc]: #9YptFdxp...
     .replace(/^\[[a-zA-Z0-9_\-]+\]:\s*#.*$/gm, "")
     // Remove HTML comments
@@ -144,6 +147,73 @@ function cleanCommentText(raw: string): string {
   text = text.replace(/:[a-zA-Z0-9_+]+:/g, (match) => EMOJI_MAP[match] || match);
 
   return text.trim();
+}
+
+/**
+ * Normalizes HTML block elements (common in bot changelogs from Dependabot, Renovate, GitHub Releases)
+ * into standard markdown blocks so they render with rich typography instead of raw HTML markup.
+ * Preserves code inside fenced code blocks.
+ */
+function normalizeHtmlBlocks(text: string): string {
+  if (!text) return "";
+
+  // 1. Temporarily extract fenced code blocks to preserve them intact
+  const codeBlocks: string[] = [];
+  let res = text.replace(/```[\s\S]*?```/g, (match) => {
+    const idx = codeBlocks.length;
+    codeBlocks.push(match);
+    return `__CODE_BLOCK_${idx}__`;
+  });
+
+  // 2. Normalize <br> and <hr>
+  res = res.replace(/<br\s*\/?>/gi, "\n");
+  res = res.replace(/<hr\s*\/?>/gi, "\n\n---\n\n");
+
+  // 3. Normalize Headings <h1>-<h6>
+  res = res.replace(/<h([1-6])(?:\s+[^>]*)?>([\s\S]*?)<\/h\1>/gi, (_, level, content) => {
+    const hashes = "#".repeat(Math.min(parseInt(level, 10) + 1, 4));
+    return `\n\n${hashes} ${content.trim()}\n\n`;
+  });
+
+  // 4. Normalize lists: <li>...</li> and strip wrapping <ul>, <ol>
+  res = res.replace(/<li(?:\s+[^>]*)?>([\s\S]*?)<\/li>/gi, (_, content) => {
+    return `\n- ${content.trim()}`;
+  });
+  res = res.replace(/<\/?(?:ul|ol)(?:\s+[^>]*)?>/gi, "\n");
+
+  // 5. Normalize paragraphs <p>...</p>
+  res = res.replace(/<p(?:\s+[^>]*)?>([\s\S]*?)<\/p>/gi, (_, content) => {
+    return `\n\n${content.trim()}\n\n`;
+  });
+
+  // 6. Normalize blockquotes <blockquote>...</blockquote>
+  let prev = "";
+  let iterations = 0;
+  while (res !== prev && iterations < 10) {
+    prev = res;
+    iterations++;
+    res = res.replace(/<blockquote(?:\s+[^>]*)?>([\s\S]*?)<\/blockquote>/gi, (_, content) => {
+      const inner = content.trim();
+      const quoted = inner
+        .split("\n")
+        .map((line: string) => (line.trim() ? `> ${line}` : ">"))
+        .join("\n");
+      return `\n\n${quoted}\n\n`;
+    });
+  }
+
+  // 7. Strip wrapper <div> tags
+  res = res.replace(/<\/?div(?:\s+[^>]*)?>/gi, "\n");
+
+  // 8. Clean excessive blank lines (3+ down to 2)
+  res = res.replace(/\n{3,}/g, "\n\n");
+
+  // 9. Restore fenced code blocks
+  res = res.replace(/__CODE_BLOCK_(\d+)__/g, (_, idx) => {
+    return codeBlocks[parseInt(idx, 10)] || "";
+  });
+
+  return res.trim();
 }
 
 /**
@@ -251,6 +321,7 @@ export function renderInlineMarkdown(text: string): React.ReactNode[] {
   if (!text) return [];
 
   // Token regex for:
+  // 0. Linked image: [![alt](imgUrl)](linkUrl)
   // 1. Markdown image: ![alt](url)
   // 2. Markdown link: [text](url)
   // 3. HTML <relative-time>: <relative-time datetime="...">...</relative-time>
@@ -272,7 +343,7 @@ export function renderInlineMarkdown(text: string): React.ReactNode[] {
   // 19. Mentions: @username
   // 20. Auto-links: https://...
   const tokenRegex =
-    /(!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)|<relative-time\s+([^>]*?)>(.*?)<\/relative-time>|<relative-time\s+([^>]*?)\/>|<a\s+([^>]*?)>([\s\S]*?)<\/a>|<img\s+([^>]*?)\/?>|<sup\s*?>([\s\S]*?)<\/sup>|<sub\s*?>([\s\S]*?)<\/sub>|<br\s*\/?>|<kbd\s*?>([\s\S]*?)<\/kbd>|<(?:strong|b)\s*?>([\s\S]*?)<\/(?:strong|b)>|<(?:em|i)\s*?>([\s\S]*?)<\/(?:em|i)>|<code\s*?>([\s\S]*?)<\/code>|<(?:del|s)\s*?>([\s\S]*?)<\/(?:del|s)>|~~([^~]+)~~|\*\*\*([^*]+)\*\*\*|\*\_([^*_]+)\_\*|\*\*([^*]+)\*\*|__([^_]+)__|`([^`]+)`|\*([^*]+)\*|_([^_]+)_|@([a-zA-Z0-9_\-]+(?:\[bot\])?)|(https?:\/\/[^\s<>"')]+))/gi;
+    /(\[!\[[^\]]*\]\([^)]+\)\]\([^)]+\)|!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)|<relative-time\s+([^>]*?)>(.*?)<\/relative-time>|<relative-time\s+([^>]*?)\/>|<a\s+([^>]*?)>([\s\S]*?)<\/a>|<img\s+([^>]*?)\/?>|<sup\s*?>([\s\S]*?)<\/sup>|<sub\s*?>([\s\S]*?)<\/sub>|<br\s*\/?>|<kbd\s*?>([\s\S]*?)<\/kbd>|<(?:strong|b)\s*?>([\s\S]*?)<\/(?:strong|b)>|<(?:em|i)\s*?>([\s\S]*?)<\/(?:em|i)>|<code\s*?>([\s\S]*?)<\/code>|<(?:del|s)\s*?>([\s\S]*?)<\/(?:del|s)>|~~([^~]+)~~|\*\*\*([^*]+)\*\*\*|\*\_([^*_]+)\_\*|\*\*([^*]+)\*\*|__([^_]+)__|`([^`]+)`|\*([^*]+)\*|_([^_]+)_|@([a-zA-Z0-9_\-]+(?:\[bot\])?)|(https?:\/\/[^\s<>"')]+))/gi;
 
   const nodes: React.ReactNode[] = [];
   let lastIndex = 0;
@@ -286,8 +357,43 @@ export function renderInlineMarkdown(text: string): React.ReactNode[] {
     const full = match[0];
     const key = `token-${match.index}`;
 
+    // 0. Linked image: [![alt](imgUrl)](linkUrl)
+    if (full.startsWith("[![")) {
+      const linkedMatch = full.match(/^\[!\[([^\]]*)\]\(([^)]+)\)\]\(([^)]+)\)$/);
+      const altText = linkedMatch ? linkedMatch[1] : "Badge";
+      const imageUrl = sanitizeUrl(linkedMatch ? linkedMatch[2] : "");
+      const linkUrl = sanitizeUrl(linkedMatch ? linkedMatch[3] : "");
+      const isExternal = linkUrl.startsWith("http://") || linkUrl.startsWith("https://");
+
+      nodes.push(
+        <a
+          key={key}
+          href={linkUrl}
+          target={isExternal ? "_blank" : undefined}
+          rel={isExternal ? "noopener noreferrer" : undefined}
+          title={altText}
+          className="inline-flex items-center gap-1.5 my-1 text-praxd-blue hover:underline align-middle group font-medium"
+        >
+          <img
+            src={imageUrl}
+            alt={altText}
+            className="inline-block max-h-5 object-contain rounded-xs align-middle"
+            onError={(e) => {
+              const img = e.target as HTMLElement;
+              img.style.display = "none";
+              const fallbackSpan = img.nextElementSibling as HTMLElement;
+              if (fallbackSpan) fallbackSpan.style.display = "inline-flex";
+            }}
+          />
+          <span style={{ display: "none" }} className="items-center gap-1 text-[12px] text-praxd-blue font-medium">
+            <span>{altText}</span>
+            {isExternal && <ExternalLink className="w-3 h-3 opacity-70 inline" />}
+          </span>
+        </a>
+      );
+    }
     // 1. Markdown image: ![alt](url)
-    if (full.startsWith("![")) {
+    else if (full.startsWith("![")) {
       const altText = match[2];
       const imageUrl = sanitizeUrl(match[3]);
       nodes.push(
@@ -594,7 +700,7 @@ function renderMarkdownBlocks(content: string, blockKeyPrefix = "b"): React.Reac
             <span className="flex-1 min-w-0">{renderInlineMarkdown(summaryText)}</span>
           </summary>
           <div className="px-4 py-3 bg-[#111111]/70 space-y-2.5 text-[12.5px] text-praxd-text-secondary leading-relaxed">
-            {renderMarkdownBlocks(innerBody, `${blockKeyPrefix}-dt-${i}`)}
+            {renderMarkdownBlocks(normalizeHtmlBlocks(innerBody), `${blockKeyPrefix}-dt-${i}`)}
           </div>
         </details>
       );
@@ -791,9 +897,9 @@ function renderMarkdownBlocks(content: string, blockKeyPrefix = "b"): React.Reac
       blocks.push(
         <blockquote
           key={`${blockKeyPrefix}-quote-${i}`}
-          className="border-l-2 border-praxd-border pl-3.5 my-2.5 text-praxd-text-muted italic text-[12.5px]"
+          className="border-l-2 border-praxd-border-soft pl-3.5 my-2.5 text-praxd-text-secondary text-[12.5px] space-y-2 bg-[#141414]/50 py-1.5 rounded-r-md"
         >
-          {renderInlineMarkdown(quoteLines.join(" "))}
+          {renderMarkdownBlocks(quoteLines.join("\n"), `${blockKeyPrefix}-q-${i}`)}
         </blockquote>
       );
       continue;
@@ -907,10 +1013,12 @@ function renderMarkdownBlocks(content: string, blockKeyPrefix = "b"): React.Reac
 export function MarkdownContent({ content, className = "" }: MarkdownContentProps) {
   const cleaned = cleanCommentText(content);
   if (!cleaned) return null;
+  const normalized = normalizeHtmlBlocks(cleaned);
+  if (!normalized) return null;
 
   return (
     <div className={`space-y-2.5 ${className}`}>
-      {renderMarkdownBlocks(cleaned)}
+      {renderMarkdownBlocks(normalized)}
     </div>
   );
 }

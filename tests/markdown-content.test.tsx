@@ -135,4 +135,56 @@ Your team has set up Codex to review pull requests in this repo.
     expect((checkboxes[0] as HTMLInputElement).checked).toBe(false);
     expect((checkboxes[1] as HTMLInputElement).checked).toBe(true);
   });
+
+  it("strips Dependabot metadata comments like [//]: # (dependabot-automerge-start)", () => {
+    const raw = `Bumps [motion](https://github.com/motion) from 13 to 14.
+[//]: # (dependabot-automerge-start)
+[//]: # (dependabot-automerge-end)`;
+
+    render(<MarkdownContent content={raw} />);
+
+    expect(screen.queryByText(/dependabot-automerge/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Bumps/i)).toBeInTheDocument();
+  });
+
+  it("normalizes HTML blocks (<blockquote>, <h2>, <ul>, <li>, <p>) inside changelogs without exposing raw markup", () => {
+    const raw = `<details>
+<summary>Changelog</summary>
+<p><em>Sourced from motion's changelog.</em></p>
+<blockquote>
+<h2>[14.7.1] 2026-10-27</h2>
+<h3>Fixed</h3>
+<ul>
+<li>Demote transforms to CPU when interrupted by layout animations.</li>
+</ul>
+</blockquote>
+</details>`;
+
+    const { container } = render(<MarkdownContent content={raw} />);
+
+    // Raw tags must NOT appear as literal text
+    expect(screen.queryByText(/<p>/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/<\/p>/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/<blockquote>/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/<\/blockquote>/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/<h2>/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/<ul>/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/<li>/i)).not.toBeInTheDocument();
+
+    // Elements must render properly
+    expect(screen.getByText("Demote transforms to CPU when interrupted by layout animations.")).toBeInTheDocument();
+    expect(screen.getByText("[14.7.1] 2026-10-27")).toBeInTheDocument();
+  });
+
+  it("renders linked badge images [![alt](img)](url) properly", () => {
+    const raw = `[![Dependabot compatibility score](https://dependabot-badges.githubapp.com/badges/compatibility_score?test=1)](https://docs.github.com/compatibility-scores)`;
+
+    const { container } = render(<MarkdownContent content={raw} />);
+
+    const link = screen.getByRole("link");
+    expect(link).toHaveAttribute("href", "https://docs.github.com/compatibility-scores");
+    const img = container.querySelector("img");
+    expect(img).toBeInTheDocument();
+    expect(img).toHaveAttribute("alt", "Dependabot compatibility score");
+  });
 });

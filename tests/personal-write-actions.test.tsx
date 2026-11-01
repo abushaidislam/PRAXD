@@ -9,6 +9,7 @@ import { PUT as mergePut } from "@/app/api/pull-requests/[pullRequestId]/merge/r
 import { PATCH as prPatch } from "@/app/api/pull-requests/[pullRequestId]/route";
 import { POST as commentPost } from "@/app/api/pull-requests/[pullRequestId]/comments/route";
 import { NextRequest } from "next/server";
+import { PullRequest } from "@/types/pr";
 
 // Mock Supabase Auth
 vi.mock("@/lib/supabase/auth", () => ({
