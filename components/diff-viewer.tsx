@@ -27,6 +27,8 @@ export interface DiffViewerProps {
   isCollapsible?: boolean;
   isExpanded?: boolean;
   onToggleExpand?: () => void;
+  isViewed?: boolean;
+  onToggleViewed?: () => void;
 }
 
 export function parseFilePath(filePath: string) {
@@ -95,6 +97,8 @@ export function DiffViewer({
   isCollapsible = false,
   isExpanded = true,
   onToggleExpand,
+  isViewed = false,
+  onToggleViewed,
 }: DiffViewerProps) {
   const [unmodifiedExpanded, setUnmodifiedExpanded] = useState(false);
   const [activeCommentLine, setActiveCommentLine] = useState<number | null>(null);
@@ -317,7 +321,8 @@ export function DiffViewer({
       id={`file-diff-${encodeURIComponent(file.filename)}`}
       className={cn(
         "flex items-center justify-between px-4 py-2.5 border-b border-praxd-border-soft bg-[#141414] text-[12px] shrink-0 sticky top-0 z-20 backdrop-blur-sm select-none transition-colors",
-        isCollapsible && "cursor-pointer hover:bg-[#181818]"
+        isCollapsible && "cursor-pointer hover:bg-[#181818]",
+        isViewed && "bg-[#111111]/90 opacity-90"
       )}
       onClick={isCollapsible ? onToggleExpand : undefined}
       role={isCollapsible ? "button" : undefined}
@@ -365,6 +370,29 @@ export function DiffViewer({
       </div>
 
       <div className="flex items-center gap-3 shrink-0">
+        {/* Viewed Checkbox Button */}
+        {onToggleViewed && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleViewed();
+            }}
+            className={cn(
+              "flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium transition-colors border select-none shrink-0",
+              isViewed
+                ? "bg-emerald-950/60 text-emerald-300 border-emerald-700/60 hover:bg-emerald-900/60"
+                : "bg-[#1c1c1c] text-neutral-400 border-neutral-700/60 hover:text-neutral-200 hover:border-neutral-500 hover:bg-[#242424]"
+            )}
+            title={isViewed ? "Mark file as unviewed" : "Mark file as viewed"}
+            aria-label={isViewed ? `Mark as unviewed: ${file.filename}` : `Mark as viewed: ${file.filename}`}
+            aria-pressed={isViewed}
+          >
+            <Check className={cn("w-3 h-3 transition-opacity", isViewed ? "opacity-100 text-emerald-400" : "opacity-40")} />
+            <span>Viewed</span>
+          </button>
+        )}
+
         <div className="flex items-center gap-1.5 font-mono text-[11px] tabular-nums font-semibold">
           <span className="text-[#3fb950]">+{file.additions}</span>
           <span className="text-[#f85149]">-{file.deletions}</span>

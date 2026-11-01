@@ -124,11 +124,28 @@ In addition to core triage and diff inspection, PRAXD includes **direct personal
   - Bot comment metadata stripping (`[vc]: #...` and `<!-- ... -->`) and strict URL sanitization.
   - Modal keyboard `Escape` closing listeners and smooth entrance animations.
 
+### 6. Developer Experience (DX) & Bite-Sized Polish Features (Shipped)
+- [x] **"Mark File as Viewed" & Review Progress Bar:**
+  - Added `[✓] Viewed` button to each file header in the collapsible diff viewer.
+  - Marking a file as viewed collapses the file and reflects viewed state with green checkmark indicator and dimmed header styling.
+  - Added real-time review progress indicator pill in the CodeView toolbar (`X/Y viewed` with dynamic emerald progress bar).
+- [x] **Terminal Checkout Command Dropdown:**
+  - Added `<CheckoutCommandDropdown />` in both `WorkspaceHeader` and `SummaryView` (branch row).
+  - One-click copy for `gh pr checkout <number>`, `git checkout <headRef>`, and `git fetch origin <headRef> && git checkout <headRef>`.
+  - Copy feedback with checkmark and toast notifications.
+- [x] **Keyboard Shortcuts Cheatsheet Modal:**
+  - Added accessible modal (`<KeyboardShortcutsModal />`) triggered by pressing `?` or clicking the keyboard icon button in `WorkspaceHeader`.
+  - Cleanly categorized shortcuts for Views & Panels (`1`, `2`, `Ctrl+B`), Diff Navigation (`[`, `]`, `↑`, `↓`), and Actions (`Enter`, `Esc`, `?`).
+- [x] **FileTreeDropdown Quick Search & Filter:**
+  - Added instant search input inside `FileTreeDropdown` to rapidly filter files when reviewing pull requests with multiple changed files.
+- [x] **Sleek Floating Toast Notification System:**
+  - Added `<ToastProvider />` and `useToast()` rendering auto-dismissing notifications in the bottom-right corner for terminal commands and copy feedback.
+
 ---
 
 ## Quality Checks & Verification
 
 - `lint` (`npm run lint`): Passed (`✔ No ESLint warnings or errors`).
 - `typecheck` (`npm run typecheck`): Passed (`tsc --noEmit` 0 errors).
-- `test` (`npm test`): Passed (82/82 tests passing across 11 test files, including dedicated `tests/markdown-content.test.tsx`, `tests/collapsible-diff.test.tsx`, and `tests/personal-write-actions.test.tsx`).
+- `test` (`npm test`): Passed (88/88 tests passing across 12 test files, including dedicated `tests/dx-features.test.tsx`, `tests/markdown-content.test.tsx`, `tests/collapsible-diff.test.tsx`, and `tests/personal-write-actions.test.tsx`).
 - `build` (`npm run build`): Passed (16 static pages, 20 dynamic API routes compiled cleanly in Next.js production build).

@@ -9,11 +9,13 @@ import {
   ChevronDown,
   PanelLeftOpen,
   Check,
+  Keyboard,
 } from "lucide-react";
 import { PullRequest } from "@/types/pr";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/brand-logo";
 import { MergeModal } from "@/components/merge-modal";
+import { CheckoutCommandDropdown } from "@/components/checkout-command-dropdown";
 
 interface WorkspaceHeaderProps {
   pr: PullRequest | null;
@@ -22,6 +24,7 @@ interface WorkspaceHeaderProps {
   isSidebarOpen: boolean;
   onToggleSidebar: () => void;
   onMergeSuccess?: () => void;
+  onOpenShortcuts?: () => void;
 }
 
 export function WorkspaceHeader({
@@ -31,6 +34,7 @@ export function WorkspaceHeader({
   isSidebarOpen,
   onToggleSidebar,
   onMergeSuccess,
+  onOpenShortcuts,
 }: WorkspaceHeaderProps) {
   const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
   const hasShield = pr?.title.toLowerCase().includes("sentinel");
@@ -131,8 +135,28 @@ export function WorkspaceHeader({
           </div>
         </div>
 
-        {/* Right Actions: External GitHub link, Functional Merge Action */}
-        <div className="flex items-center justify-end gap-2 shrink-0 z-10 pl-3">
+        {/* Right Actions: Checkout Dropdown, External GitHub link, Shortcuts button, Merge Action */}
+        <div className="flex items-center justify-end gap-1.5 shrink-0 z-10 pl-3">
+          {/* Terminal Checkout Command Dropdown */}
+          {pr && (
+            <div className="hidden sm:block">
+              <CheckoutCommandDropdown pr={pr} variant="header" />
+            </div>
+          )}
+
+          {/* Keyboard Shortcuts Cheatsheet Button */}
+          {onOpenShortcuts && (
+            <button
+              type="button"
+              onClick={onOpenShortcuts}
+              className="p-1.5 rounded-md hover:bg-[#202020] text-praxd-text-muted hover:text-praxd-text transition-colors"
+              title="Keyboard shortcuts (?)"
+              aria-label="Open keyboard shortcuts guide"
+            >
+              <Keyboard className="w-4 h-4" />
+            </button>
+          )}
+
           {/* External GitHub link */}
           <a
             href={pr ? `https://github.com/${pr.repoOwner}/${pr.repoName}/pull/${pr.number}` : "#"}

@@ -24,6 +24,7 @@ import { PullRequest } from "@/types/pr";
 import { CheckRunList } from "./check-run-list";
 import { ActivityTimeline } from "./activity-timeline";
 import { MarkdownContent } from "./markdown-content";
+import { CheckoutCommandDropdown } from "./checkout-command-dropdown";
 
 interface SummaryViewProps {
   pr: PullRequest;
@@ -243,6 +244,9 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
               <div className="flex items-center gap-1 font-mono text-[11px] tabular-nums ml-1">
                 <span className="text-praxd-green font-medium">+{pr.additions}</span>
                 <span className="text-praxd-red font-medium">-{pr.deletions}</span>
+              </div>
+              <div className="ml-2">
+                <CheckoutCommandDropdown pr={pr} variant="inline" />
               </div>
             </div>
           </div>
