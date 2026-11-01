@@ -108,7 +108,10 @@ export function CheckoutCommandDropdown({
         <div
           role="menu"
           aria-label="Checkout command options"
-          className="absolute left-0 mt-1 w-72 rounded-lg bg-[#181818] border border-praxd-border shadow-2xl z-50 p-1 space-y-1 animate-in fade-in zoom-in-95 duration-100 select-none"
+          className={cn(
+            "absolute mt-1.5 w-80 sm:w-[340px] rounded-xl bg-[#161616] border border-neutral-700/80 shadow-2xl ring-1 ring-white/5 z-50 p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-100 select-none",
+            variant === "header" ? "right-0" : "left-0"
+          )}
         >
           <div className="px-2.5 py-1.5 border-b border-praxd-border-soft text-[11px] text-neutral-400 font-medium flex items-center justify-between">
             <span>Checkout locally</span>
@@ -123,7 +126,7 @@ export function CheckoutCommandDropdown({
                 type="button"
                 role="menuitem"
                 onClick={(e) => handleCopyCommand(option, e)}
-                className="w-full text-left p-2 rounded-md hover:bg-[#252525] transition-colors group flex flex-col gap-1"
+                className="w-full text-left p-2 rounded-lg hover:bg-[#222222] transition-colors group flex flex-col gap-1.5 border border-transparent hover:border-neutral-700/50"
               >
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="font-semibold text-neutral-200 group-hover:text-white">
@@ -143,7 +146,7 @@ export function CheckoutCommandDropdown({
                     )}
                   </span>
                 </div>
-                <code className="text-[11px] font-mono text-praxd-blue bg-[#111] px-1.5 py-0.5 rounded border border-neutral-800 break-all">
+                <code className="text-[11px] font-mono text-praxd-blue bg-[#101010] px-2 py-1 rounded-md border border-neutral-800 break-words leading-relaxed select-all">
                   {option.command}
                 </code>
               </button>

@@ -49,7 +49,7 @@ export function WorkspaceHeader({
 
   return (
     <>
-      <header className="relative h-[48px] px-3.5 border-b border-praxd-border-soft bg-praxd-bg flex items-center justify-between shrink-0 select-none z-10">
+      <header className="relative h-[48px] px-3.5 border-b border-praxd-border-soft bg-praxd-bg flex items-center justify-between shrink-0 select-none z-30">
         {/* Left PR identity & sidebar reveal toggle */}
         <div className="flex items-center gap-2.5 min-w-0 flex-1 max-w-[calc(50%-100px)] pr-3 z-10">
           {!isSidebarOpen && (

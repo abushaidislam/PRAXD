@@ -320,7 +320,7 @@ export function DiffViewer({
     <div
       id={`file-diff-${encodeURIComponent(file.filename)}`}
       className={cn(
-        "flex items-center justify-between px-4 py-2.5 border-b border-praxd-border-soft bg-[#141414] text-[12px] shrink-0 sticky top-0 z-20 backdrop-blur-sm select-none transition-colors",
+        "flex items-center justify-between px-4 py-2.5 border-b border-praxd-border-soft bg-[#141414] text-[12px] shrink-0 sticky top-0 z-10 backdrop-blur-sm select-none transition-colors",
         isCollapsible && "cursor-pointer hover:bg-[#181818]",
         isViewed && "bg-[#111111]/90 opacity-90"
       )}
@@ -379,7 +379,7 @@ export function DiffViewer({
               onToggleViewed();
             }}
             className={cn(
-              "flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium transition-colors border select-none shrink-0",
+              "flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium transition-colors border select-none shrink-0 group",
               isViewed
                 ? "bg-emerald-950/60 text-emerald-300 border-emerald-700/60 hover:bg-emerald-900/60"
                 : "bg-[#1c1c1c] text-neutral-400 border-neutral-700/60 hover:text-neutral-200 hover:border-neutral-500 hover:bg-[#242424]"
@@ -388,7 +388,16 @@ export function DiffViewer({
             aria-label={isViewed ? `Mark as unviewed: ${file.filename}` : `Mark as viewed: ${file.filename}`}
             aria-pressed={isViewed}
           >
-            <Check className={cn("w-3 h-3 transition-opacity", isViewed ? "opacity-100 text-emerald-400" : "opacity-40")} />
+            <span
+              className={cn(
+                "w-3.5 h-3.5 rounded flex items-center justify-center transition-colors border shrink-0",
+                isViewed
+                  ? "bg-emerald-500 border-emerald-400 text-black"
+                  : "border-neutral-500 bg-neutral-900/80 group-hover:border-neutral-400"
+              )}
+            >
+              {isViewed && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+            </span>
             <span>Viewed</span>
           </button>
         )}
