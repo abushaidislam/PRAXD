@@ -129,10 +129,11 @@ In addition to core triage and diff inspection, PRAXD includes **direct personal
   - Modal keyboard `Escape` closing listeners and smooth entrance animations.
 
 ### 6. Developer Experience (DX) & Bite-Sized Polish Features (Shipped)
-- [x] **"Mark File as Viewed" & Review Progress Bar:**
+- [x] **"Mark File as Viewed" & Circular Review Progress Ring:**
   - Added `[✓] Viewed` button to each file header in the collapsible diff viewer.
   - Marking a file as viewed collapses the file and reflects viewed state with green checkmark indicator and dimmed header styling.
-  - Added real-time review progress indicator pill in the CodeView toolbar (`X/Y viewed` with dynamic emerald progress bar).
+  - Streamlined top toolbar by eliminating redundant static file selector and prev/next buttons (all files are accessible directly in the vertical collapsible feed).
+  - Upgraded review progress indicator from a linear bar to a compact SVG Circular Progress Ring (`X/Y viewed` with animated radial emerald fill and completion checkmark).
 - [x] **Terminal Checkout Command Dropdown:**
   - Added `<CheckoutCommandDropdown />` in both `WorkspaceHeader` and `SummaryView` (branch row).
   - One-click copy for `gh pr checkout <number>`, `git checkout <headRef>`, and `git fetch origin <headRef> && git checkout <headRef>`.

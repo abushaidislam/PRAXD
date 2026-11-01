@@ -7,9 +7,10 @@ import {
   ChevronRight,
   ArrowLeftRight,
   ChevronsUpDown,
+  Check,
 } from "lucide-react";
 import { PullRequest, ChangedFile } from "@/types/pr";
-import { FileTreeDropdown } from "./file-tree-dropdown";
+
 import { DiffViewer } from "./diff-viewer";
 import { cn } from "@/lib/utils";
 
@@ -180,10 +181,10 @@ export function CodeView({ pr }: CodeViewProps) {
     <div className="h-full flex flex-col min-w-0 bg-[#0e0e0e]">
       {/* Top Breadcrumb & Ergonomic Diff Toolbar */}
       <div className="h-[42px] px-3.5 border-b border-praxd-border-soft bg-praxd-bg flex items-center justify-between shrink-0 select-none text-[12px] relative z-20 gap-3">
-        {/* Left: Multi-file picker, navigation, expand/collapse, and review progress */}
+        {/* Left: Branch flow, Expand/Collapse, and Circular Review Progress */}
         <div className="flex items-center gap-2.5 min-w-0 flex-1 overflow-hidden">
           {/* Branch flow — visible on large screens, cleanly hidden on narrower screens to prevent crowding */}
-          <div className="hidden xl:flex items-center gap-1.5 text-praxd-text-muted font-mono text-[11px] truncate shrink-0 max-w-[200px]">
+          <div className="hidden md:flex items-center gap-1.5 text-praxd-text-muted font-mono text-[11px] truncate shrink-0 max-w-[260px]">
             <span className="text-praxd-text-secondary truncate">
               {pr.headRef}
             </span>
@@ -191,75 +192,72 @@ export function CodeView({ pr }: CodeViewProps) {
             <span className="text-praxd-text-muted">{pr.baseRef}</span>
           </div>
 
-          {/* Sticky Multi-File Selector Dropdown + Prev/Next buttons */}
           {pr.files.length > 0 && (
-            <div className="flex items-center gap-1.5 shrink-0">
-              <FileTreeDropdown
-                files={pr.files}
-                selectedFile={activeFile}
-                onSelectFile={handleSelectFile}
-              />
-
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Expand All / Collapse All Toggle Button */}
               {pr.files.length > 1 && (
-                <>
-                  <div className="flex items-center gap-0.5 border border-praxd-border-soft rounded-md bg-[#181818] p-0.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={handlePrevFile}
-                      disabled={!hasPrevFile}
-                      className="p-1 rounded text-praxd-text-muted hover:text-praxd-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                      title="Previous file ([)"
-                      aria-label="Previous changed file"
-                    >
-                      <ChevronLeft className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleNextFile}
-                      disabled={!hasNextFile}
-                      className="p-1 rounded text-praxd-text-muted hover:text-praxd-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                      title="Next file (])"
-                      aria-label="Next changed file"
-                    >
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
-                  {/* Expand All / Collapse All Toggle Button */}
-                  <button
-                    type="button"
-                    onClick={handleToggleAllFiles}
-                    className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-md border border-praxd-border-soft bg-[#181818] text-praxd-text-muted hover:text-praxd-text hover:bg-[#222222] transition-colors shrink-0 whitespace-nowrap"
-                    title={allFilesExpanded ? "Collapse all files" : "Expand all files"}
-                    aria-label={allFilesExpanded ? "Collapse all files" : "Expand all files"}
-                  >
-                    <ChevronsUpDown className="w-3.5 h-3.5 shrink-0" />
-                    <span className="whitespace-nowrap">
-                      {allFilesExpanded ? "Collapse all" : "Expand all"}
-                    </span>
-                  </button>
-
-                  {/* Review Progress Indicator */}
-                  <div
-                    className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#161616] border border-praxd-border-soft text-[11px] font-mono select-none shrink-0"
-                    title={`${viewedCount} of ${pr.files.length} files reviewed`}
-                    aria-label={`Review progress: ${viewedCount} of ${pr.files.length} files reviewed`}
-                  >
-                    <div className="w-12 h-1.5 rounded-full bg-neutral-800/90 border border-neutral-700/50 overflow-hidden shrink-0">
-                      <div
-                        className="h-full bg-emerald-500 transition-all duration-300 rounded-full"
-                        style={{
-                          width: `${pr.files.length > 0 ? (viewedCount / pr.files.length) * 100 : 0}%`,
-                        }}
-                      />
-                    </div>
-                    <span className="tabular-nums text-neutral-300 font-medium whitespace-nowrap">
-                      {viewedCount}/{pr.files.length}
-                    </span>
-                    <span className="text-[10px] text-neutral-500 whitespace-nowrap">viewed</span>
-                  </div>
-                </>
+                <button
+                  type="button"
+                  onClick={handleToggleAllFiles}
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-md border border-praxd-border-soft bg-[#181818] text-praxd-text-muted hover:text-praxd-text hover:bg-[#222222] transition-colors shrink-0 whitespace-nowrap"
+                  title={allFilesExpanded ? "Collapse all files" : "Expand all files"}
+                  aria-label={allFilesExpanded ? "Collapse all files" : "Expand all files"}
+                >
+                  <ChevronsUpDown className="w-3.5 h-3.5 shrink-0" />
+                  <span className="whitespace-nowrap">
+                    {allFilesExpanded ? "Collapse all" : "Expand all"}
+                  </span>
+                </button>
               )}
+
+              {/* Circular Review Progress Indicator (Round fill system) */}
+              <div
+                className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#161616] border border-praxd-border-soft text-[11px] font-mono select-none shrink-0"
+                title={`${viewedCount} of ${pr.files.length} files reviewed`}
+                aria-label={`Review progress: ${viewedCount} of ${pr.files.length} files reviewed`}
+              >
+                {/* SVG Circular Progress Ring */}
+                <div className="relative w-4 h-4 flex items-center justify-center shrink-0">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                    {/* Background track circle */}
+                    <path
+                      className="text-neutral-800"
+                      strokeWidth="3.5"
+                      stroke="currentColor"
+                      fill="none"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    />
+                    {/* Animated foreground progress stroke */}
+                    <path
+                      className={cn(
+                        "transition-all duration-300",
+                        viewedCount === pr.files.length && pr.files.length > 0
+                          ? "text-emerald-400"
+                          : "text-emerald-500"
+                      )}
+                      strokeDasharray={`${
+                        pr.files.length > 0
+                          ? Math.round((viewedCount / pr.files.length) * 100)
+                          : 0
+                      }, 100`}
+                      strokeWidth="3.5"
+                      strokeLinecap="round"
+                      stroke="currentColor"
+                      fill="none"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    />
+                  </svg>
+                  {/* Subtle centered checkmark when 100% complete */}
+                  {viewedCount === pr.files.length && pr.files.length > 0 && (
+                    <Check className="w-2.5 h-2.5 text-emerald-400 absolute" />
+                  )}
+                </div>
+
+                <span className="tabular-nums text-neutral-300 font-medium whitespace-nowrap">
+                  {viewedCount}/{pr.files.length}
+                </span>
+                <span className="text-[10px] text-neutral-500 whitespace-nowrap">viewed</span>
+              </div>
             </div>
           )}
         </div>
