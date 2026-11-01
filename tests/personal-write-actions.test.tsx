@@ -117,6 +117,26 @@ describe("Personal PR Write Actions Suite", () => {
         expect(handleUpdatePr).toHaveBeenCalledWith({ body: "New updated PR description." });
       });
     });
+
+    it("displays commentsCount in metadata when comments array is empty", () => {
+      const prWithCount: PullRequest = {
+        ...samplePr,
+        commentsCount: 5,
+        comments: [],
+      };
+      render(<SummaryView pr={prWithCount} />);
+      expect(screen.getByText("5 comments")).toBeInTheDocument();
+    });
+
+    it("displays accurate singular comment count", () => {
+      const prWithSingle: PullRequest = {
+        ...samplePr,
+        commentsCount: 1,
+        comments: [],
+      };
+      render(<SummaryView pr={prWithSingle} />);
+      expect(screen.getByText("1 comment")).toBeInTheDocument();
+    });
   });
 
   describe("PR Conversation Comments", () => {

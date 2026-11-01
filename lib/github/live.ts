@@ -162,25 +162,51 @@ export async function fetchLivePullRequests(options?: {
       })
     );
 
-    // If the very first PR is requested, also fetch its files so diff is ready immediately
+    // If the very first PR is requested, also fetch its files and comments so diff and summary are ready immediately
     let firstPrFiles: ChangedFile[] = [];
+    let firstPrComments: PRComment[] = [];
     if (topBatch.length > 0) {
       const firstItem = topBatch[0];
       const match = firstItem.repository_url.match(/repos\/([^/]+)\/([^/]+)$/);
       if (match) {
         const [_, owner, repo] = match;
         try {
-          const filesRes = await fetch(
-            `https://api.github.com/repos/${owner}/${repo}/pulls/${firstItem.number}/files?per_page=30`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-                Accept: "application/vnd.github+json",
-                "X-GitHub-Api-Version": "2022-11-28",
-                "User-Agent": "PRAXD-PR-Workspace/0.1.0",
-              },
-            }
-          );
+          const [filesRes, issueCommentsRes, reviewCommentsRes] = await Promise.all([
+            fetch(
+              `https://api.github.com/repos/${owner}/${repo}/pulls/${firstItem.number}/files?per_page=30`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  Accept: "application/vnd.github+json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+                  "User-Agent": "PRAXD-PR-Workspace/0.1.0",
+                },
+              }
+            ),
+            fetch(
+              `https://api.github.com/repos/${owner}/${repo}/issues/${firstItem.number}/comments?per_page=100`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  Accept: "application/vnd.github+json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+                  "User-Agent": "PRAXD-PR-Workspace/0.1.0",
+                },
+              }
+            ),
+            fetch(
+              `https://api.github.com/repos/${owner}/${repo}/pulls/${firstItem.number}/comments?per_page=100`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  Accept: "application/vnd.github+json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+                  "User-Agent": "PRAXD-PR-Workspace/0.1.0",
+                },
+              }
+            ),
+          ]);
+
           if (filesRes.ok) {
             const rawFiles = await filesRes.json();
             firstPrFiles = (rawFiles || []).map((f: any) => ({
@@ -193,6 +219,44 @@ export async function fetchLivePullRequests(options?: {
               lines: parsePatchToLines(f.patch || ""),
             }));
           }
+
+          const rawIssues = issueCommentsRes.ok ? await issueCommentsRes.json() : [];
+          const rawReviews = reviewCommentsRes.ok ? await reviewCommentsRes.json() : [];
+
+          const issueList: PRComment[] = Array.isArray(rawIssues)
+            ? rawIssues.map((c: any) => ({
+                id: String(c.id),
+                author: {
+                  login: c.user?.login || "unknown",
+                  avatarUrl: c.user?.avatar_url || "https://github.com/ghost.png",
+                  name: c.user?.login || "unknown",
+                },
+                body: c.body || "",
+                createdAt: c.created_at,
+                commentType: "issue" as const,
+              }))
+            : [];
+
+          const reviewList: PRComment[] = Array.isArray(rawReviews)
+            ? rawReviews.map((c: any) => ({
+                id: String(c.id),
+                author: {
+                  login: c.user?.login || "unknown",
+                  avatarUrl: c.user?.avatar_url || "https://github.com/ghost.png",
+                  name: c.user?.login || "unknown",
+                },
+                body: c.body || "",
+                createdAt: c.created_at,
+                commentType: "review" as const,
+                path: c.path,
+                line: c.line ?? c.original_line,
+                side: c.side,
+              }))
+            : [];
+
+          firstPrComments = [...issueList, ...reviewList].sort(
+            (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
         } catch {
           // Ignore files fetch failure
         }
@@ -206,6 +270,9 @@ export async function fetchLivePullRequests(options?: {
       const detailed = detailedMap.get(item.number);
 
       const files = idx === 0 ? firstPrFiles : [];
+      const comments = idx === 0 ? firstPrComments : [];
+      const commentsCount =
+        (detailed?.comments ?? item.comments ?? 0) + (detailed?.review_comments ?? 0);
 
       return {
         id: `live__${owner}__${repo}__${item.number}`,
@@ -245,7 +312,8 @@ export async function fetchLivePullRequests(options?: {
             completedAt: item.updated_at,
           },
         ],
-        comments: [],
+        commentsCount: Math.max(commentsCount, comments.length),
+        comments,
         commits: [
           {
             sha: (detailed?.head?.sha || "0000000").slice(0, 7),
@@ -282,7 +350,7 @@ export async function fetchLivePullRequestDetails(
   try {
     const token = await getInstallationAccessToken(install.id);
 
-    const [prRes, filesRes, commentsRes] = await Promise.all([
+    const [prRes, filesRes, issueCommentsRes, reviewCommentsRes] = await Promise.all([
       fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -299,7 +367,15 @@ export async function fetchLivePullRequestDetails(
           "User-Agent": "PRAXD-PR-Workspace/0.1.0",
         },
       }),
-      fetch(`https://api.github.com/repos/${owner}/${repo}/issues/${pullNumber}/comments?per_page=50`, {
+      fetch(`https://api.github.com/repos/${owner}/${repo}/issues/${pullNumber}/comments?per_page=100`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "User-Agent": "PRAXD-PR-Workspace/0.1.0",
+        },
+      }),
+      fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}/comments?per_page=100`, {
         headers: {
           Authorization: `Bearer ${token}`,
           Accept: "application/vnd.github+json",
@@ -312,10 +388,11 @@ export async function fetchLivePullRequestDetails(
     if (!prRes.ok) return null;
     const pr = await prRes.json();
     const rawFiles = filesRes.ok ? await filesRes.json() : [];
-    const rawComments = commentsRes.ok ? await commentsRes.json() : [];
+    const rawIssueComments = issueCommentsRes.ok ? await issueCommentsRes.json() : [];
+    const rawReviewComments = reviewCommentsRes.ok ? await reviewCommentsRes.json() : [];
 
-    const comments: PRComment[] = Array.isArray(rawComments)
-      ? rawComments.map((c: any) => ({
+    const issueComments: PRComment[] = Array.isArray(rawIssueComments)
+      ? rawIssueComments.map((c: any) => ({
           id: String(c.id),
           author: {
             login: c.user?.login || "unknown",
@@ -327,6 +404,32 @@ export async function fetchLivePullRequestDetails(
           commentType: "issue" as const,
         }))
       : [];
+
+    const reviewComments: PRComment[] = Array.isArray(rawReviewComments)
+      ? rawReviewComments.map((c: any) => ({
+          id: String(c.id),
+          author: {
+            login: c.user?.login || "unknown",
+            avatarUrl: c.user?.avatar_url || "https://github.com/ghost.png",
+            name: c.user?.login || "unknown",
+          },
+          body: c.body || "",
+          createdAt: c.created_at,
+          commentType: "review" as const,
+          path: c.path,
+          line: c.line ?? c.original_line,
+          side: c.side,
+        }))
+      : [];
+
+    const comments: PRComment[] = [...issueComments, ...reviewComments].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+
+    const totalCommentCount = Math.max(
+      (pr.comments || 0) + (pr.review_comments || 0),
+      comments.length
+    );
 
     const files: ChangedFile[] = (rawFiles || []).map((f: any) => ({
       filename: f.filename,
@@ -376,6 +479,7 @@ export async function fetchLivePullRequestDetails(
           completedAt: pr.updated_at,
         },
       ],
+      commentsCount: totalCommentCount,
       comments,
       commits: [
         {
@@ -447,33 +551,68 @@ export async function fetchLivePullRequestComments(
 
   try {
     const token = await getInstallationAccessToken(install.id);
-    const res = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/issues/${pullNumber}/comments?per_page=100`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/vnd.github+json",
-          "X-GitHub-Api-Version": "2022-11-28",
-          "User-Agent": "PRAXD-PR-Workspace/0.1.0",
-        },
-      }
+    const [issueRes, reviewRes] = await Promise.all([
+      fetch(
+        `https://api.github.com/repos/${owner}/${repo}/issues/${pullNumber}/comments?per_page=100`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "PRAXD-PR-Workspace/0.1.0",
+          },
+        }
+      ),
+      fetch(
+        `https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}/comments?per_page=100`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "PRAXD-PR-Workspace/0.1.0",
+          },
+        }
+      ),
+    ]);
+
+    const rawIssues = issueRes.ok ? await issueRes.json() : [];
+    const rawReviews = reviewRes.ok ? await reviewRes.json() : [];
+
+    const issueComments: PRComment[] = Array.isArray(rawIssues)
+      ? rawIssues.map((c: any) => ({
+          id: String(c.id),
+          author: {
+            login: c.user?.login || "unknown",
+            avatarUrl: c.user?.avatar_url || "https://github.com/ghost.png",
+            name: c.user?.login || "unknown",
+          },
+          body: c.body || "",
+          createdAt: c.created_at,
+          commentType: "issue" as const,
+        }))
+      : [];
+
+    const reviewComments: PRComment[] = Array.isArray(rawReviews)
+      ? rawReviews.map((c: any) => ({
+          id: String(c.id),
+          author: {
+            login: c.user?.login || "unknown",
+            avatarUrl: c.user?.avatar_url || "https://github.com/ghost.png",
+            name: c.user?.login || "unknown",
+          },
+          body: c.body || "",
+          createdAt: c.created_at,
+          commentType: "review" as const,
+          path: c.path,
+          line: c.line ?? c.original_line,
+          side: c.side,
+        }))
+      : [];
+
+    return [...issueComments, ...reviewComments].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
-
-    if (!res.ok) return [];
-    const comments = await res.json();
-    if (!Array.isArray(comments)) return [];
-
-    return comments.map((c: any) => ({
-      id: String(c.id),
-      author: {
-        login: c.user?.login || "unknown",
-        avatarUrl: c.user?.avatar_url || "https://github.com/ghost.png",
-        name: c.user?.login || "unknown",
-      },
-      body: c.body || "",
-      createdAt: c.created_at,
-      commentType: "issue",
-    }));
   } catch {
     return [];
   }

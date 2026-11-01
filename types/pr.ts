@@ -97,6 +97,7 @@ export interface PullRequest {
   checks: CheckRun[];
   checksStatus: "success" | "failure" | "pending";
   comments: PRComment[];
+  commentsCount?: number;
   commits: PRCommit[];
   files: ChangedFile[];
   aiFindings?: AIFinding[];

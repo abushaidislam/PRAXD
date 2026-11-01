@@ -69,10 +69,14 @@ export function PRWorkspace() {
             setPullRequests(json.data);
             setSelectedPr(json.data[0]);
 
-            // If the first PR files need loading, fetch its details
-            if (!json.data[0].files || json.data[0].files.length === 0) {
+            // If the first PR files or comments need loading, fetch its details
+            const firstPr = json.data[0];
+            const firstNeedsFiles = !firstPr.files || firstPr.files.length === 0;
+            const firstNeedsComments =
+              (firstPr.commentsCount ?? 0) > 0 && (!firstPr.comments || firstPr.comments.length === 0);
+            if (firstNeedsFiles || firstNeedsComments) {
               try {
-                const detailRes = await fetch(`/api/pull-requests/${json.data[0].id}`);
+                const detailRes = await fetch(`/api/pull-requests/${firstPr.id}`);
                 if (detailRes.ok) {
                   const detailJson = await detailRes.json();
                   if (detailJson.data) {
@@ -100,10 +104,12 @@ export function PRWorkspace() {
     loadLivePrs();
   }, [isLiveMode]);
 
-  // Select PR and lazily fetch files/diff if not yet loaded
+  // Select PR and lazily fetch files/diff and comments if not yet loaded
   const handleSelectPr = useCallback(async (pr: PullRequest) => {
     setSelectedPr(pr);
-    if (!pr.files || pr.files.length === 0) {
+    const needsFiles = !pr.files || pr.files.length === 0;
+    const needsComments = (pr.commentsCount ?? 0) > 0 && (!pr.comments || pr.comments.length === 0);
+    if (needsFiles || needsComments) {
       try {
         const res = await fetch(`/api/pull-requests/${pr.id}`);
         if (res.ok) {

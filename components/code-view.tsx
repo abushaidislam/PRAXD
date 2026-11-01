@@ -10,6 +10,7 @@ import {
 import { PullRequest, ChangedFile } from "@/types/pr";
 
 import { DiffViewer } from "./diff-viewer";
+import { DiffSplitToggle } from "./diff-split-toggle";
 import { FileTreeDropdown } from "./file-tree-dropdown";
 import { cn } from "@/lib/utils";
 
@@ -60,68 +61,7 @@ function CollapseLinesIcon({ isAllExpanded }: { isAllExpanded: boolean }) {
 }
 
 /**
- * Custom Red/Green diagonal split square icon for Diff Mode matching the reference screenshot:
- * Rounded rectangle with silver border, crimson top-left triangle, and emerald bottom-right triangle.
- */
-function DiffSquareIcon({ mode }: { mode: "split" | "unified" }) {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 16 16"
-      className="w-4 h-4 shrink-0"
-    >
-      <rect
-        x="1"
-        y="1"
-        width="14"
-        height="14"
-        rx="3.2"
-        fill="#121212"
-        stroke="#808080"
-        strokeWidth="1.2"
-      />
-      <clipPath id="diff-square-clip">
-        <rect x="1.8" y="1.8" width="12.4" height="12.4" rx="2.2" />
-      </clipPath>
-      <g clipPath="url(#diff-square-clip)">
-        {mode === "split" ? (
-          <>
-            {/* Top-left: red triangle */}
-            <polygon points="1.8,1.8 14.2,1.8 1.8,14.2" fill="#8e2727" />
-            {/* Bottom-right: green triangle */}
-            <polygon points="14.2,1.8 14.2,14.2 1.8,14.2" fill="#227a38" />
-            {/* Dark diagonal dividing line */}
-            <line
-              x1="1.8"
-              y1="14.2"
-              x2="14.2"
-              y2="1.8"
-              stroke="#121212"
-              strokeWidth="1.2"
-            />
-          </>
-        ) : (
-          <>
-            {/* Unified inline mode: horizontal split */}
-            <rect x="1.8" y="1.8" width="12.4" height="6.2" fill="#8e2727" />
-            <rect x="1.8" y="8" width="12.4" height="6.2" fill="#227a38" />
-            <line
-              x1="1.8"
-              y1="8"
-              x2="14.2"
-              y2="8"
-              stroke="#121212"
-              strokeWidth="1.2"
-            />
-          </>
-        )}
-      </g>
-    </svg>
-  );
-}
-
-/**
+ * Custom Changed Files icon (two overlapping file/folder squares) matching the reference screenshot.
  * Custom Folder Stack icon matching the reference screenshot:
  * Clean dual-folder outline for opening the changed files drawer.
  */
@@ -549,24 +489,18 @@ export function CodeView({ pr }: CodeViewProps) {
             </button>
           )}
 
-          {/* 3. Red/Green Diagonal Square (Diff Mode Toggle) */}
-          <button
-            type="button"
-            onClick={() => setDiffMode(diffMode === "split" ? "unified" : "split")}
-            className="p-1 rounded-md text-neutral-300 hover:text-white hover:bg-[#1e1e1e] transition-colors"
+          {/* 3. Red/Green Animated Diff Split/Unified Toggle */}
+          <DiffSplitToggle
+            size={18}
+            isSplit={diffMode === "split"}
+            onSplitChange={(isSplit: boolean) => setDiffMode(isSplit ? "split" : "unified")}
             title={
               diffMode === "split"
                 ? "Diff mode: Split (click to switch to Unified)"
                 : "Diff mode: Unified (click to switch to Split)"
             }
-            aria-label={
-              diffMode === "split"
-                ? "Diff mode: Split (click to switch to Unified)"
-                : "Diff mode: Unified (click to switch to Split)"
-            }
-          >
-            <DiffSquareIcon mode={diffMode} />
-          </button>
+            className="p-1 rounded-md text-neutral-400 hover:text-white hover:bg-[#1e1e1e] transition-colors"
+          />
 
           {/* 4. Changed Files Drawer / Tree Icon Button */}
           {pr.files.length > 0 && (

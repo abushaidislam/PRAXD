@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   ShieldAlert,
   Pencil,
@@ -20,7 +20,7 @@ import {
   Clock,
   AlertCircle,
 } from "lucide-react";
-import { PullRequest } from "@/types/pr";
+import { PullRequest, PRComment } from "@/types/pr";
 import { CheckRunList } from "./check-run-list";
 import { ActivityTimeline } from "./activity-timeline";
 import { MarkdownContent } from "./markdown-content";
@@ -49,13 +49,40 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
   const [copiedBranch, setCopiedBranch] = useState(false);
   const [copiedDesc, setCopiedDesc] = useState(false);
 
+  // Local comments state synchronized with PR prop and timeline additions
+  const [commentsList, setCommentsList] = useState<PRComment[]>(pr.comments || []);
+
   // Sync inputs when selected PR changes
   useEffect(() => {
     setTitleInput(pr.title);
     setIsEditingTitle(false);
     setBodyInput(pr.body || "");
     setIsEditingBody(false);
-  }, [pr.id, pr.title, pr.body]);
+    setCommentsList(pr.comments || []);
+  }, [pr.id, pr.title, pr.body, pr.comments]);
+
+  const effectiveCommentCount = Math.max(
+    commentsList.length,
+    pr.comments?.length || 0,
+    pr.commentsCount ?? 0
+  );
+
+  const handleCommentsLoaded = useCallback((loaded: PRComment[]) => {
+    setCommentsList(loaded);
+    if (onUpdatePr) {
+      onUpdatePr({ comments: loaded, commentsCount: loaded.length });
+    }
+  }, [onUpdatePr]);
+
+  const handleCommentAdded = useCallback((comment: PRComment) => {
+    setCommentsList((prev) => {
+      const next = [...prev, comment];
+      if (onUpdatePr) {
+        onUpdatePr({ comments: next, commentsCount: next.length });
+      }
+      return next;
+    });
+  }, [onUpdatePr]);
 
   const hasShield = pr.title.toLowerCase().includes("sentinel");
 
@@ -301,7 +328,7 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
               <span>Comments</span>
             </div>
             <span className="text-praxd-text-secondary tabular-nums">
-              {pr.comments.length} comments
+              {effectiveCommentCount} {effectiveCommentCount === 1 ? "comment" : "comments"}
             </span>
           </div>
 
@@ -447,7 +474,11 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
         <CheckRunList checks={pr.checks} />
 
         {/* Activity Timeline & Conversation Comment Section */}
-        <ActivityTimeline pr={pr} />
+        <ActivityTimeline
+          pr={pr}
+          onCommentsLoaded={handleCommentsLoaded}
+          onCommentAdded={handleCommentAdded}
+        />
       </div>
     </div>
   );

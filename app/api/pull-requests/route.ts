@@ -39,6 +39,7 @@ function mapDbPrToDomain(pr: any): PullRequest {
     reviewers: [],
     checksStatus: "success",
     checks: [],
+    commentsCount: (pr.comments_count || 0) + (pr.review_comments_count || 0),
     comments: [],
     commits: [],
     files: [],

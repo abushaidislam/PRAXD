@@ -27,6 +27,7 @@ import { MarkdownContent } from "./markdown-content";
 interface ActivityTimelineProps {
   pr: PullRequest;
   onCommentAdded?: (comment: PRComment) => void;
+  onCommentsLoaded?: (comments: PRComment[]) => void;
 }
 
 function formatRelativeTime(dateStr?: string): string {
@@ -46,7 +47,11 @@ function formatRelativeTime(dateStr?: string): string {
   return `${Math.floor(months / 12)}y`;
 }
 
-export function ActivityTimeline({ pr, onCommentAdded }: ActivityTimelineProps) {
+export function ActivityTimeline({
+  pr,
+  onCommentAdded,
+  onCommentsLoaded,
+}: ActivityTimelineProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [commentText, setCommentText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -98,6 +103,9 @@ export function ActivityTimeline({ pr, onCommentAdded }: ActivityTimelineProps) 
           const fetchedComments = json.comments || json.data?.comments;
           if (isMounted && Array.isArray(fetchedComments)) {
             setLocalComments(fetchedComments);
+            if (onCommentsLoaded) {
+              onCommentsLoaded(fetchedComments);
+            }
           }
         }
       } catch {
@@ -109,7 +117,7 @@ export function ActivityTimeline({ pr, onCommentAdded }: ActivityTimelineProps) 
     return () => {
       isMounted = false;
     };
-  }, [pr.id, pr.comments]);
+  }, [pr.id, pr.comments, onCommentsLoaded]);
 
   const totalEvents = pr.commits.length + 1 + localComments.length;
 
