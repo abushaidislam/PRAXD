@@ -25,6 +25,7 @@ import { CheckRunList } from "./check-run-list";
 import { ActivityTimeline } from "./activity-timeline";
 import { MarkdownContent } from "./markdown-content";
 import { CheckoutCommandDropdown } from "./checkout-command-dropdown";
+import { CopyIcon } from "./copy-icon";
 
 interface SummaryViewProps {
   pr: PullRequest;
@@ -223,19 +224,15 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-mono text-praxd-text-secondary text-[11px] bg-[#1a1a1a] px-2 py-0.5 rounded border border-praxd-border-soft flex items-center gap-1.5">
                 <span>{pr.headRef}</span>
-                <button
-                  type="button"
-                  onClick={handleCopyBranch}
-                  className="p-0.5 hover:bg-[#252525] rounded text-praxd-text-muted hover:text-praxd-text transition-colors"
+                <CopyIcon
+                  value={pr.headRef}
+                  size={13}
+                  strokeWidth={2}
                   title={copiedBranch ? "Copied branch!" : "Copy branch name"}
                   aria-label="Copy branch name"
-                >
-                  {copiedBranch ? (
-                    <Check className="w-3 h-3 text-praxd-green" />
-                  ) : (
-                    <Copy className="w-3 h-3" />
-                  )}
-                </button>
+                  className="p-0.5 hover:bg-[#252525] rounded text-praxd-text-muted hover:text-praxd-text transition-colors"
+                  onClick={handleCopyBranch}
+                />
               </span>
               <span className="text-praxd-text-muted font-mono select-none">→</span>
               <span className="font-mono text-praxd-text-secondary text-[11px] bg-[#1a1a1a] px-2 py-0.5 rounded border border-praxd-border-soft">
@@ -354,19 +351,15 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
             </button>
             <div className="flex items-center gap-1.5">
               {pr.body && !isEditingBody && (
-                <button
-                  type="button"
-                  onClick={handleCopyDesc}
-                  className="p-1 rounded hover:bg-[#202020] text-praxd-text-muted hover:text-praxd-text transition-colors"
+                <CopyIcon
+                  value={pr.body}
+                  size={15}
+                  strokeWidth={2}
                   aria-label="Copy description"
                   title={copiedDesc ? "Copied description!" : "Copy description markdown"}
-                >
-                  {copiedDesc ? (
-                    <Check className="w-3.5 h-3.5 text-praxd-green" />
-                  ) : (
-                    <Copy className="w-3.5 h-3.5" />
-                  )}
-                </button>
+                  className="p-1 rounded hover:bg-[#202020] text-praxd-text-muted hover:text-praxd-text transition-colors"
+                  onClick={handleCopyDesc}
+                />
               )}
               {!isEditingBody && (
                 <button

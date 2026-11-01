@@ -17,6 +17,7 @@ import { ChangedFile, PRComment, AIFinding, DiffLine } from "@/types/pr";
 import { AIReviewCard } from "./ai-review-card";
 import { buildSplitRows, parsePatchToLines, SplitRow } from "@/lib/diff-parser";
 import { cn } from "@/lib/utils";
+import { CopyIcon } from "./copy-icon";
 
 export interface DiffViewerProps {
   file: ChangedFile;
@@ -351,22 +352,18 @@ export function DiffViewer({
           </span>
         )}
         <span className="sr-only">{file.filename}</span>
-        <button
-          type="button"
-          onClick={(e) => {
+        <CopyIcon
+          value={file.filename}
+          size={14}
+          strokeWidth={2}
+          title={copiedPath ? "Copied path!" : "Copy file path"}
+          aria-label="Copy file path"
+          className="p-1 rounded hover:bg-[#252525] text-praxd-text-muted hover:text-praxd-text transition-colors shrink-0 ml-1"
+          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
             e.stopPropagation();
             handleCopyPath();
           }}
-          className="p-1 rounded hover:bg-[#252525] text-praxd-text-muted hover:text-praxd-text transition-colors shrink-0 ml-1"
-          title={copiedPath ? "Copied path!" : "Copy file path"}
-          aria-label="Copy file path"
-        >
-          {copiedPath ? (
-            <Check className="w-3.5 h-3.5 text-praxd-green" />
-          ) : (
-            <Copy className="w-3.5 h-3.5" />
-          )}
-        </button>
+        />
       </div>
 
       <div className="flex items-center gap-3 shrink-0">
@@ -374,7 +371,7 @@ export function DiffViewer({
         {onToggleViewed && (
           <button
             type="button"
-            onClick={(e) => {
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();
               onToggleViewed();
             }}

@@ -1,21 +1,153 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Columns,
   AlignJustify,
   WrapText,
-  ChevronLeft,
-  ChevronRight,
   ArrowLeftRight,
-  ChevronsUpDown,
   Check,
+  MoreHorizontal,
 } from "lucide-react";
 import { PullRequest, ChangedFile } from "@/types/pr";
 
 import { DiffViewer } from "./diff-viewer";
+import { FileTreeDropdown } from "./file-tree-dropdown";
 import { cn } from "@/lib/utils";
 
 interface CodeViewProps {
   pr: PullRequest;
+}
+
+/**
+ * Custom Collapse / Expand all files lines icon matching the reference screenshot:
+ * Two arrows facing each other (collapse) or away (expand) alongside horizontal lines.
+ */
+function CollapseLinesIcon({ isAllExpanded }: { isAllExpanded: boolean }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="w-3.5 h-3.5 shrink-0"
+    >
+      {isAllExpanded ? (
+        // Collapse: arrows pointing towards the center
+        <>
+          <path d="M4 1.5v4.5" />
+          <path d="M1.8 4.2L4 6.4l2.2-2.2" />
+          <path d="M4 14.5v-4.5" />
+          <path d="M1.8 11.8L4 9.6l2.2 2.2" />
+          <path d="M8.5 5h5.5" />
+          <path d="M8.5 11h3.5" />
+        </>
+      ) : (
+        // Expand: arrows pointing away from center
+        <>
+          <path d="M4 6V1.5" />
+          <path d="M1.8 3.7L4 1.5l2.2 2.2" />
+          <path d="M4 10v4.5" />
+          <path d="M1.8 12.3L4 14.5l2.2-2.2" />
+          <path d="M8.5 5h5.5" />
+          <path d="M8.5 11h3.5" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+/**
+ * Custom Red/Green diagonal split square icon for Diff Mode matching the reference screenshot:
+ * Rounded rectangle with silver border, crimson top-left triangle, and emerald bottom-right triangle.
+ */
+function DiffSquareIcon({ mode }: { mode: "split" | "unified" }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      className="w-4 h-4 shrink-0"
+    >
+      <rect
+        x="1"
+        y="1"
+        width="14"
+        height="14"
+        rx="3.2"
+        fill="#121212"
+        stroke="#808080"
+        strokeWidth="1.2"
+      />
+      <clipPath id="diff-square-clip">
+        <rect x="1.8" y="1.8" width="12.4" height="12.4" rx="2.2" />
+      </clipPath>
+      <g clipPath="url(#diff-square-clip)">
+        {mode === "split" ? (
+          <>
+            {/* Top-left: red triangle */}
+            <polygon points="1.8,1.8 14.2,1.8 1.8,14.2" fill="#8e2727" />
+            {/* Bottom-right: green triangle */}
+            <polygon points="14.2,1.8 14.2,14.2 1.8,14.2" fill="#227a38" />
+            {/* Dark diagonal dividing line */}
+            <line
+              x1="1.8"
+              y1="14.2"
+              x2="14.2"
+              y2="1.8"
+              stroke="#121212"
+              strokeWidth="1.2"
+            />
+          </>
+        ) : (
+          <>
+            {/* Unified inline mode: horizontal split */}
+            <rect x="1.8" y="1.8" width="12.4" height="6.2" fill="#8e2727" />
+            <rect x="1.8" y="8" width="12.4" height="6.2" fill="#227a38" />
+            <line
+              x1="1.8"
+              y1="8"
+              x2="14.2"
+              y2="8"
+              stroke="#121212"
+              strokeWidth="1.2"
+            />
+          </>
+        )}
+      </g>
+    </svg>
+  );
+}
+
+/**
+ * Custom Folder Stack icon matching the reference screenshot:
+ * Clean dual-folder outline for opening the changed files drawer.
+ */
+function FolderStackIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="w-4 h-4 shrink-0"
+    >
+      {/* Back folder outline */}
+      <path
+        d="M4 2.8h3.2l1.2 1.4h3.6a1 1 0 0 1 1 1v4"
+        stroke="currentColor"
+        strokeOpacity="0.55"
+      />
+      {/* Front folder */}
+      <path d="M2.5 5.5h3.2l1.2 1.4h4.6a1 1 0 0 1 1 1v4.8a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1v-6.2a1 1 0 0 1 1-1Z" />
+    </svg>
+  );
 }
 
 export function CodeView({ pr }: CodeViewProps) {
@@ -32,6 +164,28 @@ export function CodeView({ pr }: CodeViewProps) {
 
   const [diffMode, setDiffMode] = useState<"split" | "unified">("split");
   const [wrapLines, setWrapLines] = useState(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close more menu when clicking outside or pressing Escape
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) {
+        setIsMoreMenuOpen(false);
+      }
+    }
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsMoreMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
 
   // Track files marked as viewed by the reviewer
   const [viewedFiles, setViewedFiles] = useState<Record<string, boolean>>({});
@@ -179,158 +333,260 @@ export function CodeView({ pr }: CodeViewProps) {
 
   return (
     <div className="h-full flex flex-col min-w-0 bg-[#0e0e0e]">
-      {/* Top Breadcrumb & Ergonomic Diff Toolbar */}
-      <div className="h-[42px] px-3.5 border-b border-praxd-border-soft bg-praxd-bg flex items-center justify-between shrink-0 select-none text-[12px] relative z-20 gap-3">
-        {/* Left: Branch flow, Expand/Collapse, and Circular Review Progress */}
+      {/* Top Breadcrumb & Clean Icon-Only Action Toolbar */}
+      <div className="h-[40px] px-3.5 border-b border-praxd-border-soft bg-praxd-bg flex items-center justify-between shrink-0 select-none text-[12px] relative z-20 gap-3">
+        {/* Left: Branch flow matching reference UI & Circular Review Progress */}
         <div className="flex items-center gap-2.5 min-w-0 flex-1 overflow-hidden">
-          {/* Branch flow — visible on large screens, cleanly hidden on narrower screens to prevent crowding */}
-          <div className="hidden md:flex items-center gap-1.5 text-praxd-text-muted font-mono text-[11px] truncate shrink-0 max-w-[260px]">
+          {/* Branch flow — matching reference UI: headRef > baseRef */}
+          <div className="flex items-center gap-1.5 text-praxd-text-muted font-mono text-[11px] truncate shrink-0 max-w-[320px]">
             <span className="text-praxd-text-secondary truncate">
               {pr.headRef}
             </span>
-            <span className="text-neutral-500 font-mono select-none">→</span>
-            <span className="text-praxd-text-muted">{pr.baseRef}</span>
+            <span className="text-neutral-500 font-mono select-none">&gt;</span>
+            <span className="text-praxd-text-muted truncate">{pr.baseRef}</span>
           </div>
 
+          {/* Circular Review Progress Indicator */}
           {pr.files.length > 0 && (
-            <div className="flex items-center gap-2 shrink-0">
-              {/* Expand All / Collapse All Toggle Button */}
-              {pr.files.length > 1 && (
-                <button
-                  type="button"
-                  onClick={handleToggleAllFiles}
-                  className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-md border border-praxd-border-soft bg-[#181818] text-praxd-text-muted hover:text-praxd-text hover:bg-[#222222] transition-colors shrink-0 whitespace-nowrap"
-                  title={allFilesExpanded ? "Collapse all files" : "Expand all files"}
-                  aria-label={allFilesExpanded ? "Collapse all files" : "Expand all files"}
-                >
-                  <ChevronsUpDown className="w-3.5 h-3.5 shrink-0" />
-                  <span className="whitespace-nowrap">
-                    {allFilesExpanded ? "Collapse all" : "Expand all"}
-                  </span>
-                </button>
-              )}
-
-              {/* Circular Review Progress Indicator (Round fill system) */}
-              <div
-                className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#161616] border border-praxd-border-soft text-[11px] font-mono select-none shrink-0"
-                title={`${viewedCount} of ${pr.files.length} files reviewed`}
-                aria-label={`Review progress: ${viewedCount} of ${pr.files.length} files reviewed`}
-              >
-                {/* SVG Circular Progress Ring */}
-                <div className="relative w-4 h-4 flex items-center justify-center shrink-0">
-                  <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                    {/* Background track circle */}
-                    <path
-                      className="text-neutral-800"
-                      strokeWidth="3.5"
-                      stroke="currentColor"
-                      fill="none"
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    />
-                    {/* Animated foreground progress stroke */}
-                    <path
-                      className={cn(
-                        "transition-all duration-300",
-                        viewedCount === pr.files.length && pr.files.length > 0
-                          ? "text-emerald-400"
-                          : "text-emerald-500"
-                      )}
-                      strokeDasharray={`${
-                        pr.files.length > 0
-                          ? Math.round((viewedCount / pr.files.length) * 100)
-                          : 0
-                      }, 100`}
-                      strokeWidth="3.5"
-                      strokeLinecap="round"
-                      stroke="currentColor"
-                      fill="none"
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    />
-                  </svg>
-                  {/* Subtle centered checkmark when 100% complete */}
-                  {viewedCount === pr.files.length && pr.files.length > 0 && (
-                    <Check className="w-2.5 h-2.5 text-emerald-400 absolute" />
-                  )}
-                </div>
-
-                <span className="tabular-nums text-neutral-300 font-medium whitespace-nowrap">
-                  {viewedCount}/{pr.files.length}
-                </span>
-                <span className="text-[10px] text-neutral-500 whitespace-nowrap">viewed</span>
+            <div
+              className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#161616] border border-praxd-border-soft text-[11px] font-mono select-none shrink-0"
+              title={`${viewedCount} of ${pr.files.length} files reviewed`}
+              aria-label={`Review progress: ${viewedCount} of ${pr.files.length} files reviewed`}
+            >
+              {/* SVG Circular Progress Ring */}
+              <div className="relative w-3.5 h-3.5 flex items-center justify-center shrink-0">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                  {/* Background track circle */}
+                  <path
+                    className="text-neutral-800"
+                    strokeWidth="3.5"
+                    stroke="currentColor"
+                    fill="none"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  />
+                  {/* Animated foreground progress stroke */}
+                  <path
+                    className={cn(
+                      "transition-all duration-300",
+                      viewedCount === pr.files.length && pr.files.length > 0
+                        ? "text-emerald-400"
+                        : "text-emerald-500"
+                    )}
+                    strokeDasharray={`${
+                      pr.files.length > 0
+                        ? Math.round((viewedCount / pr.files.length) * 100)
+                        : 0
+                    }, 100`}
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    stroke="currentColor"
+                    fill="none"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  />
+                </svg>
+                {/* Subtle centered checkmark when 100% complete */}
+                {viewedCount === pr.files.length && pr.files.length > 0 && (
+                  <Check className="w-2 h-2 text-emerald-400 absolute" />
+                )}
               </div>
+
+              <span className="tabular-nums text-neutral-300 font-medium whitespace-nowrap text-[11px]">
+                {viewedCount}/{pr.files.length}
+              </span>
+              <span className="text-[10px] text-neutral-500 whitespace-nowrap">viewed</span>
             </div>
           )}
         </div>
 
-        {/* Right: Split / Unified Diff Switcher & Display Options */}
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Dual Sync Scroll Indicator in Split Mode */}
-          {diffMode === "split" && !wrapLines && (
-            <div
-              className="hidden md:flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium rounded-md bg-[#161616] text-praxd-text-secondary border border-praxd-border-soft select-none"
-              title="Side-by-side horizontal scrolling is synchronized across both Old and New code panes"
-            >
-              <ArrowLeftRight className="w-3 h-3 text-praxd-blue" />
-              <span>Sync Scroll</span>
-            </div>
-          )}
-
-          {/* Line Wrap Toggle Button */}
-          <button
-            type="button"
-            onClick={() => setWrapLines(!wrapLines)}
-            className={cn(
-              "flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-md border transition-colors",
-              wrapLines
-                ? "bg-[#252525] text-praxd-blue border-praxd-blue/40"
-                : "bg-transparent text-praxd-text-muted border-praxd-border-soft hover:text-praxd-text hover:bg-[#1a1a1a]"
-            )}
-            title={wrapLines ? "Disable line wrapping" : "Wrap long lines"}
-            aria-label="Toggle line wrapping"
-          >
-            <WrapText className="w-3 h-3" />
-            <span>Wrap</span>
-          </button>
-
-          {/* Segmented Diff Mode Switcher (ADR-0002) */}
-          <div
-            role="tablist"
-            aria-label="Diff view mode"
-            className="flex items-center p-0.5 rounded-lg bg-[#1e1e1e] border border-praxd-border-soft shadow-inner"
-          >
+        {/* Right: Clean Icon-Only Action Toolbar matching reference screenshot */}
+        <div className="flex items-center gap-1 shrink-0 text-neutral-400">
+          {/* Accessible Diff View Mode Tablist (ADR-0002 / Screen Readers / Automated Tests) */}
+          <div role="tablist" aria-label="Diff view mode" className="sr-only">
             <button
               type="button"
               role="tab"
+              aria-label="Split"
               aria-selected={diffMode === "split"}
               onClick={() => setDiffMode("split")}
-              className={cn(
-                "flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-md transition-all duration-150",
-                diffMode === "split"
-                  ? "bg-[#2c2c2c] text-praxd-text shadow-sm"
-                  : "text-praxd-text-muted hover:text-praxd-text-secondary hover:bg-[#252525]"
-              )}
-              title="Side-by-side split diff"
             >
-              <Columns className="w-3 h-3" />
-              <span>Split</span>
+              Split
             </button>
             <button
               type="button"
               role="tab"
+              aria-label="Unified"
               aria-selected={diffMode === "unified"}
               onClick={() => setDiffMode("unified")}
-              className={cn(
-                "flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-md transition-all duration-150",
-                diffMode === "unified"
-                  ? "bg-[#2c2c2c] text-praxd-text shadow-sm"
-                  : "text-praxd-text-muted hover:text-praxd-text-secondary hover:bg-[#252525]"
-              )}
-              title="Unified inline diff"
             >
-              <AlignJustify className="w-3 h-3" />
-              <span>Unified</span>
+              Unified
             </button>
           </div>
+
+          {/* 1. More Options Dropdown (...) */}
+          <div className="relative" ref={moreMenuRef}>
+            <button
+              type="button"
+              onClick={() => setIsMoreMenuOpen((v) => !v)}
+              className={cn(
+                "p-1.5 rounded-md transition-colors",
+                isMoreMenuOpen
+                  ? "bg-[#252525] text-white"
+                  : "text-neutral-400 hover:text-white hover:bg-[#1e1e1e]"
+              )}
+              title="Diff display options"
+              aria-label="Diff display options"
+              aria-expanded={isMoreMenuOpen}
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+
+            {isMoreMenuOpen && (
+              <div
+                className="absolute right-0 top-full mt-1.5 w-56 rounded-lg bg-[#181818] border border-praxd-border shadow-2xl z-50 p-1.5 space-y-1 text-[12px] animate-in fade-in zoom-in-95 duration-100 select-none"
+                role="menu"
+              >
+                {/* Wrap Lines Toggle */}
+                <button
+                  type="button"
+                  role="menuitemcheckbox"
+                  aria-checked={wrapLines}
+                  onClick={() => {
+                    setWrapLines(!wrapLines);
+                    setIsMoreMenuOpen(false);
+                  }}
+                  className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-neutral-300 hover:text-white hover:bg-[#252525] transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <WrapText className="w-3.5 h-3.5 text-neutral-400" />
+                    <span>Wrap long lines</span>
+                  </div>
+                  {wrapLines && <Check className="w-3.5 h-3.5 text-praxd-blue" />}
+                </button>
+
+                {/* Synchronized Scrolling Indicator / Toggle */}
+                <button
+                  type="button"
+                  role="menuitemcheckbox"
+                  aria-checked={diffMode === "split" && !wrapLines}
+                  onClick={() => {
+                    if (diffMode !== "split") setDiffMode("split");
+                    if (wrapLines) setWrapLines(false);
+                    setIsMoreMenuOpen(false);
+                  }}
+                  className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-neutral-300 hover:text-white hover:bg-[#252525] transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <ArrowLeftRight className="w-3.5 h-3.5 text-neutral-400" />
+                    <span>Synchronized scrolling</span>
+                  </div>
+                  {diffMode === "split" && !wrapLines && (
+                    <Check className="w-3.5 h-3.5 text-praxd-blue" />
+                  )}
+                </button>
+
+                <div className="h-px bg-praxd-border-soft my-1" />
+
+                {/* Diff View Mode direct selection */}
+                <div className="px-2.5 py-1 text-[10px] uppercase font-semibold text-neutral-500 tracking-wider">
+                  Diff View Mode
+                </div>
+                <button
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={diffMode === "split"}
+                  onClick={() => {
+                    setDiffMode("split");
+                    setIsMoreMenuOpen(false);
+                  }}
+                  className={cn(
+                    "w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-colors",
+                    diffMode === "split"
+                      ? "bg-[#252525] text-white"
+                      : "text-neutral-300 hover:text-white hover:bg-[#202020]"
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <Columns className="w-3.5 h-3.5 text-neutral-400" />
+                    <span>Side-by-side split</span>
+                  </div>
+                  {diffMode === "split" && <Check className="w-3.5 h-3.5 text-praxd-blue" />}
+                </button>
+                <button
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={diffMode === "unified"}
+                  onClick={() => {
+                    setDiffMode("unified");
+                    setIsMoreMenuOpen(false);
+                  }}
+                  className={cn(
+                    "w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-colors",
+                    diffMode === "unified"
+                      ? "bg-[#252525] text-white"
+                      : "text-neutral-300 hover:text-white hover:bg-[#202020]"
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <AlignJustify className="w-3.5 h-3.5 text-neutral-400" />
+                    <span>Unified inline</span>
+                  </div>
+                  {diffMode === "unified" && <Check className="w-3.5 h-3.5 text-praxd-blue" />}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* 2. Collapse / Expand All Files Icon Button */}
+          {pr.files.length > 0 && (
+            <button
+              type="button"
+              onClick={handleToggleAllFiles}
+              className="p-1.5 rounded-md text-neutral-400 hover:text-white hover:bg-[#1e1e1e] transition-colors"
+              title={allFilesExpanded ? "Collapse all files" : "Expand all files"}
+              aria-label={allFilesExpanded ? "Collapse all files" : "Expand all files"}
+            >
+              <CollapseLinesIcon isAllExpanded={allFilesExpanded} />
+            </button>
+          )}
+
+          {/* 3. Red/Green Diagonal Square (Diff Mode Toggle) */}
+          <button
+            type="button"
+            onClick={() => setDiffMode(diffMode === "split" ? "unified" : "split")}
+            className="p-1 rounded-md text-neutral-300 hover:text-white hover:bg-[#1e1e1e] transition-colors"
+            title={
+              diffMode === "split"
+                ? "Diff mode: Split (click to switch to Unified)"
+                : "Diff mode: Unified (click to switch to Split)"
+            }
+            aria-label={
+              diffMode === "split"
+                ? "Diff mode: Split (click to switch to Unified)"
+                : "Diff mode: Unified (click to switch to Split)"
+            }
+          >
+            <DiffSquareIcon mode={diffMode} />
+          </button>
+
+          {/* 4. Changed Files Drawer / Tree Icon Button */}
+          {pr.files.length > 0 && (
+            <FileTreeDropdown
+              files={pr.files}
+              selectedFile={activeFile}
+              onSelectFile={handleSelectFile}
+              align="right"
+              trigger={
+                <button
+                  type="button"
+                  className="p-1.5 rounded-md text-neutral-400 hover:text-white hover:bg-[#1e1e1e] transition-colors"
+                  title={`Changed files (${pr.files.length})`}
+                  aria-label={`Changed files (${pr.files.length})`}
+                >
+                  <FolderStackIcon />
+                </button>
+              }
+            />
+          )}
         </div>
       </div>
 

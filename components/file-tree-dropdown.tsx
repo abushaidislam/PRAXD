@@ -7,12 +7,16 @@ interface FileTreeDropdownProps {
   files: ChangedFile[];
   selectedFile: ChangedFile;
   onSelectFile: (file: ChangedFile) => void;
+  trigger?: React.ReactNode;
+  align?: "left" | "right";
 }
 
 export function FileTreeDropdown({
   files,
   selectedFile,
   onSelectFile,
+  trigger,
+  align = "left",
 }: FileTreeDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -47,30 +51,45 @@ export function FileTreeDropdown({
 
   return (
     <div className="relative inline-block text-left" ref={dropdownRef}>
-      <button
-        type="button"
-        onClick={() => {
-          setIsOpen(!isOpen);
-          if (isOpen) setSearchQuery("");
-        }}
-        className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#181818] hover:bg-[#222222] border border-praxd-border-soft text-[12px] text-praxd-text font-mono transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-praxd-blue"
-        aria-expanded={isOpen}
-        aria-haspopup="listbox"
-      >
-        <span className="w-2 h-2 rounded-full bg-praxd-amber" />
-        <span className="truncate max-w-[220px] font-medium">{selectedFile.filename}</span>
-        <div className="flex items-center gap-1 text-[10px]">
-          <span className="text-praxd-green">+{selectedFile.additions}</span>
-          <span className="text-praxd-red">-{selectedFile.deletions}</span>
+      {trigger ? (
+        <div
+          onClick={() => {
+            setIsOpen(!isOpen);
+            if (isOpen) setSearchQuery("");
+          }}
+          className="inline-flex items-center"
+        >
+          {trigger}
         </div>
-        <ChevronDown className="w-3.5 h-3.5 text-praxd-text-muted" />
-      </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => {
+            setIsOpen(!isOpen);
+            if (isOpen) setSearchQuery("");
+          }}
+          className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#181818] hover:bg-[#222222] border border-praxd-border-soft text-[12px] text-praxd-text font-mono transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-praxd-blue"
+          aria-expanded={isOpen}
+          aria-haspopup="listbox"
+        >
+          <span className="w-2 h-2 rounded-full bg-praxd-amber" />
+          <span className="truncate max-w-[220px] font-medium">{selectedFile.filename}</span>
+          <div className="flex items-center gap-1 text-[10px]">
+            <span className="text-praxd-green">+{selectedFile.additions}</span>
+            <span className="text-praxd-red">-{selectedFile.deletions}</span>
+          </div>
+          <ChevronDown className="w-3.5 h-3.5 text-praxd-text-muted" />
+        </button>
+      )}
 
       {isOpen && (
         <div
           role="listbox"
           aria-label="Files changed in this pull request"
-          className="absolute left-0 top-full mt-1.5 w-80 max-h-80 overflow-y-auto rounded-lg bg-[#181818] border border-praxd-border shadow-xl z-50 p-1 space-y-0.5 animate-in fade-in zoom-in-95 duration-100 select-none"
+          className={cn(
+            "absolute top-full mt-1.5 w-80 max-h-80 overflow-y-auto rounded-lg bg-[#181818] border border-praxd-border shadow-xl z-50 p-1 space-y-0.5 animate-in fade-in zoom-in-95 duration-100 select-none",
+            align === "right" ? "right-0" : "left-0"
+          )}
         >
           <div className="px-2.5 py-1.5 text-[11px] font-semibold text-praxd-text-muted border-b border-praxd-border-soft flex items-center justify-between">
             <span>Files changed ({files.length})</span>
