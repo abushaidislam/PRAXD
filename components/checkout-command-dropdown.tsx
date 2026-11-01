@@ -89,10 +89,10 @@ export function CheckoutCommandDropdown({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "flex items-center gap-1.5 rounded-md font-mono text-[11px] transition-colors select-none focus:outline-none focus-visible:ring-1 focus-visible:ring-praxd-blue",
+          "flex items-center gap-1.5 rounded-md font-sans transition-colors select-none focus:outline-none focus-visible:ring-1 focus-visible:ring-praxd-blue",
           variant === "header"
-            ? "px-2 py-1 bg-[#1a1a1a] hover:bg-[#252525] text-neutral-300 hover:text-white border border-praxd-border-soft"
-            : "px-2 py-0.5 bg-[#181818] hover:bg-[#222222] text-neutral-300 hover:text-white border border-praxd-border-soft"
+            ? "px-2.5 py-1 bg-[#181818] hover:bg-[#202020] text-neutral-300 hover:text-white border border-praxd-border-soft hover:border-neutral-600 text-[12px] font-medium shadow-sm"
+            : "px-2 py-0.5 bg-[#181818] hover:bg-[#222222] text-neutral-300 hover:text-white border border-praxd-border-soft hover:border-neutral-600 text-[11px] font-medium"
         )}
         title="Copy local git checkout commands"
         aria-expanded={isOpen}
@@ -100,7 +100,7 @@ export function CheckoutCommandDropdown({
         aria-label="Checkout branch commands"
       >
         <Terminal className="w-3.5 h-3.5 text-praxd-blue shrink-0" />
-        <span className="font-sans font-medium">Checkout</span>
+        <span>Checkout</span>
         <ChevronDown className="w-3 h-3 text-neutral-400" />
       </button>
 
@@ -109,49 +109,88 @@ export function CheckoutCommandDropdown({
           role="menu"
           aria-label="Checkout command options"
           className={cn(
-            "absolute mt-1.5 w-80 sm:w-[340px] rounded-xl bg-[#161616] border border-neutral-700/80 shadow-2xl ring-1 ring-white/5 z-50 p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-100 select-none",
+            "absolute mt-1.5 w-80 sm:w-[340px] rounded-xl bg-[#161616] border border-praxd-border shadow-2xl shadow-black/90 ring-1 ring-white/5 z-50 p-2 space-y-1.5 animate-in fade-in zoom-in-95 duration-100 select-none",
             variant === "header" ? "right-0" : "left-0"
           )}
         >
-          <div className="px-2.5 py-1.5 border-b border-praxd-border-soft text-[11px] text-neutral-400 font-medium flex items-center justify-between">
-            <span>Checkout locally</span>
-            <span className="text-[10px] text-neutral-500 font-mono">#{pr.number}</span>
+          {/* Menu Header */}
+          <div className="px-2 py-1.5 border-b border-praxd-border-soft flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Terminal className="w-3.5 h-3.5 text-praxd-blue" />
+              <span className="text-[12px] font-semibold text-neutral-200">Checkout locally</span>
+            </div>
+            <span className="text-[10px] text-neutral-400 font-mono bg-[#202020] px-1.5 py-0.5 rounded border border-praxd-border-soft">
+              #{pr.number}
+            </span>
           </div>
 
-          {commands.map((option) => {
-            const isCopied = copiedId === option.id;
-            return (
-              <button
-                key={option.id}
-                type="button"
-                role="menuitem"
-                onClick={(e) => handleCopyCommand(option, e)}
-                className="w-full text-left p-2 rounded-lg hover:bg-[#222222] transition-colors group flex flex-col gap-1.5 border border-transparent hover:border-neutral-700/50"
-              >
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="font-semibold text-neutral-200 group-hover:text-white">
-                    {option.label}
-                  </span>
-                  <span className="flex items-center gap-1 text-[10px] text-neutral-400 group-hover:text-neutral-200">
-                    {isCopied ? (
-                      <>
-                        <Check className="w-3 h-3 text-praxd-green" />
-                        <span className="text-praxd-green font-medium">Copied!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3 h-3 opacity-60 group-hover:opacity-100" />
-                        <span>Copy</span>
-                      </>
-                    )}
-                  </span>
-                </div>
-                <code className="text-[11px] font-mono text-praxd-blue bg-[#101010] px-2 py-1 rounded-md border border-neutral-800 break-words leading-relaxed select-all">
-                  {option.command}
-                </code>
-              </button>
-            );
-          })}
+          {/* Command Options List */}
+          <div className="space-y-1">
+            {commands.map((option) => {
+              const isCopied = copiedId === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="menuitem"
+                  onClick={(e) => handleCopyCommand(option, e)}
+                  className={cn(
+                    "w-full text-left p-2.5 rounded-lg transition-all duration-150 group border flex flex-col gap-1.5 cursor-pointer",
+                    isCopied
+                      ? "bg-emerald-950/20 border-emerald-600/40 text-emerald-200"
+                      : "bg-[#131313] hover:bg-[#1f1f1f] border-praxd-border-soft/60 hover:border-neutral-600"
+                  )}
+                >
+                  <div className="flex items-center justify-between text-[11px]">
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className={cn(
+                          "w-1.5 h-1.5 rounded-full transition-colors",
+                          isCopied ? "bg-emerald-400" : "bg-neutral-500 group-hover:bg-praxd-blue"
+                        )}
+                      />
+                      <span className="font-medium text-neutral-400 group-hover:text-neutral-200 transition-colors">
+                        {option.label}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {isCopied ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 bg-emerald-950/60 border border-emerald-700/50 px-1.5 py-0.2 rounded">
+                          <Check className="w-3 h-3 text-emerald-400" />
+                          <span>Copied</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-neutral-500 group-hover:text-neutral-300 transition-colors opacity-70 group-hover:opacity-100">
+                          <Copy className="w-3 h-3" />
+                          <span>Copy</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-1.5 font-mono text-[11.5px] leading-relaxed pt-0.5">
+                    <span className="text-neutral-500 select-none font-bold">$</span>
+                    <span
+                      className={cn(
+                        "break-words font-medium transition-colors select-all",
+                        isCopied ? "text-emerald-300" : "text-neutral-200 group-hover:text-white"
+                      )}
+                    >
+                      {option.command}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Menu Footer */}
+          <div className="px-2 pt-1.5 pb-0.5 border-t border-praxd-border-soft/60 flex items-center justify-between text-[10px] text-neutral-500">
+            <span>Click any command to copy</span>
+            <kbd className="px-1.5 py-0.2 bg-[#202020] border border-neutral-700/60 rounded text-[9px] font-mono text-neutral-400">
+              Esc
+            </kbd>
+          </div>
         </div>
       )}
     </div>
