@@ -274,22 +274,22 @@ export function CodeView({ pr }: CodeViewProps) {
   return (
     <div className="h-full flex flex-col min-w-0 bg-[#0e0e0e]">
       {/* Top Breadcrumb & Clean Icon-Only Action Toolbar */}
-      <div className="h-[40px] px-3.5 border-b border-praxd-border-soft bg-praxd-bg flex items-center justify-between shrink-0 select-none text-[12px] relative z-20 gap-3">
+      <div className="h-[40px] px-3.5 border-b border-praxd-border-soft bg-praxd-bg flex items-center justify-between shrink-0 select-none text-[12px] relative z-30 gap-3">
         {/* Left: Branch flow matching reference UI & Circular Review Progress */}
         <div className="flex items-center gap-2.5 min-w-0 flex-1 overflow-hidden">
           {/* Branch flow — matching reference UI: headRef > baseRef */}
-          <div className="flex items-center gap-1.5 text-praxd-text-muted font-mono text-[11px] truncate shrink-0 max-w-[320px]">
+          <div className="flex items-center gap-1.5 text-praxd-text-muted font-sans text-[11px] truncate shrink-0 max-w-[320px]">
             <span className="text-praxd-text-secondary truncate">
               {pr.headRef}
             </span>
-            <span className="text-neutral-500 font-mono select-none">&gt;</span>
+            <span className="text-neutral-500 font-sans select-none">&gt;</span>
             <span className="text-praxd-text-muted truncate">{pr.baseRef}</span>
           </div>
 
           {/* Circular Review Progress Indicator */}
           {pr.files.length > 0 && (
             <div
-              className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#161616] border border-praxd-border-soft text-[11px] font-mono select-none shrink-0"
+              className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#161616] border border-praxd-border-soft text-[11px] font-sans select-none shrink-0"
               title={`${viewedCount} of ${pr.files.length} files reviewed`}
               aria-label={`Review progress: ${viewedCount} of ${pr.files.length} files reviewed`}
             >
@@ -525,7 +525,7 @@ export function CodeView({ pr }: CodeViewProps) {
       </div>
 
       {/* GitHub-Style Vertical Collapsible Diff Content Area */}
-      <div className="flex-1 overflow-y-auto min-h-0 bg-[#0e0e0e]">
+      <div className="flex-1 overflow-y-auto min-h-0 scroll-smooth bg-[#0e0e0e]">
         {pr.files.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-12 text-center text-praxd-text-muted space-y-2">
             <p className="text-sm font-medium text-praxd-text">No changed files</p>
