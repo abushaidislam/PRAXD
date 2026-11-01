@@ -17,7 +17,7 @@ export interface CopyIconProps
   copied?: boolean;
   onCopyChange?: (copied: boolean) => void;
   timeout?: number;
-  onClick?: (event: React.MouseEvent<HTMLElement>) => void;
+  onClick?: (event: React.MouseEvent) => void;
   as?: "button" | "span" | "div";
   children?: React.ReactNode;
 }

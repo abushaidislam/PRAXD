@@ -358,7 +358,7 @@ export function DiffViewer({
           title={copiedPath ? "Copied path!" : "Copy file path"}
           aria-label="Copy file path"
           className="p-1 rounded hover:bg-[#252525] text-praxd-text-muted hover:text-praxd-text transition-colors shrink-0 ml-1"
-          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+          onClick={(e: React.MouseEvent) => {
             e.stopPropagation();
             handleCopyPath();
           }}
