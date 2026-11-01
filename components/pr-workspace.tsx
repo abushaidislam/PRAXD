@@ -103,6 +103,10 @@ export function PRWorkspace() {
   // Select PR and lazily fetch files/diff if not yet loaded
   const handleSelectPr = useCallback(async (pr: PullRequest) => {
     setSelectedPr(pr);
+    // On mobile viewports, automatically collapse sidebar to reveal workspace
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      setIsSidebarOpen(false);
+    }
     if (!pr.files || pr.files.length === 0) {
       try {
         const res = await fetch(`/api/pull-requests/${pr.id}`);

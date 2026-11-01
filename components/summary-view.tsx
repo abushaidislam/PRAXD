@@ -221,12 +221,14 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
               <span>Branch</span>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-mono text-praxd-text-secondary text-[11px] bg-[#1a1a1a] px-2 py-0.5 rounded border border-praxd-border-soft flex items-center gap-1.5">
-                <span>{pr.headRef}</span>
+              <span className="font-mono text-praxd-text-secondary text-[11px] bg-[#1a1a1a] px-2 py-0.5 rounded border border-praxd-border-soft flex items-center gap-1.5 max-w-full">
+                <span className="truncate max-w-[200px] sm:max-w-[280px]" title={pr.headRef}>
+                  {pr.headRef}
+                </span>
                 <button
                   type="button"
                   onClick={handleCopyBranch}
-                  className="p-0.5 hover:bg-[#252525] rounded text-praxd-text-muted hover:text-praxd-text transition-colors"
+                  className="p-1 hover:bg-[#252525] rounded text-praxd-text-muted hover:text-praxd-text transition-colors shrink-0"
                   title={copiedBranch ? "Copied branch!" : "Copy branch name"}
                   aria-label="Copy branch name"
                 >

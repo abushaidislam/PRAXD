@@ -276,16 +276,12 @@ export function PullRequestSidebar({
           </button>
         </div>
 
-        {/* Group Selector (Screenshot displays "Authored ⌵") */}
+        {/* Group Indicator (Displays current group: "Authored ⌵") */}
         <div className="flex items-center justify-between text-[11px] text-praxd-text-muted pt-0.5">
-          <button
-            type="button"
-            className="flex items-center gap-1 hover:text-praxd-text text-praxd-text-secondary font-medium transition-colors"
-            aria-haspopup="listbox"
-          >
+          <span className="flex items-center gap-1 text-praxd-text-secondary font-medium">
             <span>{selectedGroup}</span>
             <ChevronDown className="w-3 h-3 text-praxd-text-muted" />
-          </button>
+          </span>
 
           <span className="text-[10px] text-praxd-text-muted">
             {filteredPrs.length} {filteredPrs.length === 1 ? "pull request" : "pull requests"}

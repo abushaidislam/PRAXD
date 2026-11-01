@@ -139,7 +139,7 @@ export function WorkspaceHeader({
         <div className="flex items-center justify-end gap-1.5 shrink-0 z-10 pl-3">
           {/* Terminal Checkout Command Dropdown */}
           {pr && (
-            <div className="hidden sm:block">
+            <div className="hidden xl:block">
               <CheckoutCommandDropdown pr={pr} variant="header" />
             </div>
           )}
@@ -149,7 +149,7 @@ export function WorkspaceHeader({
             <button
               type="button"
               onClick={onOpenShortcuts}
-              className="p-1.5 rounded-md hover:bg-[#202020] text-praxd-text-muted hover:text-praxd-text transition-colors"
+              className="hidden lg:flex p-1.5 rounded-md hover:bg-[#202020] text-praxd-text-muted hover:text-praxd-text transition-colors"
               title="Keyboard shortcuts (?)"
               aria-label="Open keyboard shortcuts guide"
             >
@@ -162,7 +162,7 @@ export function WorkspaceHeader({
             href={pr ? `https://github.com/${pr.repoOwner}/${pr.repoName}/pull/${pr.number}` : "#"}
             target="_blank"
             rel="noopener noreferrer"
-            className="p-1.5 rounded-md hover:bg-[#202020] text-praxd-text-muted hover:text-praxd-text transition-colors"
+            className="hidden md:flex p-1.5 rounded-md hover:bg-[#202020] text-praxd-text-muted hover:text-praxd-text transition-colors"
             title="Open on GitHub"
             aria-label="Open on GitHub"
           >
