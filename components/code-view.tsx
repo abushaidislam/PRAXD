@@ -179,11 +179,12 @@ export function CodeView({ pr }: CodeViewProps) {
   return (
     <div className="h-full flex flex-col min-w-0 bg-[#0e0e0e]">
       {/* Top Breadcrumb & Ergonomic Diff Toolbar */}
-      <div className="h-[42px] px-4 border-b border-praxd-border-soft bg-praxd-bg flex items-center justify-between shrink-0 select-none text-[12px]">
-        {/* Left: Branch flow & multi-file picker with quick navigation */}
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="flex items-center gap-1.5 text-praxd-text-muted font-mono text-[11px] truncate">
-            <span className="text-praxd-text-secondary truncate max-w-[240px]">
+      <div className="h-[42px] px-3.5 border-b border-praxd-border-soft bg-praxd-bg flex items-center justify-between shrink-0 select-none text-[12px] relative z-20 gap-3">
+        {/* Left: Multi-file picker, navigation, expand/collapse, and review progress */}
+        <div className="flex items-center gap-2.5 min-w-0 flex-1 overflow-hidden">
+          {/* Branch flow — visible on large screens, cleanly hidden on narrower screens to prevent crowding */}
+          <div className="hidden xl:flex items-center gap-1.5 text-praxd-text-muted font-mono text-[11px] truncate shrink-0 max-w-[200px]">
+            <span className="text-praxd-text-secondary truncate">
               {pr.headRef}
             </span>
             <span className="text-neutral-500 font-mono select-none">→</span>
@@ -192,7 +193,7 @@ export function CodeView({ pr }: CodeViewProps) {
 
           {/* Sticky Multi-File Selector Dropdown + Prev/Next buttons */}
           {pr.files.length > 0 && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 shrink-0">
               <FileTreeDropdown
                 files={pr.files}
                 selectedFile={activeFile}
@@ -201,13 +202,13 @@ export function CodeView({ pr }: CodeViewProps) {
 
               {pr.files.length > 1 && (
                 <>
-                  <div className="flex items-center gap-0.5 border border-praxd-border-soft rounded-md bg-[#181818] p-0.5">
+                  <div className="flex items-center gap-0.5 border border-praxd-border-soft rounded-md bg-[#181818] p-0.5 shrink-0">
                     <button
                       type="button"
                       onClick={handlePrevFile}
                       disabled={!hasPrevFile}
                       className="p-1 rounded text-praxd-text-muted hover:text-praxd-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                      title="Previous file"
+                      title="Previous file ([)"
                       aria-label="Previous changed file"
                     >
                       <ChevronLeft className="w-3.5 h-3.5" />
@@ -217,7 +218,7 @@ export function CodeView({ pr }: CodeViewProps) {
                       onClick={handleNextFile}
                       disabled={!hasNextFile}
                       className="p-1 rounded text-praxd-text-muted hover:text-praxd-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                      title="Next file"
+                      title="Next file (])"
                       aria-label="Next changed file"
                     >
                       <ChevronRight className="w-3.5 h-3.5" />
@@ -228,34 +229,34 @@ export function CodeView({ pr }: CodeViewProps) {
                   <button
                     type="button"
                     onClick={handleToggleAllFiles}
-                    className="flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium rounded-md border border-praxd-border-soft bg-[#181818] text-praxd-text-muted hover:text-praxd-text hover:bg-[#222222] transition-colors"
+                    className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-md border border-praxd-border-soft bg-[#181818] text-praxd-text-muted hover:text-praxd-text hover:bg-[#222222] transition-colors shrink-0 whitespace-nowrap"
                     title={allFilesExpanded ? "Collapse all files" : "Expand all files"}
                     aria-label={allFilesExpanded ? "Collapse all files" : "Expand all files"}
                   >
-                    <ChevronsUpDown className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">
+                    <ChevronsUpDown className="w-3.5 h-3.5 shrink-0" />
+                    <span className="whitespace-nowrap">
                       {allFilesExpanded ? "Collapse all" : "Expand all"}
                     </span>
                   </button>
 
                   {/* Review Progress Indicator */}
                   <div
-                    className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#161616] border border-praxd-border-soft text-[11px] font-mono select-none"
+                    className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#161616] border border-praxd-border-soft text-[11px] font-mono select-none shrink-0"
                     title={`${viewedCount} of ${pr.files.length} files reviewed`}
                     aria-label={`Review progress: ${viewedCount} of ${pr.files.length} files reviewed`}
                   >
-                    <div className="w-14 h-1.5 rounded-full bg-neutral-800 overflow-hidden">
+                    <div className="w-12 h-1.5 rounded-full bg-neutral-800/90 border border-neutral-700/50 overflow-hidden shrink-0">
                       <div
-                        className="h-full bg-emerald-500 transition-all duration-300"
+                        className="h-full bg-emerald-500 transition-all duration-300 rounded-full"
                         style={{
                           width: `${pr.files.length > 0 ? (viewedCount / pr.files.length) * 100 : 0}%`,
                         }}
                       />
                     </div>
-                    <span className="tabular-nums text-neutral-300 font-medium">
+                    <span className="tabular-nums text-neutral-300 font-medium whitespace-nowrap">
                       {viewedCount}/{pr.files.length}
                     </span>
-                    <span className="text-[10px] text-neutral-500">viewed</span>
+                    <span className="text-[10px] text-neutral-500 whitespace-nowrap">viewed</span>
                   </div>
                 </>
               )}

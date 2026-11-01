@@ -1,8 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   verifyGitHubWebhookSignature,
   computePayloadSha256,
 } from "@/lib/github/webhook-verify";
+import { runDeliveryReconciler } from "@/lib/github/reconciler";
 
 describe("Phase 2 Acceptance: Webhooks & Signature Verification (P2-01 to P2-03)", () => {
   // Official GitHub published test vector from docs/GITHUB_INTEGRATION.md §6.4
@@ -159,20 +160,43 @@ describe("Phase 2 Acceptance: Event Ingestion & Invariants (P2-04 to P2-12)", ()
     expect(checkRuns.get(9001)?.conclusion).toBe("success");
   });
 
-  it("P2-11: fails delivery after max attempts without infinite retries", () => {
-    const delivery = {
-      id: "deliv-fail-1",
-      attempts: 5,
-      status: "queued" as "queued" | "failed",
-      safeErrorCode: null as string | null,
+  it("P2-11: fails delivery after max attempts without infinite retries using runDeliveryReconciler", async () => {
+    const mockUpdates: Array<{ id: string; status: string; safe_error_code?: string; attempts?: number }> = [];
+
+    const mockSupabase: any = {
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          in: vi.fn(() => ({
+            lt: vi.fn(() => ({
+              limit: vi.fn(() => Promise.resolve({
+                data: [
+                  { id: "deliv-1", delivery_id: "guid-1", attempts: 5, status: "queued" },
+                  { id: "deliv-2", delivery_id: "guid-2", attempts: 2, status: "received" },
+                ],
+              })),
+            })),
+          })),
+        })),
+        update: vi.fn((updatePayload) => ({
+          eq: vi.fn((col, val) => {
+            mockUpdates.push({ id: val, ...updatePayload });
+            return Promise.resolve({ error: null });
+          }),
+        })),
+      })),
     };
 
-    if (delivery.attempts >= 5) {
-      delivery.status = "failed";
-      delivery.safeErrorCode = "MAX_ATTEMPTS_EXCEEDED";
-    }
+    const summary = await runDeliveryReconciler(mockSupabase);
 
-    expect(delivery.status).toBe("failed");
-    expect(delivery.safeErrorCode).toBe("MAX_ATTEMPTS_EXCEEDED");
+    expect(summary.exhaustedDeliveries).toBe(1);
+    expect(summary.recoveredDeliveries).toBe(1);
+
+    const exhausted = mockUpdates.find((u) => u.id === "deliv-1");
+    expect(exhausted?.status).toBe("failed");
+    expect(exhausted?.safe_error_code).toBe("MAX_ATTEMPTS_EXCEEDED");
+
+    const recovered = mockUpdates.find((u) => u.id === "deliv-2");
+    expect(recovered?.status).toBe("queued");
+    expect(recovered?.attempts).toBe(3);
   });
 });

@@ -81,7 +81,11 @@ In addition to core triage and diff inspection, PRAXD includes **direct personal
   - Keyboard shortcut `Ctrl+Enter` / `Cmd+Enter` to submit quickly without leaving the keyboard.
   - API route `POST /api/pull-requests/[pullRequestId]/comments` accepting `profileType` and updating local timeline with proper author avatar and `BOT` / `Author` badge.
 
-### 5. Impeccable Web UI/UX Craft Polish
+### 6. Codebase Hygiene & Dead Code Removal
+- [x] **Dead Component Removal:** Safely removed deprecated `components/ai-review-panel.tsx` leftover from Phase 3 simplification.
+- [x] **Asset De-duplication:** Removed unreferenced duplicate logo asset `public/praxd-logo.png` in favor of canonical `public/logo.png`.
+- [x] **Reconciler Verification:** Integrated and validated `runDeliveryReconciler` (`lib/github/reconciler.ts`) into `tests/phase2-webhooks.test.ts` for automated test coverage of requirement P2-11.
+- [x] **Clean Quality Pipeline:** Verified 0 ESLint warnings, 0 TypeScript errors, and 88 passing Vitest tests.
 - [x] **Global Design System & Browser Surfaces:**
   - Removed blanket `user-select: none` from body, restoring code, comment, commit SHA, and description selectable text.
   - Custom themed selection (`::selection` & `::-moz-selection` with alpha brand blue).
