@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from "react";
-import { ChevronDown, FileCode, Check } from "lucide-react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
+import { ChevronDown, FileCode, Check, Search, X } from "lucide-react";
 import { ChangedFile } from "@/types/pr";
 import { cn } from "@/lib/utils";
 
@@ -15,17 +15,20 @@ export function FileTreeDropdown({
   onSelectFile,
 }: FileTreeDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
+        setSearchQuery("");
       }
     }
     function handleEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setIsOpen(false);
+        setSearchQuery("");
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -36,11 +39,20 @@ export function FileTreeDropdown({
     };
   }, []);
 
+  const filteredFiles = useMemo(() => {
+    if (!searchQuery.trim()) return files;
+    const query = searchQuery.toLowerCase().trim();
+    return files.filter((f) => f.filename.toLowerCase().includes(query));
+  }, [files, searchQuery]);
+
   return (
     <div className="relative inline-block text-left" ref={dropdownRef}>
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          setIsOpen(!isOpen);
+          if (isOpen) setSearchQuery("");
+        }}
         className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#181818] hover:bg-[#222222] border border-praxd-border-soft text-[12px] text-praxd-text font-mono transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-praxd-blue"
         aria-expanded={isOpen}
         aria-haspopup="listbox"
@@ -58,7 +70,7 @@ export function FileTreeDropdown({
         <div
           role="listbox"
           aria-label="Files changed in this pull request"
-          className="absolute left-0 top-full mt-1.5 w-80 max-h-72 overflow-y-auto rounded-lg bg-[#181818] border border-praxd-border shadow-xl z-50 p-1 space-y-0.5 animate-in fade-in zoom-in-95 duration-100 select-none"
+          className="absolute left-0 top-full mt-1.5 w-80 max-h-80 overflow-y-auto rounded-lg bg-[#181818] border border-praxd-border shadow-xl z-50 p-1 space-y-0.5 animate-in fade-in zoom-in-95 duration-100 select-none"
         >
           <div className="px-2.5 py-1.5 text-[11px] font-semibold text-praxd-text-muted border-b border-praxd-border-soft flex items-center justify-between">
             <span>Files changed ({files.length})</span>
@@ -68,37 +80,70 @@ export function FileTreeDropdown({
             </span>
           </div>
 
-          {files.map((file) => {
-            const isSelected = file.filename === selectedFile.filename;
-            return (
-              <button
-                key={file.filename}
-                type="button"
-                role="option"
-                aria-selected={isSelected}
-                onClick={() => {
-                  onSelectFile(file);
-                  setIsOpen(false);
-                }}
-                className={cn(
-                  "w-full text-left flex items-center justify-between px-2.5 py-1.5 rounded-md text-[12px] font-mono transition-colors",
-                  isSelected
-                    ? "bg-[#252525] text-praxd-text"
-                    : "text-praxd-text-secondary hover:bg-[#202020] hover:text-praxd-text"
+          {/* Quick File Search Input if multiple files exist */}
+          {files.length > 1 && (
+            <div className="p-1.5 border-b border-praxd-border-soft">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Filter files..."
+                  className="w-full bg-[#121212] border border-praxd-border-soft focus:border-praxd-blue focus:ring-1 focus:ring-praxd-blue rounded pl-7 pr-6 py-1 text-[11px] font-mono text-neutral-200 placeholder-neutral-500 outline-none"
+                  autoFocus
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 text-neutral-400 hover:text-white"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
                 )}
-              >
-                <div className="flex items-center gap-2 truncate pr-2">
-                  <FileCode className="w-3.5 h-3.5 text-praxd-text-muted shrink-0" />
-                  <span className="truncate">{file.filename}</span>
-                </div>
-                <div className="flex items-center gap-2 shrink-0 text-[10px]">
-                  <span className="text-praxd-green">+{file.additions}</span>
-                  <span className="text-praxd-red">-{file.deletions}</span>
-                  {isSelected && <Check className="w-3 h-3 text-praxd-blue" />}
-                </div>
-              </button>
-            );
-          })}
+              </div>
+            </div>
+          )}
+
+          {filteredFiles.length === 0 ? (
+            <div className="p-4 text-center text-xs text-neutral-500 font-mono">
+              No matching files
+            </div>
+          ) : (
+            filteredFiles.map((file) => {
+              const isSelected = file.filename === selectedFile.filename;
+              return (
+                <button
+                  key={file.filename}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={() => {
+                    onSelectFile(file);
+                    setIsOpen(false);
+                    setSearchQuery("");
+                  }}
+                  className={cn(
+                    "w-full text-left flex items-center justify-between px-2.5 py-1.5 rounded-md text-[12px] font-mono transition-colors",
+                    isSelected
+                      ? "bg-[#252525] text-praxd-text"
+                      : "text-praxd-text-secondary hover:bg-[#202020] hover:text-praxd-text"
+                  )}
+                >
+                  <div className="flex items-center gap-2 truncate pr-2">
+                    <FileCode className="w-3.5 h-3.5 text-praxd-text-muted shrink-0" />
+                    <span className="truncate">{file.filename}</span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 text-[10px]">
+                    <span className="text-praxd-green">+{file.additions}</span>
+                    <span className="text-praxd-red">-{file.deletions}</span>
+                    {isSelected && <Check className="w-3 h-3 text-praxd-blue" />}
+                  </div>
+                </button>
+              );
+            })
+          )}
         </div>
       )}
     </div>

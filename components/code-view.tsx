@@ -32,6 +32,9 @@ export function CodeView({ pr }: CodeViewProps) {
   const [diffMode, setDiffMode] = useState<"split" | "unified">("split");
   const [wrapLines, setWrapLines] = useState(false);
 
+  // Track files marked as viewed by the reviewer
+  const [viewedFiles, setViewedFiles] = useState<Record<string, boolean>>({});
+
   // GitHub-style vertical collapsible file state:
   // By default, the 1st file is expanded, and subsequent files are collapsed.
   const [expandedFiles, setExpandedFiles] = useState<Record<string, boolean>>(() => {
@@ -42,13 +45,14 @@ export function CodeView({ pr }: CodeViewProps) {
     return initial;
   });
 
-  // Re-synchronize expanded files whenever the active PR changes
+  // Re-synchronize expanded & viewed files whenever the active PR changes
   useEffect(() => {
     if (pr.files.length > 0) {
       setSelectedFile(pr.files[0]);
       const initial: Record<string, boolean> = {};
       initial[pr.files[0].filename] = true;
       setExpandedFiles(initial);
+      setViewedFiles({});
     }
   }, [pr.id, pr.files]);
 
@@ -57,6 +61,32 @@ export function CodeView({ pr }: CodeViewProps) {
     pr.files.find((f) => f.filename === selectedFile.filename) ||
     pr.files[0] ||
     selectedFile;
+
+  // Toggle viewed status for a file
+  const handleToggleViewed = useCallback((filename: string) => {
+    setViewedFiles((prev) => {
+      const isCurrentlyViewed = !!prev[filename];
+      const nextState = !isCurrentlyViewed;
+
+      // When marking a file as viewed, smoothly collapse it
+      if (nextState) {
+        setExpandedFiles((exp) => ({
+          ...exp,
+          [filename]: false,
+        }));
+      }
+
+      return {
+        ...prev,
+        [filename]: nextState,
+      };
+    });
+  }, []);
+
+  // Compute viewed count
+  const viewedCount = useMemo(() => {
+    return pr.files.filter((f) => viewedFiles[f.filename]).length;
+  }, [pr.files, viewedFiles]);
 
   // Toggle individual file collapse / expand
   const handleToggleFile = useCallback((filename: string) => {
@@ -207,6 +237,26 @@ export function CodeView({ pr }: CodeViewProps) {
                       {allFilesExpanded ? "Collapse all" : "Expand all"}
                     </span>
                   </button>
+
+                  {/* Review Progress Indicator */}
+                  <div
+                    className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#161616] border border-praxd-border-soft text-[11px] font-mono select-none"
+                    title={`${viewedCount} of ${pr.files.length} files reviewed`}
+                    aria-label={`Review progress: ${viewedCount} of ${pr.files.length} files reviewed`}
+                  >
+                    <div className="w-14 h-1.5 rounded-full bg-neutral-800 overflow-hidden">
+                      <div
+                        className="h-full bg-emerald-500 transition-all duration-300"
+                        style={{
+                          width: `${pr.files.length > 0 ? (viewedCount / pr.files.length) * 100 : 0}%`,
+                        }}
+                      />
+                    </div>
+                    <span className="tabular-nums text-neutral-300 font-medium">
+                      {viewedCount}/{pr.files.length}
+                    </span>
+                    <span className="text-[10px] text-neutral-500">viewed</span>
+                  </div>
                 </>
               )}
             </div>
@@ -297,6 +347,7 @@ export function CodeView({ pr }: CodeViewProps) {
         ) : (
           pr.files.map((file, idx) => {
             const isExpanded = expandedFiles[file.filename] ?? (idx === 0);
+            const isViewed = viewedFiles[file.filename] ?? false;
             return (
               <DiffViewer
                 key={file.filename}
@@ -308,6 +359,8 @@ export function CodeView({ pr }: CodeViewProps) {
                 isCollapsible={true}
                 isExpanded={isExpanded}
                 onToggleExpand={() => handleToggleFile(file.filename)}
+                isViewed={isViewed}
+                onToggleViewed={() => handleToggleViewed(file.filename)}
               />
             );
           })

@@ -9,11 +9,14 @@ import { SummaryView } from "./summary-view";
 import { CodeView } from "./code-view";
 import { DemoModeBadge } from "./demo-mode-badge";
 import { GitHubConnectModal } from "./github-connect-modal";
+import { KeyboardShortcutsModal } from "./keyboard-shortcuts-modal";
+import { ToastProvider } from "./toast";
 import { BrandLogo } from "./brand-logo";
 
 export function PRWorkspace() {
   const [isLiveMode, setIsLiveMode] = useState(false);
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [pullRequests, setPullRequests] = useState<PullRequest[]>(FIXTURE_PULL_REQUESTS);
   const [selectedPr, setSelectedPr] = useState<PullRequest>(FIXTURE_PULL_REQUESTS[0]);
   const [activeView, setActiveView] = useState<"summary" | "code">("code");
@@ -150,6 +153,9 @@ export function PRWorkspace() {
       } else if (e.key === "2") {
         e.preventDefault();
         setActiveView("code");
+      } else if (e.key === "?") {
+        e.preventDefault();
+        setIsShortcutsOpen(true);
       }
     }
   }, []);
@@ -160,81 +166,90 @@ export function PRWorkspace() {
   }, [handleKeyDown]);
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-praxd-bg text-praxd-text antialiased font-sans">
-      {/* Workspace Connection Notice Badge */}
-      <DemoModeBadge
-        isLiveMode={isLiveMode}
-        onToggleMode={() => setIsLiveMode(!isLiveMode)}
-        onOpenConnectModal={() => setIsConnectModalOpen(true)}
-      />
-
-      {/* GitHub Connect Modal */}
-      <GitHubConnectModal
-        isOpen={isConnectModalOpen}
-        onClose={() => setIsConnectModalOpen(false)}
-      />
-
-      {/* Main Dual-Pane Workspace */}
-      <div className="flex-1 flex min-h-0 overflow-hidden relative">
-        {/* Left PR Inbox Sidebar */}
-        <PullRequestSidebar
-          pullRequests={pullRequests}
-          selectedPr={selectedPr}
-          onSelectPr={handleSelectPr}
-          isOpen={isSidebarOpen}
-          onToggleOpen={() => setIsSidebarOpen(false)}
+    <ToastProvider>
+      <div className="flex flex-col h-screen w-screen overflow-hidden bg-praxd-bg text-praxd-text antialiased font-sans">
+        {/* Workspace Connection Notice Badge */}
+        <DemoModeBadge
+          isLiveMode={isLiveMode}
+          onToggleMode={() => setIsLiveMode(!isLiveMode)}
+          onOpenConnectModal={() => setIsConnectModalOpen(true)}
         />
 
-        {/* Right Main Workspace */}
-        <main
-          className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-praxd-bg"
-          aria-label="Pull request workspace"
-        >
-          {/* Main Top Header */}
-          <WorkspaceHeader
-            pr={selectedPr}
-            activeView={activeView}
-            onViewChange={setActiveView}
-            isSidebarOpen={isSidebarOpen}
-            onToggleSidebar={() => setIsSidebarOpen(true)}
-            onMergeSuccess={() => handleUpdatePr({ state: "merged" })}
+        {/* GitHub Connect Modal */}
+        <GitHubConnectModal
+          isOpen={isConnectModalOpen}
+          onClose={() => setIsConnectModalOpen(false)}
+        />
+
+        {/* Keyboard Shortcuts Cheatsheet Modal */}
+        <KeyboardShortcutsModal
+          isOpen={isShortcutsOpen}
+          onClose={() => setIsShortcutsOpen(false)}
+        />
+
+        {/* Main Dual-Pane Workspace */}
+        <div className="flex-1 flex min-h-0 overflow-hidden relative">
+          {/* Left PR Inbox Sidebar */}
+          <PullRequestSidebar
+            pullRequests={pullRequests}
+            selectedPr={selectedPr}
+            onSelectPr={handleSelectPr}
+            isOpen={isSidebarOpen}
+            onToggleOpen={() => setIsSidebarOpen(false)}
           />
 
-          {/* Workspace Body: Summary or Code */}
-          <div className="flex-1 min-h-0 overflow-hidden">
-            {isLoadingLive ? (
-              <div className="h-full flex items-center justify-center text-praxd-text-muted">
-                <p className="text-[13px] animate-pulse">Syncing pull requests from GitHub...</p>
-              </div>
-            ) : selectedPr ? (
-              activeView === "summary" ? (
-                <SummaryView pr={selectedPr} onUpdatePr={handleUpdatePr} />
+          {/* Right Main Workspace */}
+          <main
+            className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-praxd-bg"
+            aria-label="Pull request workspace"
+          >
+            {/* Main Top Header */}
+            <WorkspaceHeader
+              pr={selectedPr}
+              activeView={activeView}
+              onViewChange={setActiveView}
+              isSidebarOpen={isSidebarOpen}
+              onToggleSidebar={() => setIsSidebarOpen(true)}
+              onMergeSuccess={() => handleUpdatePr({ state: "merged" })}
+              onOpenShortcuts={() => setIsShortcutsOpen(true)}
+            />
+
+            {/* Workspace Body: Summary or Code */}
+            <div className="flex-1 min-h-0 overflow-hidden">
+              {isLoadingLive ? (
+                <div className="h-full flex items-center justify-center text-praxd-text-muted">
+                  <p className="text-[13px] animate-pulse">Syncing pull requests from GitHub...</p>
+                </div>
+              ) : selectedPr ? (
+                activeView === "summary" ? (
+                  <SummaryView pr={selectedPr} onUpdatePr={handleUpdatePr} />
+                ) : (
+                  <CodeView pr={selectedPr} />
+                )
               ) : (
-                <CodeView pr={selectedPr} />
-              )
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center text-praxd-text-muted space-y-3 p-6 text-center">
-                <BrandLogo size={48} className="mb-1 opacity-90 shadow-lg" />
-                <p className="text-[14px] font-medium text-praxd-text">No pull requests found</p>
-                <p className="text-[12px] max-w-sm">
-                  {isLiveMode
-                    ? "Connect your GitHub App installation or sync a repository to populate this workspace."
-                    : "Select a pull request from the left inbox."}
-                </p>
-                {isLiveMode && (
-                  <button
-                    type="button"
-                    onClick={() => setIsConnectModalOpen(true)}
-                    className="px-3 py-1.5 rounded bg-white text-black text-[12px] font-medium hover:bg-neutral-200 transition-colors"
-                  >
-                    Connect GitHub App
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        </main>
+                <div className="h-full flex flex-col items-center justify-center text-praxd-text-muted space-y-3 p-6 text-center">
+                  <BrandLogo size={48} className="mb-1 opacity-90 shadow-lg" />
+                  <p className="text-[14px] font-medium text-praxd-text">No pull requests found</p>
+                  <p className="text-[12px] max-w-sm">
+                    {isLiveMode
+                      ? "Connect your GitHub App installation or sync a repository to populate this workspace."
+                      : "Select a pull request from the left inbox."}
+                  </p>
+                  {isLiveMode && (
+                    <button
+                      type="button"
+                      onClick={() => setIsConnectModalOpen(true)}
+                      className="px-3 py-1.5 rounded bg-white text-black text-[12px] font-medium hover:bg-neutral-200 transition-colors"
+                    >
+                      Connect GitHub App
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
+    </ToastProvider>
   );
 }
