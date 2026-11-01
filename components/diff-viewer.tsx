@@ -44,7 +44,7 @@ export function renderFileBadge(filename: string) {
 
   if (ext === "md" || ext === "markdown") {
     return (
-      <span className="font-bold text-[11px] text-sky-400 font-mono tracking-tighter shrink-0 select-none">
+      <span className="font-bold text-[11px] text-sky-400 font-sans tracking-tight shrink-0 select-none">
         M↓
       </span>
     );
@@ -52,7 +52,7 @@ export function renderFileBadge(filename: string) {
 
   if (ext === "ts" || ext === "tsx") {
     return (
-      <span className="px-1 py-0.2 rounded text-[10px] bg-blue-950/60 text-blue-400 font-mono font-bold border border-blue-700/50 shrink-0 select-none">
+      <span className="px-1 py-0.2 rounded text-[10px] bg-blue-950/60 text-blue-400 font-sans font-bold border border-blue-700/50 shrink-0 select-none">
         TS
       </span>
     );
@@ -60,7 +60,7 @@ export function renderFileBadge(filename: string) {
 
   if (ext === "js" || ext === "jsx" || ext === "mjs" || ext === "cjs") {
     return (
-      <span className="px-1 py-0.2 rounded text-[10px] bg-yellow-950/60 text-amber-300 font-mono font-bold border border-yellow-700/50 shrink-0 select-none">
+      <span className="px-1 py-0.2 rounded text-[10px] bg-yellow-950/60 text-amber-300 font-sans font-bold border border-yellow-700/50 shrink-0 select-none">
         JS
       </span>
     );
@@ -79,7 +79,7 @@ export function renderFileBadge(filename: string) {
 
   if (ext === "css" || ext === "scss" || ext === "sass" || ext === "less") {
     return (
-      <span className="px-1 py-0.2 rounded text-[10px] bg-purple-950/60 text-purple-300 font-mono font-bold border border-purple-700/50 shrink-0 select-none">
+      <span className="px-1 py-0.2 rounded text-[10px] bg-purple-950/60 text-purple-300 font-sans font-bold border border-purple-700/50 shrink-0 select-none">
         CSS
       </span>
     );
@@ -320,9 +320,9 @@ export function DiffViewer({
     <div
       id={`file-diff-${encodeURIComponent(file.filename)}`}
       className={cn(
-        "flex items-center justify-between px-4 py-2.5 border-b border-praxd-border-soft bg-[#141414] text-[12px] shrink-0 sticky top-0 z-10 backdrop-blur-sm select-none transition-colors",
+        "flex items-center justify-between px-4 py-2.5 border-b border-praxd-border-soft bg-[#141414] text-[12px] shrink-0 sticky top-0 z-20 backdrop-blur-md shadow-xs select-none transition-colors",
         isCollapsible && "cursor-pointer hover:bg-[#181818]",
-        isViewed && "bg-[#111111]/90 opacity-90"
+        isViewed && "bg-[#111111]/95 opacity-90"
       )}
       onClick={isCollapsible ? onToggleExpand : undefined}
       role={isCollapsible ? "button" : undefined}
@@ -342,11 +342,11 @@ export function DiffViewer({
     >
       <div className="flex items-center gap-2.5 min-w-0">
         <div className="shrink-0">{renderFileBadge(file.filename)}</div>
-        <span className="font-mono text-[13px] font-semibold text-neutral-200 truncate">
+        <span className="font-sans text-[13px] font-semibold text-neutral-200 truncate">
           {basename}
         </span>
         {dirname && (
-          <span className="font-mono text-[12px] text-neutral-500 truncate">
+          <span className="font-sans text-[12px] text-neutral-500 truncate">
             {dirname}
           </span>
         )}
@@ -398,7 +398,7 @@ export function DiffViewer({
           </button>
         )}
 
-        <div className="flex items-center gap-1.5 font-mono text-[11px] tabular-nums font-semibold">
+        <div className="flex items-center gap-1.5 font-sans text-[11px] tabular-nums font-semibold">
           <span className="text-[#3fb950]">+{file.additions}</span>
           <span className="text-[#f85149]">-{file.deletions}</span>
         </div>
@@ -411,7 +411,7 @@ export function DiffViewer({
             )}
           </div>
         ) : (
-          <span className="text-[11px] text-praxd-text-muted font-mono">
+          <span className="text-[11px] text-praxd-text-muted font-sans">
             {effectiveLines.length} diff lines
           </span>
         )}
@@ -443,7 +443,7 @@ export function DiffViewer({
               This file is binary or does not have a text patch available in this pull request.
             </p>
           </div>
-          <span className="text-[11px] text-praxd-blue font-mono bg-[#1c1c1c] px-2.5 py-1 rounded border border-praxd-border-soft">
+          <span className="text-[11px] text-praxd-blue font-sans bg-[#1c1c1c] px-2.5 py-1 rounded border border-praxd-border-soft">
             {file.filename}
           </span>
         </div>
@@ -544,7 +544,7 @@ export function DiffViewer({
           }
           if (token.startsWith("<") && token.endsWith(">")) {
             return (
-              <span key={i} className="text-[#7ee787] font-mono">
+              <span key={i} className="text-[#7ee787] font-sans">
                 {token}
               </span>
             );
@@ -562,7 +562,7 @@ export function DiffViewer({
 
       {/* Split Column Subheader Bar */}
       {diffMode === "split" && (
-        <div className="flex border-b border-praxd-border-soft bg-[#131313] text-[11px] font-mono text-praxd-text-muted select-none shrink-0">
+        <div className="flex border-b border-praxd-border-soft bg-[#131313] text-[11px] font-sans text-praxd-text-muted select-none shrink-0 sticky top-[41px] z-10 backdrop-blur-md">
           {/* Left Column Label (Base / Old) */}
           <div className="w-1/2 flex items-center justify-between px-3 py-1.5 border-r border-praxd-border-soft/60">
             <div className="flex items-center gap-1.5">
@@ -597,7 +597,7 @@ export function DiffViewer({
 
       {/* Unmodified Lines Bar */}
       {file.unmodifiedLinesBefore && (
-        <div className="flex flex-col bg-[#141414] border-b border-praxd-border-soft text-[11px] font-mono select-none">
+        <div className="flex flex-col bg-[#141414] border-b border-praxd-border-soft text-[11px] font-sans select-none">
           <button
             type="button"
             onClick={() => setUnmodifiedExpanded(!unmodifiedExpanded)}
@@ -617,7 +617,7 @@ export function DiffViewer({
 
           {/* Context lines revealed when expanded */}
           {unmodifiedExpanded && (
-            <div className="border-t border-praxd-border-soft/60 bg-[#111111] text-[12px] font-code divide-y divide-praxd-border-soft/30">
+            <div className="border-t border-praxd-border-soft/60 bg-[#111111] text-[12px] font-sans divide-y divide-praxd-border-soft/30">
               {expandedContextLines.map((ctx) => (
                 <div key={ctx.newNum} className="flex items-center text-praxd-text-muted py-0.5">
                   <div className="w-12 px-2 text-right select-none text-[11px] text-neutral-600 tabular-nums">
@@ -649,7 +649,7 @@ export function DiffViewer({
         ref={containerRef}
         tabIndex={0}
         onKeyDown={handleKeyDown}
-        className="flex-1 overflow-y-auto overflow-x-hidden font-code text-[12px] leading-5 bg-[#0e0e0e] outline-none"
+        className="flex-1 overflow-y-auto overflow-x-hidden scroll-smooth font-sans text-[12px] leading-5 bg-[#0e0e0e] outline-none"
       >
         {diffMode === "split" ? (
           /* ================= SYNCHRONIZED SPLIT DIFF ================= */
@@ -686,7 +686,7 @@ export function DiffViewer({
                       )}
                     >
                       {/* Pinned Gutter (Line Number + Comment Button) */}
-                      <div className="w-12 shrink-0 px-2 text-right select-none text-[11px] text-praxd-text-muted tabular-nums relative flex items-center justify-end z-10 border-r border-praxd-border-soft/40 bg-[#0e0e0e]">
+                      <div className="w-12 shrink-0 px-2 text-right select-none text-[11px] text-praxd-text-muted tabular-nums relative flex items-center justify-end z-[1] border-r border-praxd-border-soft/40 bg-[#0e0e0e]">
                         <span className="group-hover:opacity-0 transition-opacity">
                           {row.left?.lineNumber || ""}
                         </span>
@@ -713,7 +713,7 @@ export function DiffViewer({
                             "px-3 text-praxd-text",
                             wrapLines
                               ? "whitespace-pre-wrap break-words"
-                              : "whitespace-pre font-mono inline-block min-w-full"
+                              : "whitespace-pre font-sans inline-block min-w-full"
                           )}
                         >
                           {row.left ? (
@@ -735,7 +735,7 @@ export function DiffViewer({
                       )}
                     >
                       {/* Pinned Gutter (Line Number + Comment Button) */}
-                      <div className="w-12 shrink-0 px-2 text-right select-none text-[11px] text-praxd-text-muted tabular-nums relative flex items-center justify-end z-10 border-r border-praxd-border-soft/40 bg-[#0e0e0e]">
+                      <div className="w-12 shrink-0 px-2 text-right select-none text-[11px] text-praxd-text-muted tabular-nums relative flex items-center justify-end z-[1] border-r border-praxd-border-soft/40 bg-[#0e0e0e]">
                         <span className="group-hover:opacity-0 transition-opacity">
                           {row.right?.lineNumber || ""}
                         </span>
@@ -762,7 +762,7 @@ export function DiffViewer({
                             "px-3 text-praxd-text",
                             wrapLines
                               ? "whitespace-pre-wrap break-words"
-                              : "whitespace-pre font-mono inline-block min-w-full"
+                              : "whitespace-pre font-sans inline-block min-w-full"
                           )}
                         >
                           {row.right ? (
@@ -907,12 +907,12 @@ export function DiffViewer({
                     )}
                   >
                     {/* Old line number */}
-                    <div className="w-12 shrink-0 px-2 text-right select-none text-[11px] text-praxd-text-muted tabular-nums bg-[#0e0e0e] z-10">
+                    <div className="w-12 shrink-0 px-2 text-right select-none text-[11px] text-praxd-text-muted tabular-nums bg-[#0e0e0e] z-[1]">
                       {line.oldLineNumber || ""}
                     </div>
 
                     {/* New line number + Hover '+' button */}
-                    <div className="w-12 shrink-0 px-2 text-right select-none text-[11px] text-praxd-text-muted border-r border-praxd-border-soft/60 tabular-nums relative flex items-center justify-end bg-[#0e0e0e] z-10">
+                    <div className="w-12 shrink-0 px-2 text-right select-none text-[11px] text-praxd-text-muted border-r border-praxd-border-soft/60 tabular-nums relative flex items-center justify-end bg-[#0e0e0e] z-[1]">
                       <span className="group-hover:opacity-0 transition-opacity">
                         {line.newLineNumber || ""}
                       </span>
@@ -930,7 +930,7 @@ export function DiffViewer({
                     </div>
 
                     {/* Prefix sign (+ / -) */}
-                    <div className="w-6 shrink-0 text-center select-none text-neutral-500 font-mono bg-[#0e0e0e] z-10">
+                    <div className="w-6 shrink-0 text-center select-none text-neutral-500 font-sans bg-[#0e0e0e] z-[1]">
                       {isAddition ? "+" : isDeletion ? "-" : " "}
                     </div>
 
@@ -945,7 +945,7 @@ export function DiffViewer({
                           "px-3 text-praxd-text",
                           wrapLines
                             ? "whitespace-pre-wrap break-words"
-                            : "whitespace-pre font-mono inline-block min-w-full"
+                            : "whitespace-pre font-sans inline-block min-w-full"
                         )}
                       >
                         {renderHighlightedCode(line.content, isDeletion, isAddition)}
@@ -1042,7 +1042,7 @@ export function DiffViewer({
               <ArrowLeftRight className="w-3 h-3" />
               <span>Dual-Pane Sync Scroll</span>
             </div>
-            <span className="font-mono text-[11px] text-neutral-400">
+            <span className="font-sans text-[11px] text-neutral-400">
               {Math.round(scrollX)}px / {Math.round(maxScrollX)}px
             </span>
             {scrollX > 0 && (
