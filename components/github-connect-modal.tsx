@@ -32,7 +32,7 @@ export function GitHubConnectModal({ isOpen, onClose }: GitHubConnectModalProps)
         {/* Header */}
         <div className="flex items-center justify-between border-b border-praxd-border-soft pb-3">
           <div className="flex items-center gap-2.5">
-            <BrandLogo size={22} />
+            <BrandLogo size="md" />
             <h2 id="connect-github-title" className="text-[14px] font-semibold">
               Connect to PRAXD via GitHub App
             </h2>

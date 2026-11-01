@@ -63,7 +63,7 @@ export function WorkspaceHeader({
               >
                 <PanelLeftOpen className="w-4 h-4" />
               </button>
-              <BrandLogo size={19} showText />
+              <BrandLogo size="sm" showText />
               <span className="text-praxd-border-soft mx-0.5 select-none">/</span>
             </div>
           )}

@@ -181,7 +181,7 @@ export function PullRequestSidebar({
         <div className="relative flex items-center justify-center min-h-[32px]">
           {/* Brand Logo placed on the left for balance */}
           <div className="absolute left-0 flex items-center gap-1.5" title="PRAXD PR Workspace">
-            <BrandLogo size={18} />
+            <BrandLogo size="sm" />
           </div>
 
           {/* Centered Segmented Tabs: All / Reviewing / Authored */}

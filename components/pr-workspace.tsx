@@ -223,7 +223,8 @@ export function PRWorkspace() {
             {/* Workspace Body: Summary or Code */}
             <div className="flex-1 min-h-0 overflow-hidden">
               {isLoadingLive ? (
-                <div className="h-full flex items-center justify-center text-praxd-text-muted">
+                <div className="h-full flex flex-col items-center justify-center text-praxd-text-muted space-y-3">
+                  <BrandLogo size="xl" className="animate-pulse opacity-85" />
                   <p className="text-[13px] animate-pulse">Syncing pull requests from GitHub...</p>
                 </div>
               ) : selectedPr ? (
@@ -234,7 +235,7 @@ export function PRWorkspace() {
                 )
               ) : (
                 <div className="h-full flex flex-col items-center justify-center text-praxd-text-muted space-y-3 p-6 text-center">
-                  <BrandLogo size={48} className="mb-1 opacity-90 shadow-lg" />
+                  <BrandLogo size="2xl" className="mb-2 shadow-2xl" />
                   <p className="text-[14px] font-medium text-praxd-text">No pull requests found</p>
                   <p className="text-[12px] max-w-sm">
                     {isLiveMode
