@@ -20,7 +20,7 @@ const config: Config = {
           "border-soft": "#262626",
           text: "#f2f2f2",
           "text-secondary": "#a3a3a3",
-          "text-muted": "#737373",
+          "text-muted": "#8a8a8a",
           green: "#2fbf71",
           red: "#f05252",
           amber: "#d6a344",
