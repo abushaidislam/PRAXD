@@ -64,14 +64,31 @@ const EMOJI_MAP: Record<string, string> = {
 };
 
 /**
- * Sanitizes URLs to prevent javascript: or unsafe schemes
+ * Sanitizes URLs to prevent XSS (javascript:, vbscript:, unsafe data: URIs, etc.).
+ * Strips hidden control characters and only permits safe web protocols (http, https, mailto),
+ * safe relative paths, and safe raster images for data: URIs.
  */
 function sanitizeUrl(url?: string): string {
   if (!url) return "#";
   const trimmed = url.trim();
-  if (/^(javascript|vbscript|data:(?!image\/)):/i.test(trimmed)) {
+  // Strip ASCII control characters (0x00-0x1F, 0x7F) and whitespace before evaluating protocol
+  const normalized = trimmed.replace(/[\u0000-\u001F\u007F\s]+/g, "");
+
+  // Detect URI schemes (e.g., "javascript:", "data:", "https:")
+  const schemeMatch = normalized.match(/^([a-zA-Z0-9+.-]+):/);
+  if (schemeMatch) {
+    const scheme = schemeMatch[1].toLowerCase();
+    if (scheme === "http" || scheme === "https" || scheme === "mailto") {
+      return trimmed;
+    }
+    if (scheme === "data" && /^data:image\/(png|jpeg|jpg|gif|webp);base64,[a-z0-9+/=]+$/i.test(normalized)) {
+      return trimmed;
+    }
+    // Block all other schemes (javascript:, vbscript:, file:, data:text/html, etc.)
     return "#";
   }
+
+  // Safe relative paths (#anchor, /path, ./path, etc.)
   return trimmed;
 }
 

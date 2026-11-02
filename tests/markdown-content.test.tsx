@@ -187,4 +187,45 @@ Your team has set up Codex to review pull requests in this repo.
     expect(img).toBeInTheDocument();
     expect(img).toHaveAttribute("alt", "Dependabot compatibility score");
   });
+
+  describe("Security: URL Sanitization & XSS Mitigation", () => {
+    it("sanitizes dangerous data:text/html links to #", () => {
+      const raw = `[Malicious HTML](data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==)`;
+      render(<MarkdownContent content={raw} />);
+
+      const link = screen.getByRole("link", { name: /Malicious HTML/i });
+      expect(link).toHaveAttribute("href", "#");
+    });
+
+    it("sanitizes javascript:, vbscript:, and control-character obfuscated links to #", () => {
+      const raw = `[Exploit 1](javascript:alert(1))
+[Exploit 2](  jav\u0000ascript:alert(2)  )
+[Exploit 3](vbscript:msgbox(1))
+[Exploit 4](file:///etc/passwd)`;
+
+      render(<MarkdownContent content={raw} />);
+
+      const link1 = screen.getByRole("link", { name: /Exploit 1/i });
+      const link2 = screen.getByRole("link", { name: /Exploit 2/i });
+      const link3 = screen.getByRole("link", { name: /Exploit 3/i });
+      const link4 = screen.getByRole("link", { name: /Exploit 4/i });
+
+      expect(link1).toHaveAttribute("href", "#");
+      expect(link2).toHaveAttribute("href", "#");
+      expect(link3).toHaveAttribute("href", "#");
+      expect(link4).toHaveAttribute("href", "#");
+    });
+
+    it("allows safe http, https, mailto, and relative links", () => {
+      const raw = `[Docs](https://example.com/docs)
+[Contact](mailto:security@example.com)
+[Section](#overview)`;
+
+      render(<MarkdownContent content={raw} />);
+
+      expect(screen.getByRole("link", { name: /Docs/i })).toHaveAttribute("href", "https://example.com/docs");
+      expect(screen.getByRole("link", { name: /Contact/i })).toHaveAttribute("href", "mailto:security@example.com");
+      expect(screen.getByRole("link", { name: /Section/i })).toHaveAttribute("href", "#overview");
+    });
+  });
 });
