@@ -320,9 +320,9 @@ export function DiffViewer({
     <div
       id={`file-diff-${encodeURIComponent(file.filename)}`}
       className={cn(
-        "flex items-center justify-between px-4 py-2.5 border-b border-praxd-border-soft bg-[#141414] text-[12px] shrink-0 sticky top-0 z-10 backdrop-blur-sm select-none transition-colors",
+        "flex items-center justify-between px-4 py-2.5 border-b border-praxd-border-soft bg-[#141414] text-[12px] shrink-0 sticky top-0 z-20 select-none transition-colors",
         isCollapsible && "cursor-pointer hover:bg-[#181818]",
-        isViewed && "bg-[#111111]/90 opacity-90"
+        isViewed ? "bg-[#111111]" : "bg-[#141414]"
       )}
       onClick={isCollapsible ? onToggleExpand : undefined}
       role={isCollapsible ? "button" : undefined}
@@ -686,7 +686,7 @@ export function DiffViewer({
                       )}
                     >
                       {/* Pinned Gutter (Line Number + Comment Button) */}
-                      <div className="w-12 shrink-0 px-2 text-right select-none text-[11px] text-praxd-text-muted tabular-nums relative flex items-center justify-end z-10 border-r border-praxd-border-soft/40 bg-[#0e0e0e]">
+                      <div className="w-12 shrink-0 px-2 text-right select-none text-[11px] text-praxd-text-muted tabular-nums relative flex items-center justify-end z-[1] border-r border-praxd-border-soft/40 bg-[#0e0e0e]">
                         <span className="group-hover:opacity-0 transition-opacity">
                           {row.left?.lineNumber || ""}
                         </span>
@@ -735,7 +735,7 @@ export function DiffViewer({
                       )}
                     >
                       {/* Pinned Gutter (Line Number + Comment Button) */}
-                      <div className="w-12 shrink-0 px-2 text-right select-none text-[11px] text-praxd-text-muted tabular-nums relative flex items-center justify-end z-10 border-r border-praxd-border-soft/40 bg-[#0e0e0e]">
+                      <div className="w-12 shrink-0 px-2 text-right select-none text-[11px] text-praxd-text-muted tabular-nums relative flex items-center justify-end z-[1] border-r border-praxd-border-soft/40 bg-[#0e0e0e]">
                         <span className="group-hover:opacity-0 transition-opacity">
                           {row.right?.lineNumber || ""}
                         </span>
@@ -907,12 +907,12 @@ export function DiffViewer({
                     )}
                   >
                     {/* Old line number */}
-                    <div className="w-12 shrink-0 px-2 text-right select-none text-[11px] text-praxd-text-muted tabular-nums bg-[#0e0e0e] z-10">
+                    <div className="w-12 shrink-0 px-2 text-right select-none text-[11px] text-praxd-text-muted tabular-nums bg-[#0e0e0e] z-[1]">
                       {line.oldLineNumber || ""}
                     </div>
 
                     {/* New line number + Hover '+' button */}
-                    <div className="w-12 shrink-0 px-2 text-right select-none text-[11px] text-praxd-text-muted border-r border-praxd-border-soft/60 tabular-nums relative flex items-center justify-end bg-[#0e0e0e] z-10">
+                    <div className="w-12 shrink-0 px-2 text-right select-none text-[11px] text-praxd-text-muted border-r border-praxd-border-soft/60 tabular-nums relative flex items-center justify-end bg-[#0e0e0e] z-[1]">
                       <span className="group-hover:opacity-0 transition-opacity">
                         {line.newLineNumber || ""}
                       </span>
@@ -930,7 +930,7 @@ export function DiffViewer({
                     </div>
 
                     {/* Prefix sign (+ / -) */}
-                    <div className="w-6 shrink-0 text-center select-none text-neutral-500 font-mono bg-[#0e0e0e] z-10">
+                    <div className="w-6 shrink-0 text-center select-none text-neutral-500 font-mono bg-[#0e0e0e] z-[1]">
                       {isAddition ? "+" : isDeletion ? "-" : " "}
                     </div>
 

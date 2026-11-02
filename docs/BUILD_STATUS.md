@@ -112,7 +112,9 @@ In addition to core triage and diff inspection, PRAXD includes **direct personal
   - Clicking any file header toggles its expansion directly in place beneath its header.
   - Added "Expand all" / "Collapse all" bulk toggle button to the top toolbar.
   - File picker dropdown and Prev/Next keyboard navigation (`[` and `]`) smoothly scroll to and auto-expand target file diff.
-  - Sticky header bar keeps file context visible while scrolling through long diffs.
+  - Sticky header bar keeps file context visible while scrolling through long diffs with `z-20` elevation.
+  - Fixed stacking context hierarchy so line numbers gutter (`z-[1]`) and code lines cleanly scroll beneath the sticky file header (`z-20`) without overlapping the file name or badges.
+  - Preserved 100% solid opacity on file headers when marked as viewed (`bg-[#111111]`) to prevent underlying diff content from bleeding through during scroll.
   - Enforced Impeccable craft floor: refined diff addition/deletion line borders to clean 1px (`border-l`).
   - 1-click file path copy button with feedback.
 - [x] **Timeline & Modals:**
@@ -152,5 +154,5 @@ In addition to core triage and diff inspection, PRAXD includes **direct personal
 
 - `lint` (`npm run lint`): Passed (`✔ No ESLint warnings or errors`).
 - `typecheck` (`npm run typecheck`): Passed (`tsc --noEmit` 0 errors).
-- `test` (`npm test`): Passed (88/88 tests passing across 12 test files, including dedicated `tests/dx-features.test.tsx`, `tests/markdown-content.test.tsx`, `tests/collapsible-diff.test.tsx`, and `tests/personal-write-actions.test.tsx`).
+- `test` (`npm test`): Passed (93/93 tests passing across 12 test files).
 - `build` (`npm run build`): Passed (16 static pages, 20 dynamic API routes compiled cleanly in Next.js production build).

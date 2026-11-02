@@ -274,7 +274,7 @@ export function CodeView({ pr }: CodeViewProps) {
   return (
     <div className="h-full flex flex-col min-w-0 bg-[#0e0e0e]">
       {/* Top Breadcrumb & Clean Icon-Only Action Toolbar */}
-      <div className="h-[40px] px-3.5 border-b border-praxd-border-soft bg-praxd-bg flex items-center justify-between shrink-0 select-none text-[12px] relative z-20 gap-3">
+      <div className="h-[40px] px-3.5 border-b border-praxd-border-soft bg-praxd-bg flex items-center justify-between shrink-0 select-none text-[12px] relative z-30 gap-3">
         {/* Left: Branch flow matching reference UI & Circular Review Progress */}
         <div className="flex items-center gap-2.5 min-w-0 flex-1 overflow-hidden">
           {/* Branch flow — matching reference UI: headRef > baseRef */}
