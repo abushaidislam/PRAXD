@@ -93,6 +93,7 @@ In addition to core triage and diff inspection, PRAXD includes **direct personal
   - Firefox custom scrollbar matching WebKit scrollbars (`scrollbar-width: thin`).
   - Text antialiasing and subpixel optimization.
 - [x] **Workspace Header & View Navigation:**
+  - Removed redundant bottom border (`border-b`) on `WorkspaceHeader` to provide a clean, unified flow into the view toolbar without stacked dividing lines.
   - Added PR number pill (`#<number>`) with mono styling.
   - Added keyboard shortcut badges (`1` for Summary, `2` for Code) with global keydown navigation.
   - Polished external GitHub link and high-contrast Merged/Closed status badges.
