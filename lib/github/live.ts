@@ -101,6 +101,7 @@ export async function fetchLivePullRequests(options?: {
   view?: string;
   q?: string;
   limit?: number;
+  page?: number;
 }): Promise<PullRequest[]> {
   const install = await getActiveInstallation();
   if (!install) return [];
@@ -112,10 +113,11 @@ export async function fetchLivePullRequests(options?: {
     const textQuery = options?.q ? `+${encodeURIComponent(options.q)}` : "";
 
     const searchQuery = `is:pr+user:${install.login}${stateFilter}${textQuery}`;
-    const limit = Math.min(options?.limit || 30, 50);
+    const limit = Math.min(options?.limit || 24, 100);
+    const page = Math.max(options?.page || 1, 1);
 
     const res = await fetch(
-      `https://api.github.com/search/issues?q=${searchQuery}&per_page=${limit}&sort=updated&order=desc`,
+      `https://api.github.com/search/issues?q=${searchQuery}&per_page=${limit}&page=${page}&sort=updated&order=desc`,
       {
         headers: {
           Authorization: `Bearer ${token}`,

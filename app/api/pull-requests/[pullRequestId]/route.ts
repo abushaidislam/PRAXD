@@ -50,6 +50,21 @@ export async function GET(
     return apiError("NOT_FOUND", "Pull request not found or access denied.", 404);
   }
 
+  // Hydrate with rich live details (files, diff patches, comments, checks)
+  const prData = pr as any;
+  const repo = prData.repositories;
+  if (repo?.owner_login && repo?.name) {
+    try {
+      const livePr = await fetchLivePullRequestDetails(repo.owner_login, repo.name, prData.number);
+      if (livePr) {
+        livePr.id = prData.id;
+        return apiSuccess(livePr);
+      }
+    } catch {
+      // Fallback to database record if GitHub request fails
+    }
+  }
+
   return apiSuccess(pr);
 }
 
@@ -101,13 +116,37 @@ export async function PATCH(
     }
   }
 
-  // Handle database / local fixture PR update
+  // Handle database PR update (and sync title/body to GitHub)
   const supabase = createServiceRoleClient();
   const updatePayload: Record<string, any> = {};
   if (body.title?.trim()) updatePayload.title = body.title.trim();
   if (body.body !== undefined) updatePayload.body = body.body;
 
   try {
+    const { data: dbPr } = await supabase
+      .from("pull_requests")
+      .select(`
+        *,
+        repositories!inner (
+          owner_login,
+          name
+        )
+      `)
+      .eq("id", pullRequestId)
+      .eq("workspace_id", auth.workspaceId)
+      .single();
+
+    if (dbPr) {
+      const dbPrData = dbPr as any;
+      const repo = dbPrData.repositories;
+      if (repo?.owner_login && repo?.name) {
+        await updateLivePullRequest(repo.owner_login, repo.name, dbPrData.number, {
+          title: body.title?.trim(),
+          body: body.body,
+        });
+      }
+    }
+
     const { data: updatedPr, error } = await (supabase.from("pull_requests") as any)
       .update(updatePayload)
       .eq("id", pullRequestId)
@@ -116,7 +155,6 @@ export async function PATCH(
       .single();
 
     if (error || !updatedPr) {
-      // In fixture mode fallback
       return apiSuccess({
         id: pullRequestId,
         ...updatePayload,

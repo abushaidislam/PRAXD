@@ -64,11 +64,43 @@ async function handlePullRequestEvent(
   }
 
   // Find local repository
-  const { data: localRepo } = await supabase
+  let { data: localRepo } = await supabase
     .from("repositories")
     .select("id, workspace_id")
     .eq("github_repo_id", repo.id)
     .maybeSingle();
+
+  // If repo is not yet synced locally, automatically provision it from installation context
+  if (!localRepo && payload.installation?.id) {
+    const { data: inst } = await supabase
+      .from("github_installations")
+      .select("id, workspace_id")
+      .eq("installation_id", payload.installation.id)
+      .maybeSingle();
+
+    if (inst) {
+      const { data: newRepo } = await supabase
+        .from("repositories")
+        .upsert(
+          {
+            workspace_id: inst.workspace_id,
+            installation_id: inst.id,
+            github_repo_id: repo.id,
+            owner_login: repo.owner?.login || repo.full_name?.split("/")[0] || "unknown",
+            name: repo.name,
+            full_name: repo.full_name,
+            html_url: repo.html_url || `https://github.com/${repo.full_name}`,
+            visibility: repo.private ? "private" : "public",
+            default_branch: repo.default_branch || "main",
+            is_accessible: true,
+          },
+          { onConflict: "installation_id,github_repo_id" }
+        )
+        .select("id, workspace_id")
+        .single();
+      localRepo = newRepo;
+    }
+  }
 
   if (!localRepo) {
     return { status: "ignored", reason: "Repository not connected to any workspace" };

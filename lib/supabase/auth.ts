@@ -10,11 +10,13 @@ export interface AuthenticatedContext {
 /**
  * Validates that the current request is from an authenticated user who is
  * an authorized member of the requested or default workspace.
- * Rejects unauthorized or cross-tenant access.
+ * In personal PR workspace mode, dynamically resolves the primary personal workspace.
  */
 export async function getAuthenticatedContext(
   requestedWorkspaceId?: string
 ): Promise<AuthenticatedContext | null> {
+  const serviceRole = createServiceRoleClient();
+
   // If Supabase keys are not set up yet in environment, allow a bounded local development context
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -22,8 +24,8 @@ export async function getAuthenticatedContext(
     !process.env.SUPABASE_SERVICE_ROLE_KEY
   ) {
     return {
-      userId: "dev-user-0000-0000-000000000001",
-      workspaceId: requestedWorkspaceId || "dev-workspace-0000-0000-000000000001",
+      userId: "110ea1f9-4267-4f86-8e94-9a69de13fc65",
+      workspaceId: requestedWorkspaceId || "a0000000-0000-0000-0000-000000000001",
       role: "owner",
       isDemo: true,
     };
@@ -37,17 +39,31 @@ export async function getAuthenticatedContext(
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      // When no active Supabase user session exists (e.g. unauthenticated onboarding or demo mode),
-      // return a default tenant context so GitHub App installation and read flows are never blocked
+      // Personal PR Workspace: When accessed directly without Supabase user session,
+      // resolve the primary personal workspace so all database queries and sync flows match.
+      const { data: defaultWs } = await serviceRole
+        .from("workspaces")
+        .select("id, created_by")
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (defaultWs) {
+        return {
+          userId: defaultWs.created_by,
+          workspaceId: defaultWs.id,
+          role: "owner",
+          isDemo: false,
+        };
+      }
+
       return {
-        userId: "dev-user-0000-0000-000000000001",
-        workspaceId: requestedWorkspaceId || "dev-workspace-0000-0000-000000000001",
+        userId: "110ea1f9-4267-4f86-8e94-9a69de13fc65",
+        workspaceId: requestedWorkspaceId || "a0000000-0000-0000-0000-000000000001",
         role: "owner",
         isDemo: true,
       };
     }
-
-    const serviceRole = createServiceRoleClient();
 
     // If specific workspace was requested, verify membership
     if (requestedWorkspaceId) {
@@ -59,7 +75,6 @@ export async function getAuthenticatedContext(
         .single();
 
       if (memberError || !member) {
-        // Cross-workspace access denied!
         return null;
       }
 

@@ -11,6 +11,10 @@ interface PullRequestSidebarProps {
   onSelectPr: (pr: PullRequest) => void;
   isOpen: boolean;
   onToggleOpen: () => void;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
+  totalCount?: number | null;
 }
 
 type TabType = "all" | "reviewing" | "authored";
@@ -27,6 +31,10 @@ export function PullRequestSidebar({
   onSelectPr,
   isOpen,
   onToggleOpen,
+  hasMore = false,
+  isLoadingMore = false,
+  onLoadMore,
+  totalCount = null,
 }: PullRequestSidebarProps) {
   const [activeTab, setActiveTab] = useState<TabType>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -287,7 +295,7 @@ export function PullRequestSidebar({
           </button>
 
           <span className="text-[10px] text-praxd-text-muted">
-            {filteredPrs.length} {filteredPrs.length === 1 ? "pull request" : "pull requests"}
+            {totalCount ? `Showing ${filteredPrs.length} of ${totalCount}` : `${filteredPrs.length} ${filteredPrs.length === 1 ? "pull request" : "pull requests"}`}
           </span>
         </div>
       </div>
@@ -298,6 +306,12 @@ export function PullRequestSidebar({
         aria-label="Pull requests"
         tabIndex={0}
         onKeyDown={handleListKeyDown}
+        onScroll={(e) => {
+          const target = e.currentTarget;
+          if (hasMore && !isLoadingMore && onLoadMore && target.scrollHeight - target.scrollTop <= target.clientHeight + 120) {
+            onLoadMore();
+          }
+        }}
         className="flex-1 overflow-y-auto p-2 space-y-1 focus:outline-none"
       >
         {filteredPrs.length === 0 ? (
@@ -317,14 +331,36 @@ export function PullRequestSidebar({
             )}
           </div>
         ) : (
-          filteredPrs.map((pr) => (
-            <PullRequestListItem
-              key={pr.id}
-              pr={pr}
-              isSelected={selectedPr?.id === pr.id}
-              onSelect={onSelectPr}
-            />
-          ))
+          <>
+            {filteredPrs.map((pr) => (
+              <PullRequestListItem
+                key={pr.id}
+                pr={pr}
+                isSelected={selectedPr?.id === pr.id}
+                onSelect={onSelectPr}
+              />
+            ))}
+
+            {hasMore && (
+              <div className="pt-2 pb-1 px-1">
+                <button
+                  type="button"
+                  disabled={isLoadingMore}
+                  onClick={onLoadMore}
+                  className="w-full py-2 px-3 text-[11px] font-medium text-praxd-text-secondary hover:text-white bg-[#191919] hover:bg-[#222222] border border-praxd-border-soft rounded-lg transition-all flex items-center justify-center gap-2 shadow-sm"
+                >
+                  {isLoadingMore ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-praxd-blue border-t-transparent rounded-full animate-spin" />
+                      <span>Loading more PRs...</span>
+                    </>
+                  ) : (
+                    <span>Load more pull requests</span>
+                  )}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 

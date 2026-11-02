@@ -24,6 +24,10 @@ export function PRWorkspace() {
   const [activeView, setActiveView] = useState<"summary" | "code">("code");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isLoadingLive, setIsLoadingLive] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalPrCount, setTotalPrCount] = useState<number | null>(null);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // Automatically switch to Live Mode if GitHub App is connected or redirected
   useEffect(() => {
@@ -64,12 +68,15 @@ export function PRWorkspace() {
     async function loadLivePrs() {
       setIsLoadingLive(true);
       try {
-        const res = await fetch("/api/pull-requests?state=all");
+        const res = await fetch("/api/pull-requests?state=all&limit=24&page=1");
         if (res.ok) {
           const json = await res.json();
           if (json.data && json.data.length > 0) {
             setPullRequests(json.data);
             setSelectedPr(json.data[0]);
+            setPage(1);
+            setHasMore(json.pagination?.hasMore || false);
+            setTotalPrCount(json.pagination?.total || json.data.length);
 
             // If the first PR files or comments need loading, fetch its details
             const firstPr = json.data[0];
@@ -105,6 +112,35 @@ export function PRWorkspace() {
 
     loadLivePrs();
   }, [isLiveMode]);
+
+  // Load more pull requests for infinite scroll / pagination
+  const handleLoadMore = useCallback(async () => {
+    if (isLoadingMore || !hasMore) return;
+    setIsLoadingMore(true);
+    const nextPage = page + 1;
+    try {
+      const res = await fetch(`/api/pull-requests?state=all&limit=24&page=${nextPage}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data && json.data.length > 0) {
+          setPullRequests((prev) => {
+            const existingIds = new Set(prev.map((p) => p.id));
+            const newPrs = json.data.filter((p: PullRequest) => !existingIds.has(p.id));
+            return [...prev, ...newPrs];
+          });
+          setPage(nextPage);
+          setHasMore(json.pagination?.hasMore || false);
+          if (json.pagination?.total) setTotalPrCount(json.pagination.total);
+        } else {
+          setHasMore(false);
+        }
+      }
+    } catch {
+      // Keep existing prs
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, hasMore, page]);
 
   // Select PR and lazily fetch files/diff and comments if not yet loaded
   const handleSelectPr = useCallback(async (pr: PullRequest) => {
@@ -183,6 +219,10 @@ export function PRWorkspace() {
             onSelectPr={handleSelectPr}
             isOpen={isSidebarOpen}
             onToggleOpen={() => setIsSidebarOpen(false)}
+            hasMore={hasMore}
+            isLoadingMore={isLoadingMore}
+            onLoadMore={handleLoadMore}
+            totalCount={totalPrCount}
           />
 
           {/* Right Main Workspace */}

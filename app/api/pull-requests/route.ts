@@ -1,8 +1,8 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedContext } from "@/lib/supabase/auth";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { fetchLivePullRequests } from "@/lib/github/live";
-import { apiPaginated, apiError } from "@/lib/api-response";
+import { apiError } from "@/lib/api-response";
 import { PullRequest } from "@/types/pr";
 
 function mapDbPrToDomain(pr: any): PullRequest {
@@ -16,7 +16,7 @@ function mapDbPrToDomain(pr: any): PullRequest {
     title: pr.title,
     body: pr.body || "",
     state: pr.state,
-    isDraft: Boolean(pr.is_draft),
+    isDraft: Boolean(pr.draft || pr.is_draft),
     author: {
       login: pr.author_login || "unknown",
       avatarUrl: pr.author_avatar_url || "",
@@ -56,12 +56,15 @@ export async function GET(req: NextRequest) {
   const view = searchParams.get("view") || "all";
   const state = searchParams.get("state") || "open";
   const q = searchParams.get("q");
-  const limit = Math.min(parseInt(searchParams.get("limit") || "50", 10), 100);
+  const limit = Math.min(parseInt(searchParams.get("limit") || "24", 10), 100);
+  const page = Math.max(parseInt(searchParams.get("page") || "1", 10), 1);
+  const offset = (page - 1) * limit;
 
   const supabase = createServiceRoleClient();
   let query = supabase
     .from("pull_requests")
-    .select(`
+    .select(
+      `
       *,
       repositories!inner (
         name,
@@ -69,11 +72,13 @@ export async function GET(req: NextRequest) {
         owner_login,
         is_accessible
       )
-    `)
+    `,
+      { count: "exact" }
+    )
     .eq("workspace_id", auth.workspaceId)
     .eq("repositories.is_accessible", true)
     .order("github_updated_at", { ascending: false })
-    .limit(limit);
+    .range(offset, offset + limit - 1);
 
   if (state !== "all") {
     query = query.eq("state", state as "open" | "closed" | "merged");
@@ -87,13 +92,38 @@ export async function GET(req: NextRequest) {
     query = query.or(`title.ilike.%${q}%,number.eq.${parseInt(q, 10) || 0}`);
   }
 
-  const { data, error } = await query;
+  const { data, count, error } = await query;
   if (!error && data && data.length > 0) {
     const formattedPrs = data.map(mapDbPrToDomain);
-    return apiPaginated(formattedPrs, { nextCursor: null, hasNextPage: false });
+    const total = count ?? formattedPrs.length;
+    const hasMore = offset + formattedPrs.length < total;
+
+    return NextResponse.json({
+      data: formattedPrs,
+      pagination: {
+        page,
+        limit,
+        total,
+        hasMore,
+        nextCursor: hasMore ? String(page + 1) : null,
+        hasNextPage: hasMore,
+      },
+    });
   }
 
   // Graceful fallback: If Supabase table is not yet migrated, fetch real live PRs directly from GitHub API
-  const livePrs = await fetchLivePullRequests({ state, view, q: q || undefined, limit });
-  return apiPaginated(livePrs, { nextCursor: null, hasNextPage: false });
+  const livePrs = await fetchLivePullRequests({ state, view, q: q || undefined, limit, page });
+  const hasMore = livePrs.length >= limit;
+
+  return NextResponse.json({
+    data: livePrs,
+    pagination: {
+      page,
+      limit,
+      total: livePrs.length,
+      hasMore,
+      nextCursor: hasMore ? String(page + 1) : null,
+      hasNextPage: hasMore,
+    },
+  });
 }
