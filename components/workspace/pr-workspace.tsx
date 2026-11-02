@@ -88,10 +88,11 @@ export function PRWorkspace() {
                 const detailRes = await fetch(`/api/pull-requests/${firstPr.id}`);
                 if (detailRes.ok) {
                   const detailJson = await detailRes.json();
-                  if (detailJson.data) {
-                    setSelectedPr(detailJson.data);
+                  const loadedPr = detailJson?.data?.id ? detailJson.data : (detailJson?.id ? detailJson : null);
+                  if (loadedPr) {
+                    setSelectedPr(loadedPr);
                     setPullRequests((prev) =>
-                      prev.map((item, idx) => (idx === 0 ? detailJson.data : item))
+                      prev.map((item, idx) => (idx === 0 ? loadedPr : item))
                     );
                   }
                 }
@@ -157,10 +158,11 @@ export function PRWorkspace() {
         const res = await fetch(`/api/pull-requests/${pr.id}`);
         if (res.ok) {
           const fullPr = await res.json();
-          if (fullPr && fullPr.data) {
-            setSelectedPr(fullPr.data);
+          const loadedPr = fullPr?.data?.id ? fullPr.data : (fullPr?.id ? fullPr : null);
+          if (loadedPr) {
+            setSelectedPr(loadedPr);
             setPullRequests((prev) =>
-              prev.map((item) => (item.id === pr.id ? fullPr.data : item))
+              prev.map((item) => (item.id === pr.id ? loadedPr : item))
             );
           }
         }

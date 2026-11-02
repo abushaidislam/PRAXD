@@ -22,7 +22,12 @@ export interface LiveInstallation {
 /**
  * Retrieves the first active installation for the GitHub App.
  */
+let cachedInstallation: { data: LiveInstallation; expiresAt: number } | null = null;
+
 export async function getActiveInstallation(): Promise<LiveInstallation | null> {
+  if (cachedInstallation && Date.now() < cachedInstallation.expiresAt) {
+    return cachedInstallation.data;
+  }
   try {
     const jwt = generateAppJwt();
     const res = await fetch("https://api.github.com/app/installations", {
@@ -32,16 +37,18 @@ export async function getActiveInstallation(): Promise<LiveInstallation | null> 
         "X-GitHub-Api-Version": "2022-11-28",
         "User-Agent": "PRAXD-PR-Workspace/0.1.0",
       },
-      next: { revalidate: 60 },
+      cache: "no-store",
     });
 
     if (!res.ok) return null;
     const installs = await res.json();
     if (Array.isArray(installs) && installs.length > 0) {
-      return {
+      const data = {
         id: installs[0].id,
         login: installs[0].account?.login || "unknown",
       };
+      cachedInstallation = { data, expiresAt: Date.now() + 5 * 60 * 1000 };
+      return data;
     }
     return null;
   } catch {
@@ -443,31 +450,38 @@ export async function fetchLivePullRequestDetails(
       lines: parsePatchToLines(f.patch || ""),
     }));
 
+    const headSha = pr.head?.sha || "head";
+    const headRef = pr.head?.ref || "head";
+    const baseRef = pr.base?.ref || "main";
+    const baseSha = pr.base?.sha || "base";
+    const authorLogin = pr.user?.login || "unknown";
+    const authorAvatar = pr.user?.avatar_url || (authorLogin !== "unknown" ? `https://github.com/${authorLogin}.png` : "https://github.com/ghost.png");
+
     return {
       id: `live__${owner}__${repo}__${pr.number}`,
       number: pr.number,
-      title: pr.title,
+      title: pr.title || `PR #${pr.number}`,
       body: pr.body || "",
       state: pr.state === "open" ? "open" : pr.merged_at ? "merged" : "closed",
       isDraft: Boolean(pr.draft),
       author: {
-        login: pr.user.login,
-        avatarUrl: pr.user.avatar_url,
-        name: pr.user.login,
+        login: authorLogin,
+        avatarUrl: authorAvatar,
+        name: authorLogin,
       },
       repoOwner: owner,
       repoName: repo,
-      headRef: pr.head.ref,
-      baseRef: pr.base.ref,
-      headSha: pr.head.sha,
-      baseSha: pr.base.sha,
-      additions: pr.additions,
-      deletions: pr.deletions,
-      changedFilesCount: pr.changed_files,
-      createdAt: pr.created_at,
-      updatedAt: pr.updated_at,
-      relativeTime: formatRelativeTime(pr.updated_at),
-      category: pr.user?.login === install.login ? "authored" : "all",
+      headRef,
+      baseRef,
+      headSha,
+      baseSha,
+      additions: pr.additions || 0,
+      deletions: pr.deletions || 0,
+      changedFilesCount: pr.changed_files ?? files.length,
+      createdAt: pr.created_at || new Date().toISOString(),
+      updatedAt: pr.updated_at || new Date().toISOString(),
+      relativeTime: formatRelativeTime(pr.updated_at || new Date().toISOString()),
+      category: authorLogin === install.login ? "authored" : "all",
       reviewDecision: pr.state === "open" ? "review_required" : undefined,
       reviewers: [],
       checksStatus: "success",
@@ -485,14 +499,14 @@ export async function fetchLivePullRequestDetails(
       comments,
       commits: [
         {
-          sha: pr.head.sha.slice(0, 7),
-          shortSha: pr.head.sha.slice(0, 7),
-          message: pr.title,
+          sha: headSha.slice(0, 7),
+          shortSha: headSha.slice(0, 7),
+          message: pr.title || "Commit",
           author: {
-            login: pr.user.login,
-            avatarUrl: pr.user.avatar_url,
+            login: authorLogin,
+            avatarUrl: authorAvatar,
           },
-          committedDate: pr.updated_at,
+          committedDate: pr.updated_at || new Date().toISOString(),
         },
       ],
       files,

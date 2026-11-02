@@ -2,49 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedContext } from "@/lib/supabase/auth";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { fetchLivePullRequests } from "@/lib/github/live";
+import { mapDbPrToDomain } from "@/lib/github/mapper";
 import { apiError } from "@/lib/api-response";
-import { PullRequest } from "@/types/pr";
-
-function mapDbPrToDomain(pr: any): PullRequest {
-  const diffMs = Date.now() - new Date(pr.github_updated_at || pr.updated_at).getTime();
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const relativeTime = diffHours < 24 ? `${Math.max(1, diffHours)}h` : `${Math.floor(diffHours / 24)}d`;
-
-  return {
-    id: pr.id,
-    number: pr.number,
-    title: pr.title,
-    body: pr.body || "",
-    state: pr.state,
-    isDraft: Boolean(pr.draft || pr.is_draft),
-    author: {
-      login: pr.author_login || "unknown",
-      avatarUrl: pr.author_avatar_url || "",
-      name: pr.author_login || "unknown",
-    },
-    repoOwner: pr.repositories?.owner_login || "repo",
-    repoName: pr.repositories?.name || "repo",
-    headRef: pr.head_ref || "head",
-    baseRef: pr.base_ref || "main",
-    headSha: pr.head_sha || "head",
-    baseSha: pr.base_sha || "base",
-    additions: pr.additions || 0,
-    deletions: pr.deletions || 0,
-    changedFilesCount: pr.changed_files_count || 1,
-    createdAt: pr.github_created_at || pr.created_at,
-    updatedAt: pr.github_updated_at || pr.updated_at,
-    relativeTime,
-    category: pr.author_login === "abushaidislam" ? "authored" : "all",
-    reviewDecision: pr.state === "open" ? "review_required" : undefined,
-    reviewers: [],
-    checksStatus: "success",
-    checks: [],
-    commentsCount: (pr.comments_count || 0) + (pr.review_comments_count || 0),
-    comments: [],
-    commits: [],
-    files: [],
-  };
-}
 
 export async function GET(req: NextRequest) {
   const auth = await getAuthenticatedContext();

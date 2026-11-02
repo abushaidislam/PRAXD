@@ -64,8 +64,9 @@ function CollapseLinesIcon({ isAllExpanded }: { isAllExpanded: boolean }) {
 
 
 export function CodeView({ pr }: CodeViewProps) {
+  const files = useMemo(() => (Array.isArray(pr.files) ? pr.files : []), [pr.files]);
   const [selectedFile, setSelectedFile] = useState<ChangedFile>(
-    pr.files[0] || {
+    files[0] || {
       filename: "no-files-changed",
       status: "modified",
       additions: 0,
@@ -119,14 +120,14 @@ export function CodeView({ pr }: CodeViewProps) {
     viewedCount,
     totalFiles,
   } = useCollapsibleFiles({
-    files: pr.files,
+    files: files,
     prId: pr.id,
   });
 
   // Keep selectedFile valid if file exists in current fileset
   const activeFile =
-    pr.files.find((f) => f.filename === selectedFile.filename) ||
-    pr.files[0] ||
+    files.find((f) => f.filename === selectedFile.filename) ||
+    files[0] ||
     selectedFile;
 
   // Bulk expand all / collapse all changed files
@@ -159,23 +160,23 @@ export function CodeView({ pr }: CodeViewProps) {
   );
 
   // File navigation: previous / next file indices
-  const currentFileIndex = pr.files.findIndex((f) => f.filename === activeFile.filename);
+  const currentFileIndex = files.findIndex((f) => f.filename === activeFile.filename);
   const hasPrevFile = currentFileIndex > 0;
-  const hasNextFile = currentFileIndex >= 0 && currentFileIndex < pr.files.length - 1;
+  const hasNextFile = currentFileIndex >= 0 && currentFileIndex < files.length - 1;
 
   const handlePrevFile = useCallback(() => {
     if (hasPrevFile) {
-      const target = pr.files[currentFileIndex - 1];
+      const target = files[currentFileIndex - 1];
       handleSelectFile(target);
     }
-  }, [hasPrevFile, currentFileIndex, pr.files, handleSelectFile]);
+  }, [hasPrevFile, currentFileIndex, files, handleSelectFile]);
 
   const handleNextFile = useCallback(() => {
     if (hasNextFile) {
-      const target = pr.files[currentFileIndex + 1];
+      const target = files[currentFileIndex + 1];
       handleSelectFile(target);
     }
-  }, [hasNextFile, currentFileIndex, pr.files, handleSelectFile]);
+  }, [hasNextFile, currentFileIndex, files, handleSelectFile]);
 
   // Keyboard navigation for changed files: [ for previous, ] for next
   useEffect(() => {
@@ -217,11 +218,11 @@ export function CodeView({ pr }: CodeViewProps) {
           </div>
 
           {/* Circular Review Progress Indicator */}
-          {pr.files.length > 0 && (
+          {files.length > 0 && (
             <div
               className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#161616] border border-praxd-border-soft text-[11px] font-mono select-none shrink-0"
-              title={`${viewedCount} of ${pr.files.length} files reviewed`}
-              aria-label={`Review progress: ${viewedCount} of ${pr.files.length} files reviewed`}
+              title={`${viewedCount} of ${files.length} files reviewed`}
+              aria-label={`Review progress: ${viewedCount} of ${files.length} files reviewed`}
             >
               {/* SVG Circular Progress Ring */}
               <div className="relative w-3.5 h-3.5 flex items-center justify-center shrink-0">
@@ -399,7 +400,7 @@ export function CodeView({ pr }: CodeViewProps) {
           </div>
 
           {/* 2. Collapse / Expand All Files Icon Button */}
-          {pr.files.length > 0 && (
+          {files.length > 0 && (
             <button
               type="button"
               onClick={handleToggleAllFiles}
@@ -425,9 +426,9 @@ export function CodeView({ pr }: CodeViewProps) {
           />
 
           {/* 4. Changed Files Drawer / Tree Icon Button */}
-          {pr.files.length > 0 && (
+          {files.length > 0 && (
             <FileTreeDropdown
-              files={pr.files}
+              files={files}
               selectedFile={activeFile}
               onSelectFile={handleSelectFile}
             />
@@ -437,21 +438,30 @@ export function CodeView({ pr }: CodeViewProps) {
 
       {/* GitHub-Style Vertical Collapsible Diff Stream */}
       <div className="flex-1 overflow-y-auto divide-y divide-praxd-border-soft divide-solid bg-[#0e0e0e]">
-        {pr.files.map((f) => (
-          <DiffViewer
-            key={f.filename}
-            file={f}
-            diffMode={diffMode}
-            comments={pr.comments}
-            aiFindings={pr.aiFindings}
-            wrapLines={wrapLines}
-            isCollapsible={true}
-            isExpanded={expandedFiles[f.filename] ?? false}
-            onToggleExpand={() => toggleFileExpanded(f.filename)}
-            isViewed={viewedFiles[f.filename] ?? false}
-            onToggleViewed={() => toggleFileViewed(f.filename)}
-          />
-        ))}
+        {files.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center p-8 text-praxd-text-muted space-y-2">
+            <p className="text-[14px] font-medium text-praxd-text-secondary">No file diffs to display</p>
+            <p className="text-[12px] text-neutral-500 max-w-sm text-center">
+              This pull request does not have any changed files or the diff details are being loaded.
+            </p>
+          </div>
+        ) : (
+          files.map((f) => (
+            <DiffViewer
+              key={f.filename}
+              file={f}
+              diffMode={diffMode}
+              comments={pr.comments || []}
+              aiFindings={pr.aiFindings}
+              wrapLines={wrapLines}
+              isCollapsible={true}
+              isExpanded={expandedFiles[f.filename] ?? false}
+              onToggleExpand={() => toggleFileExpanded(f.filename)}
+              isViewed={viewedFiles[f.filename] ?? false}
+              onToggleViewed={() => toggleFileViewed(f.filename)}
+            />
+          ))
+        )}
       </div>
     </div>
   );

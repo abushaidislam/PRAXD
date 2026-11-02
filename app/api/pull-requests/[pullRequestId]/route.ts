@@ -1,7 +1,8 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedContext } from "@/lib/supabase/auth";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { fetchLivePullRequestDetails, updateLivePullRequest } from "@/lib/github/live";
+import { mapDbPrToDomain } from "@/lib/github/mapper";
 import { apiSuccess, apiError } from "@/lib/api-response";
 
 export async function GET(
@@ -24,7 +25,10 @@ export async function GET(
       if (!isNaN(pullNumber) && owner && repo) {
         const livePr = await fetchLivePullRequestDetails(owner, repo, pullNumber);
         if (livePr) {
-          return apiSuccess(livePr);
+          return NextResponse.json({
+            data: livePr,
+            ...livePr,
+          });
         }
       }
     }
@@ -58,14 +62,36 @@ export async function GET(
       const livePr = await fetchLivePullRequestDetails(repo.owner_login, repo.name, prData.number);
       if (livePr) {
         livePr.id = prData.id;
-        return apiSuccess(livePr);
+
+        // Persist enriched metadata back to Supabase database in background
+        supabase
+          .from("pull_requests")
+          .update({
+            head_ref: livePr.headRef,
+            base_ref: livePr.baseRef,
+            additions: livePr.additions,
+            deletions: livePr.deletions,
+            changed_files_count: livePr.changedFilesCount,
+          })
+          .eq("id", prData.id)
+          .then();
+
+        return NextResponse.json({
+          data: livePr,
+          ...livePr,
+        });
       }
     } catch {
       // Fallback to database record if GitHub request fails
     }
   }
 
-  return apiSuccess(pr);
+  // Always return clean domain-mapped PR, never raw database row!
+  const domainPr = mapDbPrToDomain(pr);
+  return NextResponse.json({
+    data: domainPr,
+    ...domainPr,
+  });
 }
 
 export async function PATCH(
@@ -162,7 +188,7 @@ export async function PATCH(
       });
     }
 
-    return apiSuccess(updatedPr);
+    return apiSuccess(mapDbPrToDomain(updatedPr));
   } catch {
     return apiSuccess({
       id: pullRequestId,

@@ -46,7 +46,7 @@ export function ActivityTimeline({
   const [copiedCommentId, setCopiedCommentId] = useState<string | null>(null);
   const [copiedSha, setCopiedSha] = useState<string | null>(null);
   const [localComments, setLocalComments] = useState<PRComment[]>(() =>
-    pr.comments.filter((c) => c.commentType === "issue")
+    Array.isArray(pr.comments) ? pr.comments.filter((c) => c.commentType === "issue") : []
   );
 
   const handleCopySha = (sha: string) => {
@@ -59,7 +59,9 @@ export function ActivityTimeline({
 
   // Sync comments on PR change and load fresh comments from API
   useEffect(() => {
-    setLocalComments(pr.comments.filter((c) => c.commentType === "issue"));
+    setLocalComments(
+      Array.isArray(pr.comments) ? pr.comments.filter((c) => c.commentType === "issue") : []
+    );
 
     let isMounted = true;
     async function loadFreshComments() {
@@ -86,7 +88,7 @@ export function ActivityTimeline({
     };
   }, [pr.id, pr.comments, onCommentsLoaded]);
 
-  const totalEvents = pr.commits.length + 1 + localComments.length;
+  const totalEvents = (pr.commits?.length || 0) + 1 + localComments.length;
 
   const handleCopyComment = (commentId: string, text: string) => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {

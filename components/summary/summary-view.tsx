@@ -230,11 +230,11 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
         {/* Author Line */}
         <div className="flex items-center gap-2 text-[12px] text-praxd-text-muted">
           <img
-            src={pr.author.avatarUrl}
-            alt={pr.author.login}
+            src={pr.author?.avatarUrl || `https://github.com/${pr.author?.login || "unknown"}.png`}
+            alt={pr.author?.login || "author"}
             className="w-4 h-4 rounded-full bg-[#2a2a2a]"
           />
-          <span className="font-medium text-praxd-text-secondary">{pr.author.login}</span>
+          <span className="font-medium text-praxd-text-secondary">{pr.author?.login || "unknown"}</span>
           <span>·</span>
           <span>{pr.relativeTime}</span>
         </div>
@@ -281,7 +281,7 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
               <span>Reviewers</span>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              {pr.reviewers && pr.reviewers.length > 0 ? (
+              {Array.isArray(pr.reviewers) && pr.reviewers.length > 0 ? (
                 pr.reviewers.map((rev) => (
                   <div
                     key={rev.login}
@@ -339,7 +339,7 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-praxd-green font-medium">Successful</span>
-              {pr.checks && pr.checks.length > 0 && (
+              {Array.isArray(pr.checks) && pr.checks.length > 0 && (
                 <span className="text-praxd-text-muted text-[11px] tabular-nums font-mono">
                   ({pr.checks.filter((c) => c.conclusion === "success").length}/{pr.checks.length} passed)
                 </span>
@@ -470,7 +470,7 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
         </div>
 
         {/* Checks Section */}
-        <CheckRunList checks={pr.checks} />
+        <CheckRunList checks={pr.checks || []} />
 
         {/* Activity Timeline & Conversation Comment Section */}
         <ActivityTimeline

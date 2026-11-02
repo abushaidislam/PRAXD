@@ -7,7 +7,6 @@ import {
   ChevronLeft,
   FileX,
   CornerDownRight,
-  Check,
   ArrowLeftRight,
 } from "lucide-react";
 import { ChangedFile, PRComment, AIFinding, DiffLine } from "@/types/pr";
@@ -18,6 +17,7 @@ import { useDiffScrollSync } from "@/hooks/use-diff-scroll-sync";
 import { DiffSplitRow } from "./diff-split-row";
 import { DiffUnifiedRow } from "./diff-unified-row";
 import { parseFilePath, renderFileBadge } from "./diff-syntax";
+import { EyeIcon } from "@/components/ui/eye-icon";
 
 export { parseFilePath, renderFileBadge };
 
@@ -184,36 +184,20 @@ export function DiffViewer({
       </div>
 
       <div className="flex items-center gap-3 shrink-0">
-        {/* Viewed Checkbox Button */}
+        {/* Viewed Eye-Icon Toggle */}
         {onToggleViewed && (
-          <button
-            type="button"
-            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-              e.stopPropagation();
-              onToggleViewed();
+          <EyeIcon
+            size={16}
+            duration={0.6}
+            viewed={isViewed}
+            onToggle={() => {
+              onToggleViewed?.();
             }}
-            className={cn(
-              "flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium transition-colors border select-none shrink-0 group",
-              isViewed
-                ? "bg-emerald-950/60 text-emerald-300 border-emerald-700/60 hover:bg-emerald-900/60"
-                : "bg-[#1c1c1c] text-praxd-text-muted border-praxd-border-soft hover:text-praxd-text hover:border-neutral-600"
-            )}
+            onClick={(e) => e.stopPropagation()}
+            className="p-1 rounded text-neutral-400 hover:text-neutral-200 hover:bg-[#222222] transition-colors shrink-0"
             title={isViewed ? "Mark file as unviewed" : "Mark file as viewed"}
             aria-label={isViewed ? `Mark as unviewed: ${file.filename}` : `Mark as viewed: ${file.filename}`}
-            aria-pressed={isViewed}
-          >
-            <div
-              className={cn(
-                "w-3.5 h-3.5 rounded flex items-center justify-center transition-colors border",
-                isViewed
-                  ? "bg-emerald-500 border-emerald-400 text-black"
-                  : "border-neutral-500 group-hover:border-neutral-400 bg-transparent"
-              )}
-            >
-              {isViewed && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-            </div>
-            <span>Viewed</span>
-          </button>
+          />
         )}
 
         {/* Change metrics (+additions -deletions) */}

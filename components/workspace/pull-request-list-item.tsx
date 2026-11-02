@@ -83,8 +83,8 @@ export function PullRequestListItem({
             )}
 
             <span className="truncate flex-1 min-w-0">
-              <span className="text-praxd-text-secondary font-medium">{pr.author?.login || pr.repoOwner}</span>
-              <span className="text-neutral-500">/... {pr.headRef.length > 20 ? `${pr.headRef.slice(0, 20)}...` : pr.headRef}</span>
+              <span className="text-praxd-text-secondary font-medium">{pr.repoName || pr.author?.login || pr.repoOwner}</span>
+              <span className="text-neutral-500"> · {pr.headRef && pr.headRef !== "head" ? (pr.headRef.length > 20 ? `${pr.headRef.slice(0, 20)}...` : pr.headRef) : `#${pr.number}`}</span>
             </span>
           </div>
 

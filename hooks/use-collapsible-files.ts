@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { ChangedFile } from "@/types/pr";
 
 export interface UseCollapsibleFilesOptions {
-  files: ChangedFile[];
+  files?: ChangedFile[];
   prId: string;
 }
 
@@ -15,25 +15,29 @@ export interface UseCollapsibleFilesOptions {
  * - Marking a file as viewed auto-collapses it and increments progress.
  * - Provides bulk expandAll and collapseAll affordances.
  */
-export function useCollapsibleFiles({ files, prId }: UseCollapsibleFilesOptions) {
+export function useCollapsibleFiles({ files = [], prId }: UseCollapsibleFilesOptions) {
+  const safeFiles = useMemo(() => (Array.isArray(files) ? files : []), [files]);
   const [viewedFiles, setViewedFiles] = useState<Record<string, boolean>>({});
   const [expandedFiles, setExpandedFiles] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
-    if (files.length > 0) {
-      initial[files[0].filename] = true;
+    if (safeFiles.length > 0) {
+      initial[safeFiles[0].filename] = true;
     }
     return initial;
   });
 
   // Re-synchronize expanded & viewed files whenever the active PR changes
   useEffect(() => {
-    if (files.length > 0) {
+    if (safeFiles.length > 0) {
       const initial: Record<string, boolean> = {};
-      initial[files[0].filename] = true;
+      initial[safeFiles[0].filename] = true;
       setExpandedFiles(initial);
       setViewedFiles({});
+    } else {
+      setExpandedFiles({});
+      setViewedFiles({});
     }
-  }, [prId, files]);
+  }, [prId, safeFiles]);
 
   const toggleFileExpanded = useCallback((filename: string) => {
     setExpandedFiles((prev) => ({
@@ -49,50 +53,59 @@ export function useCollapsibleFiles({ files, prId }: UseCollapsibleFilesOptions)
 
       // GitHub behavior: when marked as viewed, auto-collapse file to reduce scroll clutter
       if (nextViewed) {
-        setExpandedFiles((exp) => ({ ...exp, [filename]: false }));
+        setExpandedFiles((ePrev) => ({
+          ...ePrev,
+          [filename]: false,
+        }));
       }
+
       return updated;
     });
   }, []);
 
   const expandAll = useCallback(() => {
-    const all: Record<string, boolean> = {};
-    files.forEach((f) => {
-      all[f.filename] = true;
+    const expandedState: Record<string, boolean> = {};
+    safeFiles.forEach((f) => {
+      expandedState[f.filename] = true;
     });
-    setExpandedFiles(all);
-  }, [files]);
+    setExpandedFiles(expandedState);
+  }, [safeFiles]);
 
   const collapseAll = useCallback(() => {
-    const none: Record<string, boolean> = {};
-    files.forEach((f) => {
-      none[f.filename] = false;
+    const collapsedState: Record<string, boolean> = {};
+    safeFiles.forEach((f) => {
+      collapsedState[f.filename] = false;
     });
-    setExpandedFiles(none);
-  }, [files]);
+    setExpandedFiles(collapsedState);
+  }, [safeFiles]);
 
   const isAllExpanded = useMemo(() => {
-    if (files.length === 0) return true;
-    return files.every((f) => expandedFiles[f.filename] === true);
-  }, [files, expandedFiles]);
+    if (safeFiles.length === 0) return false;
+    return safeFiles.every((f) => expandedFiles[f.filename] ?? false);
+  }, [safeFiles, expandedFiles]);
+
+  const handleToggleAllFiles = useCallback(() => {
+    if (isAllExpanded) {
+      collapseAll();
+    } else {
+      expandAll();
+    }
+  }, [isAllExpanded, collapseAll, expandAll]);
 
   const viewedCount = useMemo(() => {
-    return files.filter((f) => viewedFiles[f.filename]).length;
-  }, [files, viewedFiles]);
-
-  const totalFiles = files.length;
-  const progressPercent = totalFiles > 0 ? (viewedCount / totalFiles) * 100 : 0;
+    return Object.values(viewedFiles).filter(Boolean).length;
+  }, [viewedFiles]);
 
   return {
     expandedFiles,
     viewedFiles,
-    toggleFileExpanded,
-    toggleFileViewed,
-    expandAll,
-    collapseAll,
     isAllExpanded,
     viewedCount,
-    totalFiles,
-    progressPercent,
+    totalFiles: safeFiles.length,
+    toggleFileExpanded,
+    toggleFileViewed,
+    handleToggleAllFiles,
+    expandAll,
+    collapseAll,
   };
 }
