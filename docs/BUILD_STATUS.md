@@ -163,6 +163,18 @@ In addition to core triage and diff inspection, PRAXD includes **direct personal
   - **Dropdown Modals & Popovers:** Updated `FileTreeDropdown` and `CheckoutCommandDropdown` to use responsive viewport clamping (`w-[calc(100vw-24px)] max-w-xs / max-w-[340px] sm:w-80`) preventing edge overflowing on mobile.
   - **Demo Mode Top Bar (`DemoModeBadge`):** Responsive button text (`SWITCH TO FIXTURES` / `FIXTURES`) maintaining clean alignment across viewports.
 
+### 8. Modular Component Architecture & Custom Hooks (Shipped — Refactor)
+- [x] **Domain-Layered Subdirectory Component Architecture:**
+  - Grouped 21+ components into categorized directories: `components/ui/`, `components/modals/`, `components/workspace/`, `components/summary/`, `components/diff/`, and `components/markdown/`.
+  - Added centralized barrel export (`components/index.ts`) and root backward-compatible re-exports.
+- [x] **Decomposition of Monolithic Components:**
+  - Split `diff-viewer.tsx` (>1,000 lines) into focused subcomponents: `DiffSplitRow`, `DiffUnifiedRow`, and pure syntax tokenization module `diff-syntax.ts`.
+  - Extracted rich comment composer (`CommentComposer`) from `activity-timeline.tsx`, decoupling draft state, markdown toolbar, and profile selector.
+- [x] **Reusable Custom Hooks Extraction (`hooks/`):**
+  - `useWorkspaceShortcuts`: Global workspace hotkeys (`1`, `2`, `Ctrl+B`, `?`).
+  - `useDiffScrollSync`: Lockstep dual-pane horizontal scrolling, wheel math, keyboard navigation, and draggable scrollbar tracking.
+  - `useCollapsibleFiles`: Multi-file collapse/expand states, viewed file tracking, and progress metrics.
+
 ---
 
 ## Quality Checks & Verification
