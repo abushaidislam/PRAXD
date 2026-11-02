@@ -178,62 +178,61 @@ export function PullRequestSidebar({
     >
       {/* Top Header Region: Tabs & Sidebar close button */}
       <div className="p-3 pb-2 space-y-2.5 border-b border-praxd-border-soft">
-        <div className="relative flex items-center justify-center min-h-[32px]">
-          {/* Brand Logo placed on the left for balance */}
-          <div className="absolute left-0 flex items-center gap-1.5" title="PRAXD PR Workspace">
-            <BrandLogo size="sm" />
+        {/* Row 1: Brand identity & Collapse toggle button */}
+        <div className="flex items-center justify-between min-h-[28px]">
+          <div className="flex items-center gap-2" title="PRAXD PR Workspace">
+            <BrandLogo size="sm" showText />
           </div>
 
-          {/* Centered Segmented Tabs: All / Reviewing / Authored */}
-          <div
-            role="tablist"
-            aria-label="PR Inbox View Filter"
-            className="flex items-center p-0.5 rounded-lg bg-[#202020] border border-praxd-border-soft shadow-inner"
-          >
-            {(["all", "reviewing", "authored"] as TabType[]).map((tab) => {
-              const label = tab === "all" ? "All" : tab === "reviewing" ? "Reviewing" : "Authored";
-              const count = tabCounts[tab];
-              const isActive = activeTab === tab;
-              return (
-                <button
-                  key={tab}
-                  role="tab"
-                  aria-selected={isActive}
-                  aria-label={label}
-                  onClick={() => setActiveTab(tab)}
-                  className={cn(
-                    "flex items-center gap-1.5 px-2.5 py-1 text-[12px] font-medium rounded-md transition-all duration-150 capitalize focus:outline-none focus-visible:ring-1 focus-visible:ring-praxd-blue",
-                    isActive
-                      ? "bg-[#2e2e2e] text-praxd-text shadow-sm"
-                      : "text-praxd-text-muted hover:text-praxd-text-secondary hover:bg-[#252525]"
-                  )}
-                >
-                  <span>{label}</span>
-                  <span
-                    className={cn(
-                      "text-[10px] px-1.5 py-0.2 rounded-full font-mono tabular-nums leading-none",
-                      isActive
-                        ? "bg-white/10 text-white"
-                        : "bg-neutral-800 text-neutral-400"
-                    )}
-                  >
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Toggle sidebar button placed on the right */}
           <button
             type="button"
             onClick={onToggleOpen}
-            className="absolute right-0 p-1.5 rounded-md hover:bg-[#222222] text-praxd-text-secondary hover:text-praxd-text transition-colors"
+            className="p-1.5 rounded-md hover:bg-[#222222] text-praxd-text-secondary hover:text-praxd-text transition-colors"
             title="Collapse inbox (Ctrl+B)"
             aria-label="Collapse inbox sidebar"
           >
             <PanelLeftClose className="w-4 h-4" />
           </button>
+        </div>
+
+        {/* Row 2: Full-Width 3-Column Segmented Tabs: All / Reviewing / Authored */}
+        <div
+          role="tablist"
+          aria-label="PR Inbox View Filter"
+          className="grid grid-cols-3 w-full p-0.5 rounded-lg bg-[#202020] border border-praxd-border-soft shadow-inner"
+        >
+          {(["all", "reviewing", "authored"] as TabType[]).map((tab) => {
+            const label = tab === "all" ? "All" : tab === "reviewing" ? "Reviewing" : "Authored";
+            const count = tabCounts[tab];
+            const isActive = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                role="tab"
+                aria-selected={isActive}
+                aria-label={label}
+                onClick={() => setActiveTab(tab)}
+                className={cn(
+                  "flex items-center justify-center gap-1.5 px-2 py-1.5 text-[12px] font-medium rounded-md transition-all duration-150 capitalize focus:outline-none focus-visible:ring-1 focus-visible:ring-praxd-blue truncate min-w-0",
+                  isActive
+                    ? "bg-[#2e2e2e] text-praxd-text shadow-sm"
+                    : "text-praxd-text-muted hover:text-praxd-text-secondary hover:bg-[#252525]"
+                )}
+              >
+                <span className="truncate">{label}</span>
+                <span
+                  className={cn(
+                    "text-[10px] px-1.5 py-0.2 rounded-full font-mono tabular-nums leading-none shrink-0",
+                    isActive
+                      ? "bg-white/10 text-white"
+                      : "bg-neutral-800 text-neutral-400"
+                  )}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Search & Filter Bar */}

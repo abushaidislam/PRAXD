@@ -12,6 +12,7 @@ import { GitHubConnectModal } from "./github-connect-modal";
 import { KeyboardShortcutsModal } from "./keyboard-shortcuts-modal";
 import { ToastProvider } from "./toast";
 import { BrandLogo } from "./brand-logo";
+import { cn } from "@/lib/utils";
 
 export function PRWorkspace() {
   const [isLiveMode, setIsLiveMode] = useState(false);
@@ -107,6 +108,11 @@ export function PRWorkspace() {
   // Select PR and lazily fetch files/diff and comments if not yet loaded
   const handleSelectPr = useCallback(async (pr: PullRequest) => {
     setSelectedPr(pr);
+
+    // On mobile (< 768px), auto-collapse sidebar to show the selected PR workspace
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      setIsSidebarOpen(false);
+    }
     const needsFiles = !pr.files || pr.files.length === 0;
     const needsComments = (pr.commentsCount ?? 0) > 0 && (!pr.comments || pr.comments.length === 0);
     if (needsFiles || needsComments) {
@@ -206,7 +212,10 @@ export function PRWorkspace() {
 
           {/* Right Main Workspace */}
           <main
-            className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-praxd-bg"
+            className={cn(
+              "flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-praxd-bg",
+              isSidebarOpen && "hidden md:flex"
+            )}
             aria-label="Pull request workspace"
           >
             {/* Main Top Header */}

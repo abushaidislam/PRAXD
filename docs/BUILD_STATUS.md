@@ -98,6 +98,8 @@ In addition to core triage and diff inspection, PRAXD includes **direct personal
   - Added keyboard shortcut badges (`1` for Summary, `2` for Code) with global keydown navigation.
   - Polished external GitHub link and high-contrast Merged/Closed status badges.
 - [x] **Left PR Inbox Sidebar & ListItem:**
+  - Resolved responsive header overlap: split the sidebar top bar into a clean Row 1 (`BrandLogo` + `PanelLeftClose` toggle) and Row 2 full-width 3-column segmented tabs (`All`, `Reviewing`, `Authored`), eliminating icon and badge collisions at narrower widths.
+  - Added mobile responsive auto-collapse upon selecting a PR and responsive master-detail layout.
   - Real-time tab count badges (`All`, `Reviewing`, `Authored`).
   - Keyboard navigation (`ArrowUp` / `ArrowDown`) through PR list.
   - Active list item accent indicator bar with high contrast typography and `tabular-nums` diff metrics.
