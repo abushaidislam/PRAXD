@@ -48,7 +48,14 @@ export function DemoModeBadge({
           className="px-1.5 py-0.5 rounded text-[10px] bg-[#242424] hover:bg-[#2c2c2c] text-praxd-green font-mono border border-praxd-border-soft transition-colors"
           title="Toggle between Live API and Fixture Mode"
         >
-          {isLiveMode ? "SWITCH TO FIXTURES" : "READ-ONLY MVP"}
+          {isLiveMode ? (
+            <>
+              <span className="hidden sm:inline">SWITCH TO FIXTURES</span>
+              <span className="sm:hidden">FIXTURES</span>
+            </>
+          ) : (
+            "READ-ONLY MVP"
+          )}
         </button>
       </div>
     </div>

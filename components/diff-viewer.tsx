@@ -346,7 +346,7 @@ export function DiffViewer({
           {basename}
         </span>
         {dirname && (
-          <span className="font-mono text-[12px] text-neutral-500 truncate">
+          <span className="font-mono text-[12px] text-neutral-500 hidden sm:inline-block truncate">
             {dirname}
           </span>
         )}
@@ -394,7 +394,7 @@ export function DiffViewer({
             >
               {isViewed && <Check className="w-2.5 h-2.5 stroke-[3]" />}
             </span>
-            <span>Viewed</span>
+            <span className="hidden sm:inline">Viewed</span>
           </button>
         )}
 
@@ -568,7 +568,7 @@ export function DiffViewer({
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-red-500/80" />
               <span className="font-semibold text-neutral-300">Base</span>
-              <span className="text-[10px] text-neutral-500 font-sans">(Original revision)</span>
+              <span className="text-[10px] text-neutral-500 font-sans hidden sm:inline">(Original revision)</span>
             </div>
             <span className="text-[10px] text-neutral-500 uppercase tracking-wider font-semibold">
               Old
@@ -580,7 +580,7 @@ export function DiffViewer({
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500/80" />
               <span className="font-semibold text-neutral-300">Head</span>
-              <span className="text-[10px] text-neutral-500 font-sans">(Modified revision)</span>
+              <span className="text-[10px] text-neutral-500 font-sans hidden sm:inline">(Modified revision)</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="flex items-center gap-1 text-[10px] text-praxd-blue font-sans">
@@ -1040,7 +1040,7 @@ export function DiffViewer({
           <div className="flex items-center gap-2.5">
             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-praxd-blue/10 text-praxd-blue font-medium border border-praxd-blue/20">
               <ArrowLeftRight className="w-3 h-3" />
-              <span>Dual-Pane Sync Scroll</span>
+              <span className="hidden sm:inline">Dual-Pane Sync Scroll</span><span className="sm:hidden">Sync</span>
             </div>
             <span className="font-mono text-[11px] text-neutral-400">
               {Math.round(scrollX)}px / {Math.round(maxScrollX)}px
@@ -1057,7 +1057,7 @@ export function DiffViewer({
           </div>
 
           {/* Center / Right: Interactive Track & Draggable Thumb */}
-          <div className="flex items-center gap-2 flex-1 max-w-md ml-6">
+          <div className="flex items-center gap-2 flex-1 max-w-md ml-2 sm:ml-6">
             {/* Step Left */}
             <button
               type="button"

@@ -243,7 +243,7 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
         <div className="space-y-3 py-2 text-[12px]">
           {/* Branch Row */}
           <div className="flex items-center">
-            <div className="w-[120px] flex items-center gap-2 text-praxd-text-muted">
+            <div className="w-[105px] sm:w-[120px] shrink-0 flex items-center gap-2 text-praxd-text-muted">
               <GitBranch className="w-3.5 h-3.5" />
               <span>Branch</span>
             </div>
@@ -268,7 +268,7 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
                 <span className="text-praxd-green font-medium">+{pr.additions}</span>
                 <span className="text-praxd-red font-medium">-{pr.deletions}</span>
               </div>
-              <div className="ml-2">
+              <div className="ml-0 mt-1 sm:ml-2 sm:mt-0">
                 <CheckoutCommandDropdown pr={pr} variant="inline" />
               </div>
             </div>
@@ -276,7 +276,7 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
 
           {/* Reviewers Row */}
           <div className="flex items-center">
-            <div className="w-[120px] flex items-center gap-2 text-praxd-text-muted">
+            <div className="w-[105px] sm:w-[120px] shrink-0 flex items-center gap-2 text-praxd-text-muted">
               <Users className="w-3.5 h-3.5" />
               <span>Reviewers</span>
             </div>
@@ -322,7 +322,7 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
 
           {/* Comments Row */}
           <div className="flex items-center">
-            <div className="w-[120px] flex items-center gap-2 text-praxd-text-muted">
+            <div className="w-[105px] sm:w-[120px] shrink-0 flex items-center gap-2 text-praxd-text-muted">
               <MessageSquare className="w-3.5 h-3.5" />
               <span>Comments</span>
             </div>
@@ -333,7 +333,7 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
 
           {/* Checks Row */}
           <div className="flex items-center">
-            <div className="w-[120px] flex items-center gap-2 text-praxd-text-muted">
+            <div className="w-[105px] sm:w-[120px] shrink-0 flex items-center gap-2 text-praxd-text-muted">
               <CheckCircle2 className="w-3.5 h-3.5 text-praxd-green" />
               <span>Checks</span>
             </div>
@@ -349,7 +349,7 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
 
           {/* Status Row */}
           <div className="flex items-center">
-            <div className="w-[120px] flex items-center gap-2 text-praxd-text-muted">
+            <div className="w-[105px] sm:w-[120px] shrink-0 flex items-center gap-2 text-praxd-text-muted">
               <GitPullRequest className="w-3.5 h-3.5" />
               <span>Status</span>
             </div>

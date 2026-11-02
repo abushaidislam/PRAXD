@@ -103,6 +103,13 @@ export function CodeView({ pr }: CodeViewProps) {
   );
 
   const [diffMode, setDiffMode] = useState<"split" | "unified">("split");
+
+  // On compact/mobile screens (< 768px), default to unified diff mode per UI/UX spec
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      setDiffMode("unified");
+    }
+  }, []);
   const [wrapLines, setWrapLines] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
@@ -278,7 +285,7 @@ export function CodeView({ pr }: CodeViewProps) {
         {/* Left: Branch flow matching reference UI & Circular Review Progress */}
         <div className="flex items-center gap-2.5 min-w-0 flex-1 overflow-hidden">
           {/* Branch flow — matching reference UI: headRef > baseRef */}
-          <div className="flex items-center gap-1.5 text-praxd-text-muted font-mono text-[11px] truncate shrink-0 max-w-[320px]">
+          <div className="flex items-center gap-1.5 text-praxd-text-muted font-mono text-[11px] truncate shrink min-w-0 max-w-[150px] sm:max-w-[220px] md:max-w-[320px]">
             <span className="text-praxd-text-secondary truncate">
               {pr.headRef}
             </span>
@@ -333,7 +340,7 @@ export function CodeView({ pr }: CodeViewProps) {
               <span className="tabular-nums text-neutral-300 font-medium whitespace-nowrap text-[11px]">
                 {viewedCount}/{pr.files.length}
               </span>
-              <span className="text-[10px] text-neutral-500 whitespace-nowrap">viewed</span>
+              <span className="text-[10px] text-neutral-500 whitespace-nowrap hidden sm:inline">viewed</span>
             </div>
           )}
         </div>

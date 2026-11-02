@@ -110,7 +110,7 @@ export function CheckoutCommandDropdown({
           role="menu"
           aria-label="Checkout command options"
           className={cn(
-            "absolute mt-1.5 w-80 sm:w-[340px] rounded-xl bg-[#161616] border border-praxd-border shadow-2xl shadow-black/90 ring-1 ring-white/5 z-50 p-2 space-y-1.5 animate-in fade-in zoom-in-95 duration-100 select-none",
+            "absolute mt-1.5 w-[calc(100vw-24px)] max-w-[340px] sm:w-[340px] rounded-xl bg-[#161616] border border-praxd-border shadow-2xl shadow-black/90 ring-1 ring-white/5 z-50 p-2 space-y-1.5 animate-in fade-in zoom-in-95 duration-100 select-none",
             variant === "header" ? "right-0" : "left-0"
           )}
         >

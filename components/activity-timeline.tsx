@@ -262,10 +262,10 @@ export function ActivityTimeline({
               key={commit.sha}
               className="flex items-center justify-between p-2.5 rounded-lg bg-[#181818] border border-praxd-border-soft text-[12px] hover:bg-[#1f1f1f] transition-colors"
             >
-              <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-3">
                 <GitCommit className="w-4 h-4 text-praxd-text-muted shrink-0" />
                 <ShieldAlert className="w-3.5 h-3.5 text-praxd-blue shrink-0" />
-                <span className="font-medium text-praxd-text truncate max-w-[420px]" title={commit.message}>
+                <span className="font-medium text-praxd-text truncate flex-1 min-w-0" title={commit.message}>
                   {commit.message}
                 </span>
               </div>

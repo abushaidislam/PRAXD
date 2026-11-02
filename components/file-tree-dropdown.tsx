@@ -87,7 +87,7 @@ export function FileTreeDropdown({
           role="listbox"
           aria-label="Files changed in this pull request"
           className={cn(
-            "absolute top-full mt-1.5 w-80 max-h-80 overflow-y-auto rounded-lg bg-[#181818] border border-praxd-border shadow-xl z-50 p-1 space-y-0.5 animate-in fade-in zoom-in-95 duration-100 select-none",
+            "absolute top-full mt-1.5 w-[calc(100vw-24px)] max-w-xs sm:w-80 max-h-80 overflow-y-auto rounded-lg bg-[#181818] border border-praxd-border shadow-xl z-50 p-1 space-y-0.5 animate-in fade-in zoom-in-95 duration-100 select-none",
             align === "right" ? "right-0" : "left-0"
           )}
         >

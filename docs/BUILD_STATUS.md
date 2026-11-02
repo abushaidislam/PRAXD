@@ -151,11 +151,23 @@ In addition to core triage and diff inspection, PRAXD includes **direct personal
 - [x] **Sleek Floating Toast Notification System:**
   - Added `<ToastProvider />` and `useToast()` rendering auto-dismissing notifications in the bottom-right corner for terminal commands and copy feedback.
 
+### 7. Responsive Design & Full-Web Layout Polish (Shipped)
+- [x] **Full-App Responsive Audit & Mobile Ergonomics:**
+  - **PR Inbox ListItem (`PullRequestListItem`):** Replaced fixed `max-w-[220px]` with `truncate flex-1 min-w-0` to guarantee fluid width scaling and prevent badge wrapping or overflow at compact widths (280px–340px) or mobile viewports.
+  - **Code View Breadcrumbs & Progress (`CodeView`):** Scaled branch flow breadcrumbs dynamically (`max-w-[150px] sm:max-w-[220px] md:max-w-[320px]`) and hid the `"viewed"` text label on mobile screens (`hidden sm:inline`) to keep circular progress ring visible without crowding toolbar icons.
+  - **Mobile Default Diff Mode:** Automatically defaults diff mode to `"unified"` on viewports `< 768px` per UI/UX specification.
+  - **Diff File Header & Subheaders (`DiffViewer`):** Hid directory path on mobile screens (`hidden sm:inline-block`) to prioritize file basename; adapted "Viewed" button label on mobile (`<span className="hidden sm:inline">Viewed</span>`) while preserving full `aria-label` and checkbox; concealed parenthetical labels `(Original revision)` / `(Modified revision)` on compact viewports.
+  - **Dual-Pane Synced Scrollbar Footer:** Compressed sync scroll label on small screens (`Dual-Pane Sync Scroll` -> `Sync`) and optimized margin spacing (`ml-2 sm:ml-6`) to prevent horizontal clipping.
+  - **Summary View Metadata Grid (`SummaryView`):** Applied `shrink-0` to all metadata labels (`w-[105px] sm:w-[120px] shrink-0`) to prevent text wrapping on mobile devices; made checkout dropdown flow cleanly without breaking bounds.
+  - **Activity Timeline Commits (`ActivityTimeline`):** Replaced hardcoded `max-w-[420px]` on commit messages with `flex-1 min-w-0 truncate` to ensure commit SHA, author avatar, and relative timestamp remain visible on narrow screens.
+  - **Dropdown Modals & Popovers:** Updated `FileTreeDropdown` and `CheckoutCommandDropdown` to use responsive viewport clamping (`w-[calc(100vw-24px)] max-w-xs / max-w-[340px] sm:w-80`) preventing edge overflowing on mobile.
+  - **Demo Mode Top Bar (`DemoModeBadge`):** Responsive button text (`SWITCH TO FIXTURES` / `FIXTURES`) maintaining clean alignment across viewports.
+
 ---
 
 ## Quality Checks & Verification
 
 - `lint` (`npm run lint`): Passed (`✔ No ESLint warnings or errors`).
 - `typecheck` (`npm run typecheck`): Passed (`tsc --noEmit` 0 errors).
-- `test` (`npm test`): Passed (93/93 tests passing across 12 test files).
+- `test` (`npm test`): Passed (96/96 tests passing across 12 test files).
 - `build` (`npm run build`): Passed (16 static pages, 20 dynamic API routes compiled cleanly in Next.js production build).

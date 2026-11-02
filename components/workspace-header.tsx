@@ -149,7 +149,7 @@ export function WorkspaceHeader({
             <button
               type="button"
               onClick={onOpenShortcuts}
-              className="p-1.5 rounded-md hover:bg-[#202020] text-praxd-text-muted hover:text-praxd-text transition-colors"
+              className="hidden sm:flex p-1.5 rounded-md hover:bg-[#202020] text-praxd-text-muted hover:text-praxd-text transition-colors"
               title="Keyboard shortcuts (?)"
               aria-label="Open keyboard shortcuts guide"
             >
