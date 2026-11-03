@@ -145,12 +145,36 @@ export function CommentComposer({ prId, author, onCommentAdded }: CommentCompose
   };
 
   return (
-    <form
-      onSubmit={handleAddComment}
-      className="mt-4 rounded-xl bg-[#161616] border border-praxd-border-soft focus-within:border-praxd-border overflow-hidden shadow-sm transition-all"
-    >
-      {/* Composer Header Bar */}
-      <div className="px-3 py-2 bg-[#1c1c1c] border-b border-praxd-border-soft flex items-center justify-between gap-2 text-[12px]">
+    <div className="relative flex items-start gap-3 mt-4">
+      {/* Connector line coming from previous timeline items down to avatar */}
+      <div className="absolute left-[15px] -top-4 h-6 w-[2px] bg-praxd-border-soft" />
+
+      {/* Profile Avatar on Timeline Rail */}
+      <div className="relative z-10 w-8 h-8 shrink-0 flex items-center justify-center mt-1">
+        <img
+          src={
+            selectedProfile === "personal"
+              ? author.avatarUrl || "https://github.com/ghost.png"
+              : "/logo.png"
+          }
+          alt={selectedProfile === "personal" ? author.login : "praxd-app[bot]"}
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = "https://github.com/ghost.png";
+          }}
+          className="w-7 h-7 rounded-full ring-4 ring-[#111111] border border-white/10 object-cover bg-[#1c1c1c] shadow-xs"
+        />
+      </div>
+
+      {/* Composer Card Form */}
+      <form
+        onSubmit={handleAddComment}
+        className="relative flex-1 min-w-0 rounded-xl bg-[#161616] border border-praxd-border-soft focus-within:border-praxd-border shadow-sm transition-all group/composer"
+      >
+        {/* Caret pointing left towards avatar */}
+        <div className="absolute -left-[5px] top-3.5 w-2.5 h-2.5 rotate-45 bg-[#1c1c1c] border-l border-b border-praxd-border-soft group-focus-within/composer:border-praxd-border transition-colors pointer-events-none" />
+
+        {/* Composer Header Bar */}
+        <div className="px-3 py-2 bg-[#1c1c1c] rounded-t-xl border-b border-praxd-border-soft flex items-center justify-between gap-2 text-[12px]">
         {/* Left: Mini Profile Selector & Write/Preview Tabs */}
         <div className="flex items-center gap-2 min-w-0">
           {/* Profile Selector Dropdown */}
@@ -388,7 +412,7 @@ export function CommentComposer({ prId, author, onCommentAdded }: CommentCompose
       )}
 
       {/* Composer Footer Bar */}
-      <div className="px-3 py-2 bg-[#1a1a1a] border-t border-praxd-border-soft flex items-center justify-between gap-2 text-[11px] text-praxd-text-muted">
+      <div className="px-3 py-2 bg-[#1a1a1a] rounded-b-xl border-t border-praxd-border-soft flex items-center justify-between gap-2 text-[11px] text-praxd-text-muted">
         <div className="flex items-center gap-1.5">
           <span>Markdown supported</span>
           <span>·</span>
@@ -433,5 +457,6 @@ export function CommentComposer({ prId, author, onCommentAdded }: CommentCompose
         </div>
       </div>
     </form>
+  </div>
   );
 }

@@ -39,7 +39,7 @@ PRAXD connects directly to the developer's personal GitHub account via GitHub Ap
   - Author details, branch flow (`head > base`), requested reviewers, and status.
   - In-place title & description editing directly syncing to GitHub.
   - Real-time CI/CD check run list (`CheckRunList`) with passing/failing status and logs.
-  - Activity timeline (`ActivityTimeline`) tracking commits, reviews, and conversation comments.
+  - Pixel-accurate GitHub-standard activity timeline (`ActivityTimeline` & `CommentComposer`) with centered spine rail, ring-masked node badges, avatars anchored on rail, and speech-bubble caret connectors.
 - [x] **High-Performance Code Diff Viewer:**
   - Side-by-side split diff and unified diff switcher.
   - Lockstep synchronized dual-pane horizontal scrolling (`scrollX`) between Base (Old) and Head (New) columns.
