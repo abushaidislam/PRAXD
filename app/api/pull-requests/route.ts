@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedContext } from "@/lib/supabase/auth";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { fetchLivePullRequests } from "@/lib/github/live";
+import { syncRecentAccountPullRequests } from "@/lib/github/sync";
 import { mapDbPrToDomain } from "@/lib/github/mapper";
 import { apiError } from "@/lib/api-response";
+
+let lastSyncTimestamp = 0;
+const AUTO_SYNC_COOLDOWN_MS = 30_000; // 30 seconds debounce window for auto-reconciliation
 
 export async function GET(req: NextRequest) {
   const auth = await getAuthenticatedContext();
@@ -18,8 +22,20 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(parseInt(searchParams.get("limit") || "24", 10), 100);
   const page = Math.max(parseInt(searchParams.get("page") || "1", 10), 1);
   const offset = (page - 1) * limit;
+  const forceSync = searchParams.get("sync") === "true";
 
   const supabase = createServiceRoleClient();
+
+  // On page 1, automatically reconcile recently created or updated PRs from GitHub across all user repos
+  if (page === 1 && (forceSync || (!q && Date.now() - lastSyncTimestamp > AUTO_SYNC_COOLDOWN_MS))) {
+    try {
+      await syncRecentAccountPullRequests(supabase, auth.workspaceId);
+      lastSyncTimestamp = Date.now();
+    } catch (syncErr) {
+      console.error("Auto GitHub PR reconciliation error:", syncErr);
+    }
+  }
+
   let query = supabase
     .from("pull_requests")
     .select(
@@ -70,7 +86,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // Graceful fallback: If Supabase table is not yet migrated, fetch real live PRs directly from GitHub API
+  // Graceful fallback: If Supabase table is empty or error, fetch real live PRs directly from GitHub API
   const livePrs = await fetchLivePullRequests({ state, view, q: q || undefined, limit, page });
   const hasMore = livePrs.length >= limit;
 

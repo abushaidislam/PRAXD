@@ -38,8 +38,27 @@ export async function GET(
     .eq("workspace_id", auth.workspaceId)
     .order("file_path", { ascending: true });
 
-  if (error) {
-    return apiSuccess({ files: [] });
+  if (!error && files && files.length > 0) {
+    return apiSuccess({ files });
+  }
+
+  // Fallback: If DB files table hasn't been populated yet, fetch directly from GitHub
+  const { data: rawPr } = await supabase
+    .from("pull_requests")
+    .select("number, repositories(owner_login, name)")
+    .eq("id", pullRequestId)
+    .maybeSingle();
+
+  const pr = rawPr as any;
+  if (pr && pr.repositories?.owner_login && pr.repositories?.name) {
+    const livePr = await fetchLivePullRequestDetails(
+      pr.repositories.owner_login,
+      pr.repositories.name,
+      pr.number
+    );
+    if (livePr && livePr.files && livePr.files.length > 0) {
+      return apiSuccess({ files: livePr.files });
+    }
   }
 
   return apiSuccess({ files: files || [] });

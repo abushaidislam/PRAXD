@@ -24,7 +24,7 @@ export interface DiffUnifiedRowProps {
   onAddInlineComment: (line: number) => void;
 }
 
-export function DiffUnifiedRow({
+export const DiffUnifiedRow = React.memo(function DiffUnifiedRow({
   line,
   idx,
   wrapLines,
@@ -186,4 +186,4 @@ export function DiffUnifiedRow({
       )}
     </div>
   );
-}
+});

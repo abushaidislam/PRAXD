@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
-import { Search, Filter, ChevronDown, X, PanelLeftClose } from "lucide-react";
+import { Search, Filter, ChevronDown, X, PanelLeftClose, RefreshCw } from "lucide-react";
 import { PullRequest } from "@/types/pr";
 import { PullRequestListItem } from "./pull-request-list-item";
 import { BrandLogo } from "../ui/brand-logo";
@@ -15,6 +15,8 @@ interface PullRequestSidebarProps {
   isLoadingMore?: boolean;
   onLoadMore?: () => void;
   totalCount?: number | null;
+  onSync?: () => Promise<void> | void;
+  isSyncing?: boolean;
 }
 
 type TabType = "all" | "reviewing" | "authored";
@@ -35,6 +37,8 @@ export function PullRequestSidebar({
   isLoadingMore = false,
   onLoadMore,
   totalCount = null,
+  onSync,
+  isSyncing = false,
 }: PullRequestSidebarProps) {
   const [activeTab, setActiveTab] = useState<TabType>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -186,21 +190,39 @@ export function PullRequestSidebar({
     >
       {/* Top Header Region: Tabs & Sidebar close button */}
       <div className="p-3 pb-2 space-y-2.5 border-b border-praxd-border-soft">
-        {/* Row 1: Brand identity & Collapse toggle button */}
+        {/* Row 1: Brand identity, Sync button & Collapse toggle button */}
         <div className="flex items-center justify-between min-h-[28px]">
           <div className="flex items-center gap-2" title="PRAXD PR Workspace">
             <BrandLogo size="sm" showText />
           </div>
 
-          <button
-            type="button"
-            onClick={onToggleOpen}
-            className="p-1.5 rounded-md hover:bg-[#222222] text-praxd-text-secondary hover:text-praxd-text transition-colors"
-            title="Collapse inbox (Ctrl+B)"
-            aria-label="Collapse inbox sidebar"
-          >
-            <PanelLeftClose className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            {onSync && (
+              <button
+                type="button"
+                onClick={onSync}
+                disabled={isSyncing}
+                className={cn(
+                  "p-1.5 rounded-md hover:bg-[#222222] text-praxd-text-secondary hover:text-praxd-text transition-colors",
+                  isSyncing && "text-praxd-blue animate-spin"
+                )}
+                title="Sync pull requests from GitHub"
+                aria-label="Sync pull requests from GitHub"
+              >
+                <RefreshCw className={cn("w-3.5 h-3.5", isSyncing && "animate-spin text-praxd-blue")} />
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={onToggleOpen}
+              className="p-1.5 rounded-md hover:bg-[#222222] text-praxd-text-secondary hover:text-praxd-text transition-colors"
+              title="Collapse inbox (Ctrl+B)"
+              aria-label="Collapse inbox sidebar"
+            >
+              <PanelLeftClose className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Row 2: Full-Width 3-Column Segmented Tabs: All / Reviewing / Authored */}

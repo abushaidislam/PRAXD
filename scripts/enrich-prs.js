@@ -152,7 +152,32 @@ async function run() {
       } else if (data && data.length > 0) {
         totalProcessed++;
       } else {
-        console.log(`PR #${pr.number} in ${repoFullName} matched 0 rows in pull_requests table!`);
+        // Missing from DB: insert it!
+        const { error: insErr } = await supabase.from('pull_requests').insert({
+          workspace_id: 'a0000000-0000-0000-0000-000000000001',
+          repository_id: repoId,
+          github_pr_id: pr.number,
+          number: pr.number,
+          title: pr.title || `PR #${pr.number}`,
+          body: pr.body || '',
+          state: state,
+          draft: Boolean(pr.isDraft),
+          author_login: authorLogin,
+          author_avatar_url: authorAvatar,
+          head_ref: pr.headRefName || 'head',
+          base_ref: pr.baseRefName || 'main',
+          additions: pr.additions || 0,
+          deletions: pr.deletions || 0,
+          changed_files_count: pr.changedFiles || 1,
+          html_url: `https://github.com/${repoFullName}/pull/${pr.number}`,
+          github_created_at: pr.createdAt,
+          github_updated_at: pr.updatedAt,
+          synced_at: new Date().toISOString(),
+        });
+        if (!insErr) {
+          console.log(`Inserted missing PR #${pr.number} in ${repoFullName}`);
+          totalProcessed++;
+        }
       }
     }
 
