@@ -28,6 +28,7 @@ export function PRWorkspace() {
   const [hasMore, setHasMore] = useState(false);
   const [totalPrCount, setTotalPrCount] = useState<number | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const prCacheRef = useRef<Map<string, PullRequest>>(new Map());
 
   // Automatically switch to Live Mode if GitHub App is connected or redirected
@@ -117,6 +118,36 @@ export function PRWorkspace() {
 
     loadLivePrs();
   }, [isLiveMode]);
+
+  // Synchronize new pull requests from GitHub across all user repos
+  const handleSyncPrs = useCallback(async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    try {
+      const res = await fetch("/api/pull-requests/sync", { method: "POST" });
+      if (res.ok) {
+        const listRes = await fetch("/api/pull-requests?state=all&limit=24&page=1");
+        if (listRes.ok) {
+          const json = await listRes.json();
+          if (json.data && json.data.length > 0) {
+            setPullRequests(json.data);
+            setTotalPrCount(json.pagination?.total || json.data.length);
+            setHasMore(json.pagination?.hasMore || false);
+            setPage(1);
+
+            // If no selected PR, select the top newly synced PR
+            if (!selectedPr) {
+              setSelectedPr(json.data[0]);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to sync pull requests:", err);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [isSyncing, selectedPr]);
 
   // Load more pull requests for infinite scroll / pagination
   const handleLoadMore = useCallback(async () => {
@@ -243,6 +274,8 @@ export function PRWorkspace() {
             isLoadingMore={isLoadingMore}
             onLoadMore={handleLoadMore}
             totalCount={totalPrCount}
+            onSync={handleSyncPrs}
+            isSyncing={isSyncing}
           />
 
           {/* Right Main Workspace */}

@@ -470,3 +470,215 @@ export async function syncPullRequestDetails(
     }
   }
 }
+
+/**
+ * Synchronizes the most recent pull requests across all repositories of the user's account.
+ * Reconciles GitHub GraphQL live state with Supabase, auto-provisions missing repositories,
+ * and upserts PR records into the database.
+ */
+export async function syncRecentAccountPullRequests(
+  supabase: SupabaseClient<Database>,
+  workspaceId: string,
+  limit = 30
+): Promise<{ syncedCount: number; insertedCount: number }> {
+  // 1. Get active GitHub installation for this workspace
+  let { data: installation } = await supabase
+    .from("github_installations")
+    .select("id, installation_id, account_login, workspace_id")
+    .eq("workspace_id", workspaceId)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (!installation) {
+    const { data: anyInst } = await supabase
+      .from("github_installations")
+      .select("id, installation_id, account_login, workspace_id")
+      .eq("status", "active")
+      .limit(1)
+      .maybeSingle();
+    installation = anyInst;
+  }
+
+  if (!installation) {
+    return { syncedCount: 0, insertedCount: 0 };
+  }
+
+  const token = await getInstallationAccessToken(installation.installation_id);
+  const login = installation.account_login || "abushaidislam";
+
+  // 2. Fetch recent PRs via GitHub GraphQL
+  const gqlQuery = `query {
+    search(query: "is:pr user:${login} sort:updated-desc", type: ISSUE, first: ${Math.min(limit, 50)}) {
+      nodes {
+        ... on PullRequest {
+          databaseId
+          number
+          title
+          body
+          state
+          isDraft
+          createdAt
+          updatedAt
+          headRefName
+          baseRefName
+          headRefOid
+          baseRefOid
+          additions
+          deletions
+          changedFiles
+          url
+          repository {
+            databaseId
+            name
+            nameWithOwner
+            isPrivate
+            defaultBranchRef {
+              name
+            }
+          }
+          author {
+            login
+            avatarUrl
+          }
+        }
+      }
+    }
+  }`;
+
+  const gRes = await fetch("https://api.github.com/graphql", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "User-Agent": "PRAXD-PR-Workspace/0.1.0",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ query: gqlQuery }),
+  });
+
+  if (!gRes.ok) {
+    return { syncedCount: 0, insertedCount: 0 };
+  }
+
+  const gJson = await gRes.json();
+  const prNodes = gJson.data?.search?.nodes?.filter(Boolean) || [];
+  if (prNodes.length === 0) {
+    return { syncedCount: 0, insertedCount: 0 };
+  }
+
+  // 3. Load DB repositories map
+  const { data: dbRepos } = await supabase
+    .from("repositories")
+    .select("id, full_name, workspace_id, installation_id")
+    .eq("workspace_id", workspaceId);
+
+  const repoMap = new Map<string, { id: string; workspace_id: string; installation_id: string }>();
+  if (dbRepos) {
+    for (const r of dbRepos) {
+      repoMap.set(r.full_name.toLowerCase(), r);
+    }
+  }
+
+  let insertedCount = 0;
+  let syncedCount = 0;
+
+  for (const pr of prNodes) {
+    const repoFullName = pr.repository?.nameWithOwner;
+    if (!repoFullName) continue;
+
+    let repoRecord = repoMap.get(repoFullName.toLowerCase());
+    if (!repoRecord) {
+      // Auto-provision repository if not already in DB
+      const { data: newRepo, error: repoErr } = await supabase
+        .from("repositories")
+        .insert({
+          workspace_id: workspaceId,
+          installation_id: installation.id,
+          github_repo_id: pr.repository.databaseId || 0,
+          owner_login: repoFullName.split("/")[0],
+          name: pr.repository.name,
+          full_name: repoFullName,
+          html_url: `https://github.com/${repoFullName}`,
+          visibility: pr.repository.isPrivate ? "private" : "public",
+          default_branch: pr.repository.defaultBranchRef?.name || "main",
+          is_accessible: true,
+          synced_at: new Date().toISOString(),
+        })
+        .select("id, full_name, workspace_id, installation_id")
+        .single();
+
+      if (!repoErr && newRepo) {
+        repoRecord = newRepo;
+        repoMap.set(repoFullName.toLowerCase(), newRepo);
+      } else {
+        continue;
+      }
+    }
+
+    const canonicalState: PullRequestState =
+      pr.state === "OPEN" ? "open" : pr.state === "MERGED" ? "merged" : "closed";
+    const authorLogin = pr.author?.login || "unknown";
+    const authorAvatar = pr.author?.avatarUrl || `https://github.com/${authorLogin}.png`;
+
+    const prPayload = {
+      workspace_id: repoRecord.workspace_id || workspaceId,
+      repository_id: repoRecord.id,
+      github_pr_id: pr.databaseId || pr.number,
+      number: pr.number,
+      title: pr.title || `PR #${pr.number}`,
+      body: pr.body || "",
+      state: canonicalState,
+      draft: Boolean(pr.isDraft),
+      author_login: authorLogin,
+      author_avatar_url: authorAvatar,
+      head_ref: pr.headRefName || "head",
+      head_sha: pr.headRefOid || "head-sha",
+      base_ref: pr.baseRefName || "main",
+      base_sha: pr.baseRefOid || "base-sha",
+      additions: pr.additions || 0,
+      deletions: pr.deletions || 0,
+      changed_files_count: pr.changedFiles || 1,
+      html_url: pr.url || `https://github.com/${repoFullName}/pull/${pr.number}`,
+      github_created_at: pr.createdAt,
+      github_updated_at: pr.updatedAt,
+      synced_at: new Date().toISOString(),
+    };
+
+    const { data: existingPr } = await supabase
+      .from("pull_requests")
+      .select("id, github_updated_at, state")
+      .eq("repository_id", repoRecord.id)
+      .eq("number", pr.number)
+      .maybeSingle();
+
+    if (!existingPr) {
+      const { error: insErr } = await supabase.from("pull_requests").insert(prPayload);
+      if (!insErr) {
+        insertedCount++;
+        syncedCount++;
+      }
+    } else {
+      if (
+        existingPr.github_updated_at !== pr.updatedAt ||
+        existingPr.state !== canonicalState
+      ) {
+        await supabase
+          .from("pull_requests")
+          .update(prPayload)
+          .eq("id", existingPr.id);
+        syncedCount++;
+      }
+    }
+  }
+
+  // Update installation last_synced_at
+  await supabase
+    .from("github_installations")
+    .update({
+      last_synced_at: new Date().toISOString(),
+      status: "active",
+      last_sync_error: null,
+    })
+    .eq("id", installation.id);
+
+  return { syncedCount, insertedCount };
+}
