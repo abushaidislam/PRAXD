@@ -63,18 +63,10 @@ export async function GET(
       if (livePr) {
         livePr.id = prData.id;
 
-        // Persist enriched metadata back to Supabase database in background
-        supabase
-          .from("pull_requests")
-          .update({
-            head_ref: livePr.headRef,
-            base_ref: livePr.baseRef,
-            additions: livePr.additions,
-            deletions: livePr.deletions,
-            changed_files_count: livePr.changedFilesCount,
-          })
-          .eq("id", prData.id)
-          .then();
+        // Persist enriched metadata and sync comments, checks, and commits to Supabase in background
+        syncPrDetailsToSupabase(supabase, auth.workspaceId, prData, livePr).catch((err) =>
+          console.error("Background sync error:", err)
+        );
 
         return NextResponse.json({
           data: livePr,
@@ -195,5 +187,105 @@ export async function PATCH(
       ...updatePayload,
       updatedAt: new Date().toISOString(),
     });
+  }
+}
+
+/**
+ * Synchronizes live PR details (metadata, comments, checks, commits) to Supabase tables.
+ */
+async function syncPrDetailsToSupabase(
+  supabase: any,
+  workspaceId: string,
+  prRecord: any,
+  livePr: any
+) {
+  try {
+    // 1. Update pull_requests row with latest metadata
+    await supabase
+      .from("pull_requests")
+      .update({
+        head_ref: livePr.headRef,
+        base_ref: livePr.baseRef,
+        head_sha: livePr.headSha,
+        base_sha: livePr.baseSha,
+        additions: livePr.additions,
+        deletions: livePr.deletions,
+        changed_files_count: livePr.changedFilesCount,
+        comments_count: livePr.commentsCount,
+      })
+      .eq("id", prRecord.id);
+
+    // 2. Sync comments to pull_request_comments table
+    if (Array.isArray(livePr.comments) && livePr.comments.length > 0) {
+      const commentRows = livePr.comments.map((c: any) => {
+        const ghCommentId = parseInt(c.id, 10);
+        return {
+          workspace_id: workspaceId,
+          pull_request_id: prRecord.id,
+          github_comment_id: isNaN(ghCommentId) ? Math.floor(Date.now() / 1000) : ghCommentId,
+          comment_type: c.commentType === "review" ? "review" : "issue",
+          author_login: c.author?.login || "unknown",
+          author_avatar_url: c.author?.avatarUrl || null,
+          body: c.body || "",
+          path: c.path || null,
+          line: c.line ?? null,
+          side: c.side || null,
+          created_at_github: c.createdAt || new Date().toISOString(),
+          updated_at_github: c.createdAt || new Date().toISOString(),
+        };
+      });
+
+      await supabase
+        .from("pull_request_comments")
+        .upsert(commentRows, { onConflict: "github_comment_id" });
+    }
+
+    // 3. Sync checks to check_runs table
+    if (Array.isArray(livePr.checks) && livePr.checks.length > 0) {
+      // First delete stale check runs for this pull_request_id to keep fresh
+      await supabase
+        .from("check_runs")
+        .delete()
+        .eq("pull_request_id", prRecord.id);
+
+      const checkRows = livePr.checks.map((ch: any) => {
+        const ghCheckId = parseInt(ch.id, 10);
+        return {
+          workspace_id: workspaceId,
+          repository_id: prRecord.repository_id || prRecord.repositories?.id,
+          pull_request_id: prRecord.id,
+          github_check_id: isNaN(ghCheckId) ? null : ghCheckId,
+          name: ch.name || "CI Check",
+          head_sha: livePr.headSha,
+          status: ch.status || "completed",
+          conclusion: ch.conclusion || null,
+          details_url: ch.detailsUrl || null,
+          started_at: ch.startedAt || null,
+          completed_at: ch.completedAt || null,
+          source: "check_run",
+        };
+      });
+
+      await supabase.from("check_runs").insert(checkRows);
+    }
+
+    // 4. Sync commits to pull_request_commits table
+    if (Array.isArray(livePr.commits) && livePr.commits.length > 0) {
+      const commitRows = livePr.commits.map((cm: any) => ({
+        workspace_id: workspaceId,
+        pull_request_id: prRecord.id,
+        sha: cm.sha,
+        message: cm.message || "Commit",
+        author_login: cm.author?.login || null,
+        author_avatar_url: cm.author?.avatarUrl || null,
+        committed_at: cm.committedDate || new Date().toISOString(),
+      }));
+
+      await supabase
+        .from("pull_request_commits")
+        .upsert(commitRows, { onConflict: "pull_request_id,sha" });
+    }
+  } catch (err) {
+    console.error("Failed to sync PR details to Supabase:", err);
   }
 }

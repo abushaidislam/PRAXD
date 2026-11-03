@@ -36,11 +36,69 @@ export async function GET(
     .eq("workspace_id", auth.workspaceId)
     .order("created_at_github", { ascending: true });
 
-  if (error) {
-    return apiSuccess({ comments: [] });
+  if (!error && comments && comments.length > 0) {
+    const domainComments = comments.map((c: any) => ({
+      id: c.id,
+      author: {
+        login: c.author_login || "unknown",
+        avatarUrl:
+          c.author_avatar_url ||
+          (c.author_login
+            ? `https://github.com/${c.author_login}.png`
+            : "https://github.com/ghost.png"),
+        name: c.author_login || "unknown",
+      },
+      body: c.body,
+      createdAt: c.created_at_github || c.created_at || new Date().toISOString(),
+      commentType: c.comment_type === "review" ? ("review" as const) : ("issue" as const),
+      path: c.path || undefined,
+      line: c.line ?? undefined,
+      side: c.side || undefined,
+    }));
+    return apiSuccess({ comments: domainComments });
   }
 
-  return apiSuccess({ comments: comments || [] });
+  // If Supabase has no comments yet, fetch from GitHub and synchronize
+  const { data: dbPr } = await supabase
+    .from("pull_requests")
+    .select("number, repositories ( owner_login, name )")
+    .eq("id", pullRequestId)
+    .eq("workspace_id", auth.workspaceId)
+    .single();
+
+  const prData = dbPr as any;
+  const repo = prData?.repositories;
+  if (repo?.owner_login && repo?.name && prData?.number) {
+    const liveComments = await fetchLivePullRequestComments(repo.owner_login, repo.name, prData.number);
+    if (liveComments.length > 0) {
+      const commentRows = liveComments.map((c) => {
+        const ghId = parseInt(c.id, 10);
+        return {
+          workspace_id: auth.workspaceId,
+          pull_request_id: pullRequestId,
+          github_comment_id: isNaN(ghId) ? Math.floor(Date.now() / 1000) : ghId,
+          comment_type: c.commentType,
+          author_login: c.author.login,
+          author_avatar_url: c.author.avatarUrl,
+          body: c.body,
+          path: c.path || null,
+          line: c.line ?? null,
+          side: c.side || null,
+          created_at_github: c.createdAt,
+          updated_at_github: c.createdAt,
+        };
+      });
+
+      supabase
+        .from("pull_request_comments")
+        .upsert(commentRows, { onConflict: "github_comment_id" })
+        .then();
+
+      return apiSuccess({ comments: liveComments });
+    }
+  }
+
+  return apiSuccess({ comments: [] });
 }
 
 export async function POST(
@@ -111,15 +169,39 @@ export async function POST(
     }
   }
 
-  // Handle Supabase database PR comment creation
+  // Handle Supabase database PR comment creation (post to GitHub first, then store in DB)
   const supabase = createServiceRoleClient();
   try {
-    const newCommentId = `comment-${Date.now()}`;
+    let ghCommentId = Math.floor(Date.now() / 1000);
+
+    const { data: dbPr } = await supabase
+      .from("pull_requests")
+      .select("number, repositories ( owner_login, name )")
+      .eq("id", pullRequestId)
+      .eq("workspace_id", auth.workspaceId)
+      .single();
+
+    const prData = dbPr as any;
+    const repo = prData?.repositories;
+    if (repo?.owner_login && repo?.name && prData?.number) {
+      const result = await createLivePullRequestComment(
+        repo.owner_login,
+        repo.name,
+        prData.number,
+        commentText,
+        body.profileType,
+        authorInfo.login
+      );
+      if (result.success && result.comment) {
+        const parsed = parseInt(result.comment.id, 10);
+        if (!isNaN(parsed)) ghCommentId = parsed;
+      }
+    }
+
     const commentRecord: any = {
-      id: newCommentId,
       workspace_id: auth.workspaceId,
       pull_request_id: pullRequestId,
-      github_comment_id: Math.floor(Date.now() / 1000),
+      github_comment_id: ghCommentId,
       comment_type: "issue",
       body: commentText,
       created_at_github: new Date().toISOString(),
@@ -133,10 +215,9 @@ export async function POST(
       .single();
 
     if (error || !created) {
-      // Local fixture fallback
       return apiSuccess({
         comment: {
-          id: newCommentId,
+          id: `comment-${Date.now()}`,
           body: commentText,
           author: authorInfo,
           createdAt: new Date().toISOString(),

@@ -18,6 +18,7 @@ import {
   ArrowRight,
   Clock,
   AlertCircle,
+  XCircle,
 } from "lucide-react";
 import { PullRequest, PRComment } from "@/types/pr";
 import { CheckRunList } from "./check-run-list";
@@ -67,9 +68,11 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
   );
 
   const handleCommentsLoaded = useCallback((loaded: PRComment[]) => {
-    setCommentsList(loaded);
-    if (onUpdatePr) {
-      onUpdatePr({ comments: loaded, commentsCount: loaded.length });
+    if (Array.isArray(loaded) && loaded.length > 0) {
+      setCommentsList(loaded);
+      if (onUpdatePr) {
+        onUpdatePr({ comments: loaded, commentsCount: loaded.length });
+      }
     }
   }, [onUpdatePr]);
 
@@ -82,6 +85,17 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
       return next;
     });
   }, [onUpdatePr]);
+
+  const checksList = Array.isArray(pr.checks) ? pr.checks : [];
+  const passedChecksCount = checksList.filter((c) => c.conclusion === "success").length;
+  const hasFailedChecks =
+    pr.checksStatus === "failure" ||
+    checksList.some(
+      (c) => c.conclusion === "failure" || c.conclusion === "timed_out" || c.conclusion === "cancelled"
+    );
+  const hasPendingChecks =
+    pr.checksStatus === "pending" ||
+    checksList.some((c) => c.status === "in_progress" || c.status === "queued");
 
   const hasShield = pr.title.toLowerCase().includes("sentinel");
 
@@ -334,14 +348,30 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
           {/* Checks Row */}
           <div className="flex items-center">
             <div className="w-[105px] sm:w-[120px] shrink-0 flex items-center gap-2 text-praxd-text-muted">
-              <CheckCircle2 className="w-3.5 h-3.5 text-praxd-green" />
+              {checksList.length === 0 ? (
+                <Clock className="w-3.5 h-3.5 text-praxd-text-muted" />
+              ) : hasFailedChecks ? (
+                <XCircle className="w-3.5 h-3.5 text-praxd-red" />
+              ) : hasPendingChecks ? (
+                <Clock className="w-3.5 h-3.5 text-praxd-amber" />
+              ) : (
+                <CheckCircle2 className="w-3.5 h-3.5 text-praxd-green" />
+              )}
               <span>Checks</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-praxd-green font-medium">Successful</span>
-              {Array.isArray(pr.checks) && pr.checks.length > 0 && (
+              {checksList.length === 0 ? (
+                <span className="text-praxd-text-muted font-medium">No checks</span>
+              ) : hasFailedChecks ? (
+                <span className="text-praxd-red font-medium">Failed</span>
+              ) : hasPendingChecks ? (
+                <span className="text-praxd-amber font-medium">In progress</span>
+              ) : (
+                <span className="text-praxd-green font-medium">Passed</span>
+              )}
+              {checksList.length > 0 && (
                 <span className="text-praxd-text-muted text-[11px] tabular-nums font-mono">
-                  ({pr.checks.filter((c) => c.conclusion === "success").length}/{pr.checks.length} passed)
+                  ({passedChecksCount}/{checksList.length} passed)
                 </span>
               )}
             </div>

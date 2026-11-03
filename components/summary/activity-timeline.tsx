@@ -46,7 +46,7 @@ export function ActivityTimeline({
   const [copiedCommentId, setCopiedCommentId] = useState<string | null>(null);
   const [copiedSha, setCopiedSha] = useState<string | null>(null);
   const [localComments, setLocalComments] = useState<PRComment[]>(() =>
-    Array.isArray(pr.comments) ? pr.comments.filter((c) => c.commentType === "issue") : []
+    Array.isArray(pr.comments) ? pr.comments.filter((c) => c.commentType !== "review") : []
   );
 
   const handleCopySha = (sha: string) => {
@@ -59,9 +59,12 @@ export function ActivityTimeline({
 
   // Sync comments on PR change and load fresh comments from API
   useEffect(() => {
-    setLocalComments(
-      Array.isArray(pr.comments) ? pr.comments.filter((c) => c.commentType === "issue") : []
-    );
+    const initial = Array.isArray(pr.comments)
+      ? pr.comments.filter((c) => c.commentType !== "review")
+      : [];
+    if (initial.length > 0) {
+      setLocalComments(initial);
+    }
 
     let isMounted = true;
     async function loadFreshComments() {
@@ -71,9 +74,12 @@ export function ActivityTimeline({
           const json = await res.json();
           const fetchedComments = json.comments || json.data?.comments;
           if (isMounted && Array.isArray(fetchedComments)) {
-            setLocalComments(fetchedComments);
-            if (onCommentsLoaded) {
-              onCommentsLoaded(fetchedComments);
+            const timelineComments = fetchedComments.filter((c) => c.commentType !== "review");
+            if (timelineComments.length > 0) {
+              setLocalComments(timelineComments);
+              if (onCommentsLoaded) {
+                onCommentsLoaded(timelineComments);
+              }
             }
           }
         }

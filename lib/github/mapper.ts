@@ -16,6 +16,16 @@ export function mapDbPrToDomain(pr: any): PullRequest {
     pr.author?.avatarUrl ||
     (authorLogin !== "unknown" ? `https://github.com/${authorLogin}.png` : "https://github.com/ghost.png");
 
+  const checks = Array.isArray(pr.checks) ? pr.checks : [];
+  let checksStatus: "success" | "failure" | "pending" | undefined = pr.checksStatus || pr.checks_status;
+  if (!checksStatus && checks.length > 0) {
+    const hasFailure = checks.some(
+      (c: any) => c.conclusion === "failure" || c.conclusion === "timed_out" || c.conclusion === "cancelled"
+    );
+    const hasPending = checks.some((c: any) => c.status === "in_progress" || c.status === "queued");
+    checksStatus = hasFailure ? "failure" : hasPending ? "pending" : "success";
+  }
+
   return {
     id: pr.id,
     number: pr.number,
@@ -48,20 +58,11 @@ export function mapDbPrToDomain(pr: any): PullRequest {
           avatarUrl: r.avatar_url || (typeof r === "string" ? `https://github.com/${r}.png` : undefined),
         }))
       : [],
-    checksStatus: "success",
-    checks: Array.isArray(pr.checks)
-      ? pr.checks
-      : [
-          {
-            id: `check-${pr.number}`,
-            name: "GitHub Actions CI",
-            status: "completed",
-            conclusion: "success",
-            startedAt: pr.github_created_at || pr.created_at,
-            completedAt: pr.github_updated_at || pr.updated_at,
-          },
-        ],
-    commentsCount: (pr.comments_count || 0) + (pr.review_comments_count || 0) || (Array.isArray(pr.comments) ? pr.comments.length : 0),
+    checksStatus: checksStatus || "success",
+    checks,
+    commentsCount:
+      (pr.comments_count || 0) + (pr.review_comments_count || 0) ||
+      (Array.isArray(pr.comments) ? pr.comments.length : 0),
     comments: Array.isArray(pr.comments) ? pr.comments : [],
     commits: Array.isArray(pr.commits) ? pr.commits : [],
     files: Array.isArray(pr.files) ? pr.files : [],

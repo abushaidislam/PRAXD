@@ -1,8 +1,8 @@
 # PRAXD Build Status — Personal PR Management Edition
 
-**Last updated:** 2026-11-02  
-**Current version:** v1.2.0-personal (Supabase Synchronized Personal PR Workspace with Infinite Scroll)  
-**Status:** Complete & Production Ready — Personal Multi-Repo PR Workspace with Supabase Caching & 24-Item Infinite Scroll
+**Last updated:** 2026-11-03  
+**Current version:** v1.2.1-personal (Real-time GitHub & Supabase Bi-Directional Comments, CI Checks & Commits Sync)  
+**Status:** Complete & Production Ready — Personal Multi-Repo PR Workspace with Supabase Caching, Real CI Checks & Real Comments Sync
 
 ---
 
@@ -10,12 +10,14 @@
 
 PRAXD connects directly to the developer's personal GitHub account via GitHub App (`abushaidislam`), synchronizing across all repositories (93 repositories) and PRs into a high-performance Supabase PostgreSQL database read-model.
 
-### Core Architecture Enhancements (v1.2.0)
+### Core Architecture Enhancements (v1.2.1)
 1. **Supabase Personal Workspace Bootstrapping:** Automatically resolves the canonical personal workspace (`a0000000-0000-0000-0000-000000000001`) with associated member and active GitHub App installation (`176989009`).
 2. **24-Item Pagination & Infinite Scroll:** The PR sidebar loads the initial 24 PRs and smoothly fetches the next batches as the user scrolls, showing accurate counts (`Showing X of Y pull requests`).
 3. **Multi-Repository Aggregation:** PRs across all repositories are searchable, filterable (`All`, `Reviewing`, `Authored`), and rendered with their respective repository identity.
 4. **Rich Live Details Hydration:** Selected PRs are hydrated on demand with full syntax diffs, file trees, discussion comments, and CI/CD check status.
-5. **Self-Healing Webhook Provisioning:** GitHub webhooks auto-provision any incoming repository if not yet present in the local cache, preventing dropped events.
+5. **Real-time Bi-Directional GitHub & Supabase Comments Sync:** Real GitHub issue comments and review comments are fetched and synchronized into Supabase `pull_request_comments`. Writing comments in PRAXD posts to GitHub and persists to Supabase instantly.
+6. **Live GitHub Actions & CI Check Runs:** Real CI check runs (e.g. Vercel Preview Comments, GitHub Actions) fetched directly from GitHub commits API, persisted into Supabase `check_runs`, and rendered with live statuses and external GitHub logs links.
+7. **Full Commit History Timeline:** Commits on the PR branch are retrieved from GitHub, cached into Supabase `pull_request_commits`, and displayed with author avatars, commit SHAs, and relative timestamps in `ActivityTimeline`.
 
 ---
 

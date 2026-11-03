@@ -502,7 +502,7 @@ export async function fetchLivePullRequestDetails(
   try {
     const token = await getInstallationAccessToken(install.id);
 
-    const [prRes, filesRes, issueCommentsRes, reviewCommentsRes] = await Promise.all([
+    const [prRes, filesRes, issueCommentsRes, reviewCommentsRes, commitsRes] = await Promise.all([
       fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -535,6 +535,14 @@ export async function fetchLivePullRequestDetails(
           "User-Agent": "PRAXD-PR-Workspace/0.1.0",
         },
       }),
+      fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}/commits?per_page=100`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "User-Agent": "PRAXD-PR-Workspace/0.1.0",
+        },
+      }),
     ]);
 
     if (!prRes.ok) return null;
@@ -542,6 +550,7 @@ export async function fetchLivePullRequestDetails(
     const rawFiles = filesRes.ok ? await filesRes.json() : [];
     const rawIssueComments = issueCommentsRes.ok ? await issueCommentsRes.json() : [];
     const rawReviewComments = reviewCommentsRes.ok ? await reviewCommentsRes.json() : [];
+    const rawCommits = commitsRes.ok ? await commitsRes.json() : [];
 
     const issueComments: PRComment[] = Array.isArray(rawIssueComments)
       ? rawIssueComments.map((c: any) => ({
@@ -600,6 +609,49 @@ export async function fetchLivePullRequestDetails(
     const authorLogin = pr.user?.login || "unknown";
     const authorAvatar = pr.user?.avatar_url || (authorLogin !== "unknown" ? `https://github.com/${authorLogin}.png` : "https://github.com/ghost.png");
 
+    // Fetch real CI check runs and commit statuses
+    const checks = await fetchLivePullRequestChecks(owner, repo, headSha);
+
+    // Dynamic checks status calculation
+    let checksStatus: "success" | "failure" | "pending" | undefined = undefined;
+    if (checks.length > 0) {
+      const hasFailure = checks.some((c) => c.conclusion === "failure" || c.conclusion === "timed_out" || c.conclusion === "cancelled");
+      const hasPending = checks.some((c) => c.status === "in_progress" || c.status === "queued");
+      if (hasFailure) {
+        checksStatus = "failure";
+      } else if (hasPending) {
+        checksStatus = "pending";
+      } else {
+        checksStatus = "success";
+      }
+    }
+
+    // Parse real commits from GitHub
+    const commits: PRCommit[] = Array.isArray(rawCommits) && rawCommits.length > 0
+      ? rawCommits.map((c: any) => ({
+          sha: c.sha,
+          shortSha: (c.sha || "").slice(0, 7),
+          message: c.commit?.message?.split("\n")[0] || c.commit?.message || "Commit",
+          author: {
+            login: c.author?.login || c.commit?.author?.name || "unknown",
+            avatarUrl: c.author?.avatar_url || (c.author?.login ? `https://github.com/${c.author.login}.png` : "https://github.com/ghost.png"),
+            name: c.commit?.author?.name || c.author?.login || "unknown",
+          },
+          committedDate: c.commit?.author?.date || c.commit?.committer?.date || new Date().toISOString(),
+        }))
+      : [
+          {
+            sha: headSha.slice(0, 7),
+            shortSha: headSha.slice(0, 7),
+            message: pr.title || "Commit",
+            author: {
+              login: authorLogin,
+              avatarUrl: authorAvatar,
+            },
+            committedDate: pr.updated_at || new Date().toISOString(),
+          },
+        ];
+
     return {
       id: `live__${owner}__${repo}__${pr.number}`,
       number: pr.number,
@@ -627,31 +679,11 @@ export async function fetchLivePullRequestDetails(
       category: authorLogin === install.login ? "authored" : "all",
       reviewDecision: pr.state === "open" ? "review_required" : undefined,
       reviewers: [],
-      checksStatus: "success",
-      checks: [
-        {
-          id: `check-${pr.number}`,
-          name: "GitHub Actions CI",
-          status: "completed",
-          conclusion: "success",
-          startedAt: pr.created_at,
-          completedAt: pr.updated_at,
-        },
-      ],
+      checksStatus: checksStatus || "success",
+      checks,
       commentsCount: totalCommentCount,
       comments,
-      commits: [
-        {
-          sha: headSha.slice(0, 7),
-          shortSha: headSha.slice(0, 7),
-          message: pr.title || "Commit",
-          author: {
-            login: authorLogin,
-            avatarUrl: authorAvatar,
-          },
-          committedDate: pr.updated_at || new Date().toISOString(),
-        },
-      ],
+      commits,
       files,
     };
   } catch {
@@ -694,6 +726,138 @@ export async function updateLivePullRequest(
     return { success: true, data: updated };
   } catch (err: any) {
     return { success: false, error: err.message || "Network error updating pull request" };
+  }
+}
+
+/**
+ * Fetches real CI check runs and commit statuses for a specific commit SHA on GitHub.
+ */
+export async function fetchLivePullRequestChecks(
+  owner: string,
+  repo: string,
+  headSha?: string
+): Promise<CheckRun[]> {
+  const install = await getActiveInstallation();
+  if (!install || !headSha || headSha === "head") return [];
+
+  try {
+    const token = await getInstallationAccessToken(install.id);
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "User-Agent": "PRAXD-PR-Workspace/0.1.0",
+    };
+
+    const res = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/commits/${headSha}/check-runs?per_page=100`,
+      { headers }
+    );
+
+    const checks: CheckRun[] = [];
+
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.check_runs)) {
+        for (const c of data.check_runs) {
+          checks.push({
+            id: String(c.id),
+            name: c.name || "CI Check",
+            status:
+              c.status === "in_progress" || c.status === "queued" || c.status === "completed"
+                ? c.status
+                : "completed",
+            conclusion: c.conclusion || undefined,
+            startedAt: c.started_at,
+            completedAt: c.completed_at,
+            detailsUrl: c.html_url || c.details_url,
+          });
+        }
+      }
+    }
+
+    // If no check runs found, query commit statuses (e.g. Travis, Jenkins, older actions)
+    if (checks.length === 0) {
+      const statusRes = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/commits/${headSha}/status`,
+        { headers }
+      );
+      if (statusRes.ok) {
+        const sData = await statusRes.json();
+        if (Array.isArray(sData.statuses)) {
+          for (const s of sData.statuses) {
+            checks.push({
+              id: String(s.id),
+              name: s.context || "CI Status",
+              status: s.state === "pending" ? "in_progress" : "completed",
+              conclusion:
+                s.state === "success"
+                  ? "success"
+                  : s.state === "pending"
+                  ? undefined
+                  : "failure",
+              startedAt: s.created_at,
+              completedAt: s.updated_at,
+              detailsUrl: s.target_url,
+            });
+          }
+        }
+      }
+    }
+
+    return checks;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Fetches commits associated with a live GitHub Pull Request.
+ */
+export async function fetchLivePullRequestCommits(
+  owner: string,
+  repo: string,
+  pullNumber: number
+): Promise<PRCommit[]> {
+  const install = await getActiveInstallation();
+  if (!install) return [];
+
+  try {
+    const token = await getInstallationAccessToken(install.id);
+    const res = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}/commits?per_page=100`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "User-Agent": "PRAXD-PR-Workspace/0.1.0",
+        },
+      }
+    );
+
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!Array.isArray(data)) return [];
+
+    return data.map((c: any) => ({
+      sha: c.sha,
+      shortSha: (c.sha || "").slice(0, 7),
+      message: c.commit?.message?.split("\n")[0] || c.commit?.message || "Commit",
+      author: {
+        login: c.author?.login || c.commit?.author?.name || "unknown",
+        avatarUrl:
+          c.author?.avatar_url ||
+          (c.author?.login
+            ? `https://github.com/${c.author.login}.png`
+            : "https://github.com/ghost.png"),
+        name: c.commit?.author?.name || c.author?.login || "unknown",
+      },
+      committedDate:
+        c.commit?.author?.date || c.commit?.committer?.date || new Date().toISOString(),
+    }));
+  } catch {
+    return [];
   }
 }
 

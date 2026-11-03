@@ -78,12 +78,14 @@ export function PRWorkspace() {
             setHasMore(json.pagination?.hasMore || false);
             setTotalPrCount(json.pagination?.total || json.data.length);
 
-            // If the first PR files or comments need loading, fetch its details
+            // If the first PR files, comments, checks, or commits need loading, fetch its details
             const firstPr = json.data[0];
             const firstNeedsFiles = !firstPr.files || firstPr.files.length === 0;
             const firstNeedsComments =
               (firstPr.commentsCount ?? 0) > 0 && (!firstPr.comments || firstPr.comments.length === 0);
-            if (firstNeedsFiles || firstNeedsComments) {
+            const firstNeedsCommits = !firstPr.commits || firstPr.commits.length === 0;
+            const firstNeedsChecks = !firstPr.checks || firstPr.checks.length === 0;
+            if (firstNeedsFiles || firstNeedsComments || firstNeedsCommits || firstNeedsChecks) {
               try {
                 const detailRes = await fetch(`/api/pull-requests/${firstPr.id}`);
                 if (detailRes.ok) {
@@ -153,7 +155,9 @@ export function PRWorkspace() {
     }
     const needsFiles = !pr.files || pr.files.length === 0;
     const needsComments = (pr.commentsCount ?? 0) > 0 && (!pr.comments || pr.comments.length === 0);
-    if (needsFiles || needsComments) {
+    const needsCommits = !pr.commits || pr.commits.length === 0;
+    const needsChecks = !pr.checks || pr.checks.length === 0;
+    if (needsFiles || needsComments || needsCommits || needsChecks) {
       try {
         const res = await fetch(`/api/pull-requests/${pr.id}`);
         if (res.ok) {
