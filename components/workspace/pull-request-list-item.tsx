@@ -9,7 +9,7 @@ interface PullRequestListItemProps {
   onSelect: (pr: PullRequest) => void;
 }
 
-export function PullRequestListItem({
+export const PullRequestListItem = React.memo(function PullRequestListItem({
   pr,
   isSelected,
   onSelect,
@@ -71,6 +71,8 @@ export function PullRequestListItem({
               <img
                 src={pr.author.avatarUrl}
                 alt={pr.author.login}
+                loading="lazy"
+                decoding="async"
                 className="w-3.5 h-3.5 rounded-full object-cover shrink-0 ring-1 ring-white/10 bg-[#252525]"
                 onError={(e) => {
                   (e.target as HTMLElement).style.display = "none";
@@ -96,4 +98,4 @@ export function PullRequestListItem({
       </div>
     </button>
   );
-}
+});

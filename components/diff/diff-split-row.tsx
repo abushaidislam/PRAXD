@@ -23,7 +23,7 @@ export interface DiffSplitRowProps {
   onAddInlineComment: (line: number) => void;
 }
 
-export function DiffSplitRow({
+export const DiffSplitRow = React.memo(function DiffSplitRow({
   row,
   wrapLines,
   scrollX,
@@ -247,4 +247,4 @@ export function DiffSplitRow({
       )}
     </div>
   );
-}
+});

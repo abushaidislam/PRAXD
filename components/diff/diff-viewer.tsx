@@ -34,7 +34,7 @@ export interface DiffViewerProps {
   onToggleViewed?: () => void;
 }
 
-export function DiffViewer({
+export const DiffViewer = React.memo(function DiffViewer({
   file,
   diffMode,
   comments,
@@ -63,8 +63,11 @@ export function DiffViewer({
     }
   };
 
-  // Compute effective diff lines: uses file.lines or parses file.patch on the fly
+  // Compute effective diff lines: skips parsing if file is collapsed (Lazy Parsing)
   const effectiveLines: DiffLine[] = useMemo(() => {
+    if (isCollapsible && !isExpanded) {
+      return [];
+    }
     if (file.lines && file.lines.length > 0) {
       return file.lines;
     }
@@ -72,7 +75,7 @@ export function DiffViewer({
       return parsePatchToLines(file.patch);
     }
     return [];
-  }, [file.lines, file.patch]);
+  }, [file.lines, file.patch, isCollapsible, isExpanded]);
 
   // Compute synchronized split rows to prevent height desynchronization
   const splitRows: SplitRow[] = useMemo(() => {
@@ -485,4 +488,4 @@ export function DiffViewer({
       )}
     </div>
   );
-}
+});

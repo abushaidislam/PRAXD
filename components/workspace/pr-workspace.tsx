@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { PullRequest } from "@/types/pr";
 import { FIXTURE_PULL_REQUESTS } from "@/lib/fixtures/pull-requests";
 import { PullRequestSidebar } from "../pull-request-sidebar";
@@ -28,6 +28,7 @@ export function PRWorkspace() {
   const [hasMore, setHasMore] = useState(false);
   const [totalPrCount, setTotalPrCount] = useState<number | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const prCacheRef = useRef<Map<string, PullRequest>>(new Map());
 
   // Automatically switch to Live Mode if GitHub App is connected or redirected
   useEffect(() => {
@@ -92,6 +93,7 @@ export function PRWorkspace() {
                   const detailJson = await detailRes.json();
                   const loadedPr = detailJson?.data?.id ? detailJson.data : (detailJson?.id ? detailJson : null);
                   if (loadedPr) {
+                    prCacheRef.current.set(loadedPr.id, loadedPr);
                     setSelectedPr(loadedPr);
                     setPullRequests((prev) =>
                       prev.map((item, idx) => (idx === 0 ? loadedPr : item))
@@ -147,6 +149,16 @@ export function PRWorkspace() {
 
   // Select PR and lazily fetch files/diff and comments if not yet loaded
   const handleSelectPr = useCallback(async (pr: PullRequest) => {
+    // Check if fully loaded version exists in client-side memory cache
+    const cached = prCacheRef.current.get(pr.id);
+    if (cached && cached.files && cached.files.length > 0) {
+      setSelectedPr(cached);
+      if (typeof window !== "undefined" && window.innerWidth < 768) {
+        setIsSidebarOpen(false);
+      }
+      return;
+    }
+
     setSelectedPr(pr);
 
     // On mobile (< 768px), auto-collapse sidebar to show the selected PR workspace
@@ -164,6 +176,7 @@ export function PRWorkspace() {
           const fullPr = await res.json();
           const loadedPr = fullPr?.data?.id ? fullPr.data : (fullPr?.id ? fullPr : null);
           if (loadedPr) {
+            prCacheRef.current.set(loadedPr.id, loadedPr);
             setSelectedPr(loadedPr);
             setPullRequests((prev) =>
               prev.map((item) => (item.id === pr.id ? loadedPr : item))
@@ -181,6 +194,7 @@ export function PRWorkspace() {
     setSelectedPr((prev) => {
       if (!prev) return prev;
       const next = { ...prev, ...updates };
+      prCacheRef.current.set(next.id, next);
       setPullRequests((prs) => prs.map((item) => (item.id === next.id ? next : item)));
       return next;
     });
