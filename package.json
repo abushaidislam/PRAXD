@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "enrich-prs": "node --env-file=.env.local scripts/enrich-prs.js"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
