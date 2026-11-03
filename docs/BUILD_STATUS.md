@@ -37,7 +37,7 @@ PRAXD connects directly to the developer's personal GitHub account via GitHub Ap
   - Direct external link to GitHub PR (`ExternalLink`).
 - [x] **Comprehensive Summary View:**
   - Author details, branch flow (`head > base`), requested reviewers, and status.
-  - In-place title & description editing directly syncing to GitHub.
+  - In-place title & description editing with Write/Preview tabs, markdown toolbar, keyboard shortcuts (Ctrl+Enter, Esc), error boundaries, and background hydration protection.
   - Real-time CI/CD check run list (`CheckRunList`) with passing/failing status and logs.
   - Pixel-accurate GitHub-standard activity timeline (`ActivityTimeline` & `CommentComposer`) with centered spine rail, ring-masked node badges, avatars anchored on rail, and speech-bubble caret connectors.
 - [x] **High-Performance Code Diff Viewer:**

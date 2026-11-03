@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   ShieldAlert,
   Pencil,
@@ -19,6 +19,15 @@ import {
   Clock,
   AlertCircle,
   XCircle,
+  Eye,
+  PenLine,
+  Bold,
+  Italic,
+  Heading,
+  Code,
+  List,
+  Quote,
+  CheckSquare,
 } from "lucide-react";
 import { PullRequest, PRComment } from "@/types/pr";
 import { CheckRunList } from "./check-run-list";
@@ -39,11 +48,17 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleInput, setTitleInput] = useState(pr.title);
   const [isSavingTitle, setIsSavingTitle] = useState(false);
+  const [titleError, setTitleError] = useState<string | null>(null);
 
   // In-place body/description edit state
   const [isEditingBody, setIsEditingBody] = useState(false);
   const [bodyInput, setBodyInput] = useState(pr.body || "");
   const [isSavingBody, setIsSavingBody] = useState(false);
+  const [bodyError, setBodyError] = useState<string | null>(null);
+  const [bodyTab, setBodyTab] = useState<"write" | "preview">("write");
+
+  const prevPrIdRef = useRef(pr.id);
+  const bodyTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Copy feedback state
   const [copiedBranch, setCopiedBranch] = useState(false);
@@ -52,14 +67,31 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
   // Local comments state synchronized with PR prop and timeline additions
   const [commentsList, setCommentsList] = useState<PRComment[]>(pr.comments || []);
 
-  // Sync inputs when selected PR changes
+  // Sync inputs when selected PR changes — protects active user edits from background hydration resets
   useEffect(() => {
-    setTitleInput(pr.title);
-    setIsEditingTitle(false);
-    setBodyInput(pr.body || "");
-    setIsEditingBody(false);
+    // If navigating to a different PR, reset everything cleanly
+    if (prevPrIdRef.current !== pr.id) {
+      prevPrIdRef.current = pr.id;
+      setTitleInput(pr.title);
+      setIsEditingTitle(false);
+      setTitleError(null);
+      setBodyInput(pr.body || "");
+      setIsEditingBody(false);
+      setBodyError(null);
+      setBodyTab("write");
+      setCommentsList(pr.comments || []);
+      return;
+    }
+
+    // On same PR, protect active user drafts from background hydration overwrites
+    if (!isEditingTitle) {
+      setTitleInput(pr.title);
+    }
+    if (!isEditingBody) {
+      setBodyInput(pr.body || "");
+    }
     setCommentsList(pr.comments || []);
-  }, [pr.id, pr.title, pr.body, pr.comments]);
+  }, [pr.id, pr.title, pr.body, pr.comments, isEditingTitle, isEditingBody]);
 
   const effectiveCommentCount = Math.max(
     commentsList.length,
@@ -121,6 +153,7 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
     if (!trimmed || isSavingTitle) return;
 
     setIsSavingTitle(true);
+    setTitleError(null);
     try {
       const res = await fetch(`/api/pull-requests/${pr.id}`, {
         method: "PATCH",
@@ -128,15 +161,20 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
         body: JSON.stringify({ title: trimmed }),
       });
 
-      if (res.ok) {
-        if (onUpdatePr) onUpdatePr({ title: trimmed });
-      } else {
-        if (onUpdatePr) onUpdatePr({ title: trimmed });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => null);
+        throw new Error(errJson?.error?.message || errJson?.message || "Failed to update title");
       }
+
+      onUpdatePr?.({ title: trimmed });
       setIsEditingTitle(false);
-    } catch {
-      if (onUpdatePr) onUpdatePr({ title: trimmed });
-      setIsEditingTitle(false);
+    } catch (err: any) {
+      onUpdatePr?.({ title: trimmed });
+      if (err?.message && !err.message.includes("fetch")) {
+        setTitleError(err.message);
+      } else {
+        setIsEditingTitle(false);
+      }
     } finally {
       setIsSavingTitle(false);
     }
@@ -147,6 +185,7 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
     if (isSavingBody) return;
 
     setIsSavingBody(true);
+    setBodyError(null);
     try {
       const res = await fetch(`/api/pull-requests/${pr.id}`, {
         method: "PATCH",
@@ -154,18 +193,47 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
         body: JSON.stringify({ body: bodyInput }),
       });
 
-      if (res.ok) {
-        if (onUpdatePr) onUpdatePr({ body: bodyInput });
-      } else {
-        if (onUpdatePr) onUpdatePr({ body: bodyInput });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => null);
+        throw new Error(errJson?.error?.message || errJson?.message || "Failed to update description");
       }
+
+      onUpdatePr?.({ body: bodyInput });
       setIsEditingBody(false);
-    } catch {
-      if (onUpdatePr) onUpdatePr({ body: bodyInput });
-      setIsEditingBody(false);
+      setBodyTab("write");
+    } catch (err: any) {
+      onUpdatePr?.({ body: bodyInput });
+      if (err?.message && !err.message.includes("fetch")) {
+        setBodyError(err.message);
+      } else {
+        setIsEditingBody(false);
+      }
     } finally {
       setIsSavingBody(false);
     }
+  };
+
+  // Insert markdown formatting into description textarea
+  const handleInsertBodyMarkdown = (prefix: string, suffix: string = "") => {
+    const textarea = bodyTextareaRef.current;
+    if (!textarea) {
+      setBodyInput((prev) => prev + prefix + suffix);
+      return;
+    }
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const currentText = textarea.value;
+    const selected = currentText.substring(start, end);
+    const placeholder = prefix === "### " ? "Heading" : "text";
+    const replacement = `${prefix}${selected || placeholder}${suffix}`;
+    const nextVal = currentText.substring(0, start) + replacement + currentText.substring(end);
+    setBodyInput(nextVal);
+    setTimeout(() => {
+      textarea.focus();
+      const selStart = start + prefix.length;
+      const selEnd = selStart + (selected ? selected.length : placeholder.length);
+      textarea.setSelectionRange(selStart, selEnd);
+    }, 0);
   };
 
   return (
@@ -178,48 +246,90 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
               <ShieldAlert className="w-6 h-6 text-praxd-blue shrink-0 mt-0.5" />
             )}
             {isEditingTitle ? (
-              <div className="flex items-center gap-2 flex-1">
+              <div className="w-full space-y-2 rounded-xl bg-[#141414] border border-praxd-border p-3 shadow-md transition-all">
+                <div className="flex items-center justify-between text-[11px] text-praxd-text-muted pb-0.5">
+                  <span className="font-medium text-praxd-text-secondary uppercase tracking-wider text-[10px]">
+                    Edit Title
+                  </span>
+                  <span>
+                    Press{" "}
+                    <kbd className="px-1 py-0.5 rounded bg-[#202020] border border-praxd-border-soft text-[10px] font-mono text-praxd-text">
+                      Enter
+                    </kbd>{" "}
+                    to save,{" "}
+                    <kbd className="px-1 py-0.5 rounded bg-[#202020] border border-praxd-border-soft text-[10px] font-mono text-praxd-text">
+                      Esc
+                    </kbd>{" "}
+                    to cancel
+                  </span>
+                </div>
+
                 <input
                   type="text"
                   value={titleInput}
-                  onChange={(e) => setTitleInput(e.target.value)}
+                  onChange={(e) => {
+                    setTitleInput(e.target.value);
+                    if (titleError) setTitleError(null);
+                  }}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSaveTitle();
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleSaveTitle();
+                    }
                     if (e.key === "Escape") {
+                      e.preventDefault();
                       setTitleInput(pr.title);
                       setIsEditingTitle(false);
+                      setTitleError(null);
                     }
                   }}
                   autoFocus
                   disabled={isSavingTitle}
-                  className="flex-1 px-3 py-1.5 rounded-lg bg-[#161616] border border-praxd-border text-[18px] font-semibold text-white focus:outline-none focus:ring-1 focus:ring-praxd-blue"
+                  className="w-full px-3 py-2 rounded-lg bg-[#181818] border border-praxd-border text-[16px] md:text-[18px] font-semibold text-white placeholder-praxd-text-muted focus:outline-none focus:border-praxd-blue focus:ring-1 focus:ring-praxd-blue transition-all"
                   placeholder="Pull request title"
                 />
-                <button
-                  type="button"
-                  onClick={handleSaveTitle}
-                  disabled={isSavingTitle || !titleInput.trim()}
-                  className="p-1.5 rounded-lg bg-praxd-green text-black hover:bg-emerald-600 transition-colors disabled:opacity-50"
-                  aria-label="Save title"
-                >
-                  {isSavingTitle ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Check className="w-4 h-4" />
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTitleInput(pr.title);
-                    setIsEditingTitle(false);
-                  }}
-                  disabled={isSavingTitle}
-                  className="p-1.5 rounded-lg hover:bg-[#202020] text-praxd-text-muted hover:text-praxd-text transition-colors"
-                  aria-label="Cancel editing title"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+
+                {titleError && (
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-red-950/40 border border-red-500/30 text-red-300 text-[11.5px]">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-400" />
+                    <span className="flex-1">{titleError}</span>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTitleInput(pr.title);
+                      setIsEditingTitle(false);
+                      setTitleError(null);
+                    }}
+                    disabled={isSavingTitle}
+                    className="px-3 py-1.5 rounded-lg text-[12px] font-medium bg-[#202020] hover:bg-[#282828] text-praxd-text transition-colors"
+                    aria-label="Cancel editing title"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveTitle}
+                    disabled={isSavingTitle || !titleInput.trim()}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[12px] font-semibold bg-white text-black hover:bg-neutral-200 disabled:opacity-40 disabled:hover:bg-white transition-colors shadow-xs"
+                    aria-label="Save title"
+                  >
+                    {isSavingTitle ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Save title</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             ) : (
               <h1 className="text-[22px] font-semibold text-praxd-text leading-snug break-words">
@@ -231,7 +341,10 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
           {!isEditingTitle && (
             <button
               type="button"
-              onClick={() => setIsEditingTitle(true)}
+              onClick={() => {
+                setIsEditingTitle(true);
+                setTitleError(null);
+              }}
               className="p-1.5 rounded hover:bg-[#202020] text-praxd-text-muted hover:text-praxd-text transition-colors shrink-0"
               aria-label="Edit title"
               title="Edit title"
@@ -423,73 +536,241 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
                   onClick={() => {
                     setIsEditingBody(true);
                     setIsDescriptionExpanded(true);
+                    setBodyError(null);
                   }}
-                  className="p-1 rounded hover:bg-[#202020] text-praxd-text-muted hover:text-praxd-text transition-colors"
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-[#1c1c1c] hover:bg-[#252525] border border-praxd-border-soft text-praxd-text-muted hover:text-praxd-text text-[11.5px] transition-colors"
                   aria-label="Edit description"
                   title="Edit description"
                 >
-                  <Pencil className="w-3.5 h-3.5" />
+                  <Pencil className="w-3 h-3" />
+                  <span>Edit</span>
                 </button>
               )}
             </div>
           </div>
 
           {isDescriptionExpanded && (
-            <div className="rounded-lg bg-[#161616] border border-praxd-border-soft p-4 text-[13px] leading-relaxed text-praxd-text-secondary">
+            <div>
               {isEditingBody ? (
-                <div className="space-y-3">
-                  <textarea
-                    rows={6}
-                    value={bodyInput}
-                    onChange={(e) => setBodyInput(e.target.value)}
-                    disabled={isSavingBody}
-                    placeholder="Add a detailed description for this pull request..."
-                    className="w-full p-3 rounded-lg bg-[#121212] border border-praxd-border text-[12.5px] text-white focus:outline-none focus:ring-1 focus:ring-praxd-blue resize-y font-sans leading-relaxed"
-                  />
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setBodyInput(pr.body || "");
-                        setIsEditingBody(false);
+                <div className="rounded-xl bg-[#141414] border border-praxd-border-soft focus-within:border-praxd-border shadow-md transition-all overflow-hidden">
+                  {/* Toolbar & Tab Header */}
+                  <div className="px-3 py-2 bg-[#191919] border-b border-praxd-border-soft flex items-center justify-between gap-2 text-[12px]">
+                    {/* Write / Preview Tab Switcher */}
+                    <div className="flex items-center gap-1 bg-[#121212] p-0.5 rounded-lg border border-praxd-border-soft">
+                      <button
+                        type="button"
+                        onClick={() => setBodyTab("write")}
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11.5px] font-medium transition-colors ${
+                          bodyTab === "write"
+                            ? "bg-[#252525] text-white shadow-xs"
+                            : "text-praxd-text-muted hover:text-praxd-text"
+                        }`}
+                        aria-label="Write tab"
+                      >
+                        <PenLine className="w-3 h-3" />
+                        <span>Write</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBodyTab("preview")}
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11.5px] font-medium transition-colors ${
+                          bodyTab === "preview"
+                            ? "bg-[#252525] text-white shadow-xs"
+                            : "text-praxd-text-muted hover:text-praxd-text"
+                        }`}
+                        aria-label="Preview tab"
+                      >
+                        <Eye className="w-3 h-3" />
+                        <span>Preview</span>
+                      </button>
+                    </div>
+
+                    {/* Markdown Quick Formatting Toolbar (only on Write tab) */}
+                    {bodyTab === "write" && (
+                      <div className="hidden sm:flex items-center gap-0.5 text-praxd-text-muted">
+                        <button
+                          type="button"
+                          onClick={() => handleInsertBodyMarkdown("**", "**")}
+                          className="p-1.5 rounded hover:bg-[#252525] hover:text-praxd-text transition-colors"
+                          title="Bold (**text**)"
+                          aria-label="Bold formatting"
+                        >
+                          <Bold className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleInsertBodyMarkdown("*", "*")}
+                          className="p-1.5 rounded hover:bg-[#252525] hover:text-praxd-text transition-colors"
+                          title="Italic (*text*)"
+                          aria-label="Italic formatting"
+                        >
+                          <Italic className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleInsertBodyMarkdown("### ")}
+                          className="p-1.5 rounded hover:bg-[#252525] hover:text-praxd-text transition-colors"
+                          title="Heading (### title)"
+                          aria-label="Heading formatting"
+                        >
+                          <Heading className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleInsertBodyMarkdown("`", "`")}
+                          className="p-1.5 rounded hover:bg-[#252525] hover:text-praxd-text transition-colors"
+                          title="Code (`code`)"
+                          aria-label="Code formatting"
+                        >
+                          <Code className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleInsertBodyMarkdown("- ")}
+                          className="p-1.5 rounded hover:bg-[#252525] hover:text-praxd-text transition-colors"
+                          title="Bullet list (- item)"
+                          aria-label="Bullet list formatting"
+                        >
+                          <List className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleInsertBodyMarkdown("- [ ] ")}
+                          className="p-1.5 rounded hover:bg-[#252525] hover:text-praxd-text transition-colors"
+                          title="Task list (- [ ] task)"
+                          aria-label="Task list formatting"
+                        >
+                          <CheckSquare className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleInsertBodyMarkdown("> ")}
+                          className="p-1.5 rounded hover:bg-[#252525] hover:text-praxd-text transition-colors"
+                          title="Quote (> blockquote)"
+                          aria-label="Quote formatting"
+                        >
+                          <Quote className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Editor / Preview Content */}
+                  {bodyTab === "write" ? (
+                    <textarea
+                      ref={bodyTextareaRef}
+                      rows={8}
+                      value={bodyInput}
+                      onChange={(e) => {
+                        setBodyInput(e.target.value);
+                        if (bodyError) setBodyError(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                          e.preventDefault();
+                          handleSaveBody();
+                        }
+                        if (e.key === "Escape") {
+                          e.preventDefault();
+                          setBodyInput(pr.body || "");
+                          setIsEditingBody(false);
+                          setBodyError(null);
+                          setBodyTab("write");
+                        }
                       }}
                       disabled={isSavingBody}
-                      className="px-3 py-1.5 rounded-lg text-[12px] font-medium bg-[#222222] hover:bg-[#2a2a2a] text-praxd-text transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSaveBody}
-                      disabled={isSavingBody}
-                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[12px] font-medium bg-white text-black hover:bg-neutral-200 transition-colors font-semibold"
-                    >
-                      {isSavingBody ? (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          <span>Saving...</span>
-                        </>
+                      placeholder="Add a detailed description for this pull request... (Markdown supported)"
+                      className="w-full p-4 bg-[#141414] text-[13px] text-praxd-text placeholder-praxd-text-muted focus:outline-none resize-y min-h-[160px] font-sans leading-relaxed border-0"
+                    />
+                  ) : (
+                    <div className="p-4 bg-[#141414] min-h-[160px] max-h-[480px] overflow-y-auto text-[13px] text-praxd-text-secondary select-text">
+                      {bodyInput.trim() ? (
+                        <MarkdownContent content={bodyInput} />
                       ) : (
-                        <>
-                          <Check className="w-3.5 h-3.5" />
-                          <span>Save Description</span>
-                        </>
+                        <div className="py-8 text-center text-praxd-text-muted text-[12px] italic">
+                          Nothing to preview yet. Switch back to Write tab to add your description.
+                        </div>
                       )}
-                    </button>
+                    </div>
+                  )}
+
+                  {/* Error banner if save fails */}
+                  {bodyError && (
+                    <div className="mx-3 my-2 flex items-center gap-2 p-2.5 rounded-lg bg-red-950/40 border border-red-500/30 text-red-300 text-[11.5px]">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-400" />
+                      <span className="flex-1">{bodyError}</span>
+                    </div>
+                  )}
+
+                  {/* Footer Action Bar */}
+                  <div className="px-3 py-2 bg-[#181818] border-t border-praxd-border-soft flex items-center justify-between gap-2 text-[11px] text-praxd-text-muted">
+                    <div className="flex items-center gap-1.5">
+                      <span>Markdown supported</span>
+                      <span>·</span>
+                      <span className="hidden sm:inline">
+                        Press{" "}
+                        <kbd className="px-1 py-0.5 rounded bg-[#242424] border border-praxd-border-soft text-[10px] font-mono text-praxd-text">
+                          Ctrl+Enter
+                        </kbd>{" "}
+                        to save,{" "}
+                        <kbd className="px-1 py-0.5 rounded bg-[#242424] border border-praxd-border-soft text-[10px] font-mono text-praxd-text">
+                          Esc
+                        </kbd>{" "}
+                        to cancel
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBodyInput(pr.body || "");
+                          setIsEditingBody(false);
+                          setBodyError(null);
+                          setBodyTab("write");
+                        }}
+                        disabled={isSavingBody}
+                        className="px-3 py-1.5 rounded-lg text-[12px] font-medium bg-[#222222] hover:bg-[#2a2a2a] text-praxd-text transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveBody}
+                        disabled={isSavingBody}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[12px] font-semibold bg-white text-black hover:bg-neutral-200 disabled:opacity-40 disabled:hover:bg-white transition-colors shadow-xs"
+                        aria-label="Save Description"
+                      >
+                        {isSavingBody ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>Saving...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Save Description</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : pr.body && pr.body.trim().length > 0 ? (
-                <div className="select-text">
+                <div className="rounded-xl bg-[#161616] border border-praxd-border-soft p-4 text-[13px] leading-relaxed text-praxd-text-secondary select-text">
                   <MarkdownContent content={pr.body} />
                 </div>
               ) : (
-                <div className="py-4 text-center text-praxd-text-muted space-y-2">
+                <div className="rounded-xl bg-[#161616] border border-praxd-border-soft py-6 text-center text-praxd-text-muted space-y-2">
                   <FileText className="w-5 h-5 mx-auto opacity-40" />
                   <p className="text-[12px]">No description provided for this pull request.</p>
                   <button
                     type="button"
-                    onClick={() => setIsEditingBody(true)}
-                    className="text-[12px] text-praxd-blue hover:underline"
+                    onClick={() => {
+                      setIsEditingBody(true);
+                      setBodyError(null);
+                    }}
+                    className="inline-flex items-center gap-1 text-[12px] text-praxd-blue hover:text-white transition-colors hover:underline font-medium"
                   >
                     + Add a description
                   </button>
