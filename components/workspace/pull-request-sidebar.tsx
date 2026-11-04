@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect, useCallback } from "react";
-import { Search, Filter, ChevronDown, X, PanelLeftClose, RefreshCw } from "lucide-react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { Search, Filter, ChevronDown, X, PanelLeftClose, RefreshCw, Check, RotateCcw } from "lucide-react";
 import { PullRequest } from "@/types/pr";
 import { PullRequestListItem } from "./pull-request-list-item";
 import { BrandLogo } from "../ui/brand-logo";
