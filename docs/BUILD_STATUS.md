@@ -1,8 +1,8 @@
 # PRAXD Build Status — Personal PR Management Edition
 
-**Last updated:** 2026-11-03  
-**Current version:** v1.2.1-personal (Real-time GitHub & Supabase Bi-Directional Comments, CI Checks & Commits Sync)  
-**Status:** Complete & Production Ready — Personal Multi-Repo PR Workspace with Supabase Caching, Real CI Checks & Real Comments Sync
+**Last updated:** 2026-11-04  
+**Current version:** v1.2.2-personal (Self-Healing GitHub Sync, Interactive Filter Popover & Group Selector)  
+**Status:** Complete & Production Ready — Personal Multi-Repo PR Workspace with Interactive Filtering, Live Sync Reconciliation & Fast Caching
 
 ---
 
