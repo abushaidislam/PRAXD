@@ -42,11 +42,13 @@ export async function GET(
     return apiSuccess({ files });
   }
 
-  // Fallback: If DB files table hasn't been populated yet, fetch directly from GitHub
+  // Fallback: If DB files table hasn't been populated yet, fetch directly from GitHub.
+  // Enforce workspace_id check to prevent cross-tenant data leakage via service role client.
   const { data: rawPr } = await supabase
     .from("pull_requests")
     .select("number, repositories(owner_login, name)")
     .eq("id", pullRequestId)
+    .eq("workspace_id", auth.workspaceId)
     .maybeSingle();
 
   const pr = rawPr as any;
