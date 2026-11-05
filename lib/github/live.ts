@@ -981,11 +981,23 @@ export async function mergeLivePullRequest(
     commitMessage?: string;
   } = {}
 ): Promise<{ success: boolean; merged?: boolean; message?: string; sha?: string; error?: string }> {
-  const install = await getActiveInstallation();
-  if (!install) return { success: false, error: "No active GitHub App installation found" };
+  // Prefer personal access token if configured, otherwise use GitHub App installation token
+  const userToken = process.env.GITHUB_PERSONAL_ACCESS_TOKEN || process.env.GITHUB_TOKEN;
+  let token: string | null = null;
+
+  if (userToken) {
+    token = userToken;
+  } else {
+    const install = await getActiveInstallation();
+    if (!install) return { success: false, error: "No active GitHub App installation found" };
+    try {
+      token = await getInstallationAccessToken(install.id);
+    } catch (err: any) {
+      return { success: false, error: err.message || "Failed to acquire GitHub App token" };
+    }
+  }
 
   try {
-    const token = await getInstallationAccessToken(install.id);
     const payload: Record<string, string> = {
       merge_method: options.mergeMethod || "merge",
     };
