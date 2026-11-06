@@ -293,7 +293,10 @@ export function PRWorkspace() {
               onViewChange={setActiveView}
               isSidebarOpen={isSidebarOpen}
               onToggleSidebar={() => setIsSidebarOpen(true)}
-              onMergeSuccess={() => handleUpdatePr({ state: "merged" })}
+              onMergeSuccess={() => {
+                handleUpdatePr({ state: "merged" });
+                handleSyncPrs();
+              }}
               onOpenShortcuts={() => setIsShortcutsOpen(true)}
             />
 

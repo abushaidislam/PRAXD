@@ -979,59 +979,79 @@ export async function mergeLivePullRequest(
     mergeMethod?: "merge" | "squash" | "rebase";
     commitTitle?: string;
     commitMessage?: string;
+    sha?: string;
   } = {}
 ): Promise<{ success: boolean; merged?: boolean; message?: string; sha?: string; error?: string }> {
-  // Prefer personal access token if configured, otherwise use GitHub App installation token
   const userToken = process.env.GITHUB_PERSONAL_ACCESS_TOKEN || process.env.GITHUB_TOKEN;
-  let token: string | null = null;
+  const tokensToTry: string[] = [];
 
   if (userToken) {
-    token = userToken;
-  } else {
-    const install = await getActiveInstallation();
-    if (!install) return { success: false, error: "No active GitHub App installation found" };
+    tokensToTry.push(userToken);
+  }
+
+  const install = await getActiveInstallation();
+  if (install) {
     try {
-      token = await getInstallationAccessToken(install.id);
+      const appToken = await getInstallationAccessToken(install.id);
+      if (appToken && !tokensToTry.includes(appToken)) {
+        tokensToTry.push(appToken);
+      }
+    } catch {
+      // Ignore app token acquisition failure
+    }
+  }
+
+  if (tokensToTry.length === 0) {
+    return { success: false, error: "No GitHub credentials configured (neither Personal Access Token nor GitHub App)" };
+  }
+
+  const payload: Record<string, string> = {
+    merge_method: options.mergeMethod || "merge",
+  };
+  if (options.commitTitle) payload.commit_title = options.commitTitle;
+  if (options.commitMessage) payload.commit_message = options.commitMessage;
+  if (options.sha) payload.sha = options.sha;
+
+  let lastError = "Failed to merge pull request";
+
+  for (const token of tokensToTry) {
+    try {
+      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}/merge`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "User-Agent": "PRAXD-PR-Workspace/0.1.0",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.merged !== false) {
+        return {
+          success: true,
+          merged: Boolean(data.merged),
+          message: data.message || "Pull Request successfully merged",
+          sha: data.sha || "",
+        };
+      }
+
+      lastError = data.message || `GitHub merge failed with HTTP ${res.status}`;
+      // If error is 401 or 403, continue loop to try fallback token
+      if (res.status !== 401 && res.status !== 403) {
+        return {
+          success: false,
+          merged: false,
+          error: lastError,
+        };
+      }
     } catch (err: any) {
-      return { success: false, error: err.message || "Failed to acquire GitHub App token" };
+      lastError = err.message || "Network error merging pull request";
     }
   }
 
-  try {
-    const payload: Record<string, string> = {
-      merge_method: options.mergeMethod || "merge",
-    };
-    if (options.commitTitle) payload.commit_title = options.commitTitle;
-    if (options.commitMessage) payload.commit_message = options.commitMessage;
-
-    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}/merge`, {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "PRAXD-PR-Workspace/0.1.0",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      return {
-        success: false,
-        merged: false,
-        error: data.message || `Failed to merge PR: HTTP ${res.status}`,
-      };
-    }
-
-    return {
-      success: true,
-      merged: Boolean(data.merged),
-      message: data.message || "Pull Request successfully merged",
-      sha: data.sha || "",
-    };
-  } catch (err: any) {
-    return { success: false, merged: false, error: err.message || "Network error merging pull request" };
-  }
+  return { success: false, merged: false, error: lastError };
 }

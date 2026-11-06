@@ -203,6 +203,7 @@ export function WorkspaceHeader({
       {/* Merge Confirmation Modal */}
       {pr && (
         <MergeModal
+          key={pr.id}
           pr={pr}
           isOpen={isMergeModalOpen}
           onClose={() => setIsMergeModalOpen(false)}

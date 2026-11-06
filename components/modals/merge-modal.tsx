@@ -24,6 +24,17 @@ export function MergeModal({ pr, isOpen, onClose, onMergeSuccess }: MergeModalPr
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   React.useEffect(() => {
+    if (isOpen && pr) {
+      setMergeMethod("merge");
+      setCommitTitle(`Merge pull request #${pr.number} from ${pr.headRef}`);
+      setCommitMessage(pr.title || "");
+      setErrorMessage(null);
+      setSuccessMessage(null);
+      setIsMerging(false);
+    }
+  }, [isOpen, pr]);
+
+  React.useEffect(() => {
     if (!isOpen) return;
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !isMerging) {
@@ -63,6 +74,10 @@ export function MergeModal({ pr, isOpen, onClose, onMergeSuccess }: MergeModalPr
           mergeMethod,
           commitTitle: commitTitle.trim() || undefined,
           commitMessage: commitMessage.trim() || undefined,
+          repoOwner: pr.repoOwner,
+          repoName: pr.repoName,
+          pullNumber: pr.number,
+          headSha: pr.headSha,
         }),
       });
 
@@ -74,7 +89,7 @@ export function MergeModal({ pr, isOpen, onClose, onMergeSuccess }: MergeModalPr
         return;
       }
 
-      setSuccessMessage(json.data?.message || "Pull request merged successfully!");
+      setSuccessMessage(json.data?.message || json.message || "Pull request merged successfully!");
       setTimeout(() => {
         setIsMerging(false);
         onMergeSuccess();

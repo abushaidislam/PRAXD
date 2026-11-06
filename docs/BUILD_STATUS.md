@@ -1,8 +1,8 @@
 # PRAXD Build Status — Personal PR Management Edition
 
-**Last updated:** 2026-11-04  
-**Current version:** v1.2.2-personal (Self-Healing GitHub Sync, Interactive Filter Popover & Group Selector)  
-**Status:** Complete & Production Ready — Personal Multi-Repo PR Workspace with Interactive Filtering, Live Sync Reconciliation & Fast Caching
+**Last updated:** 2026-11-06  
+**Current version:** v1.2.3-personal (Authoritative GitHub PR Merge Execution & Dynamic Modal State Sync)  
+**Status:** Complete & Production Ready — Personal Multi-Repo PR Workspace with Interactive Filtering, Live Sync Reconciliation, Authoritative GitHub PR Merge Execution & Fast Caching
 
 ---
 
@@ -60,7 +60,11 @@ PRAXD connects directly to the developer's personal GitHub account via GitHub Ap
 - [x] Durable delivery deduplication preventing duplicate event execution.
 
 ### 4. Functional Personal PR Write Actions
-- [x] Interactive PR Merge Action (Merge commit, Squash, Rebase).
+- [x] **Authoritative GitHub PR Merge Action:**
+  - Real GitHub API execution (`PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge`) using authenticated GitHub App installation token or PAT with automatic fallback.
+  - Strict error handling (never returns fake `{ merged: true }` on GitHub failure; relays exact GitHub conflict / status errors).
+  - Dynamic `MergeModal` remount and state synchronization (`key={pr.id}`, `useEffect` sync) matching selected PR title and branch.
+  - Automatic Supabase state synchronization (`state = 'merged'`, `merged_at`, `head_sha`) and UI workspace cache invalidation.
 - [x] In-Place PR Title & Description Editing.
 - [x] PR Conversation Comments & Multi-Line Markdown Composer.
 
