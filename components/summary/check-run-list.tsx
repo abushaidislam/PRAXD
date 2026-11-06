@@ -20,8 +20,10 @@ export function CheckRunList({ checks }: CheckRunListProps) {
       <button
         type="button"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center gap-1.5 text-[14px] font-medium text-praxd-text hover:text-white transition-colors"
+        className="flex items-center gap-1.5 text-[14px] font-medium text-praxd-text hover:text-white transition-colors rounded-md px-1 py-0.5 -mx-1 focus:outline-none focus-visible:ring-1 focus-visible:ring-praxd-blue"
         aria-expanded={isExpanded}
+        aria-controls="check-run-list-items"
+        aria-label={`Checks: ${passedCount} of ${checks.length} passed. Click to ${isExpanded ? "collapse" : "expand"}`}
       >
         <span>Checks</span>
         {isExpanded ? (
@@ -35,7 +37,7 @@ export function CheckRunList({ checks }: CheckRunListProps) {
       </button>
 
       {isExpanded && (
-        <div className="space-y-1.5 pt-1">
+        <div id="check-run-list-items" className="space-y-1.5 pt-1">
           {checks.map((check) => (
             <div
               key={check.id}
