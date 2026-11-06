@@ -1,8 +1,8 @@
 # PRAXD Build Status — Personal PR Management Edition
 
 **Last updated:** 2026-11-06  
-**Current version:** v1.2.3-personal (Authoritative GitHub PR Merge Execution & Dynamic Modal State Sync)  
-**Status:** Complete & Production Ready — Personal Multi-Repo PR Workspace with Interactive Filtering, Live Sync Reconciliation, Authoritative GitHub PR Merge Execution & Fast Caching
+**Current version:** v1.2.4-personal (Stale-While-Revalidate Browser Caching, Shimmer DiffSkeleton & Realtime PR Auto-Prepend)  
+**Status:** Complete & Production Ready — Personal Multi-Repo PR Workspace with SWR Browser Cache, Shimmer Diff Skeleton, Realtime Auto-Prepend, Interactive Filtering & Fast Caching
 
 ---
 
@@ -18,6 +18,9 @@ PRAXD connects directly to the developer's personal GitHub account via GitHub Ap
 5. **Real-time Bi-Directional GitHub & Supabase Comments Sync:** Real GitHub issue comments and review comments are fetched and synchronized into Supabase `pull_request_comments`. Writing comments in PRAXD posts to GitHub and persists to Supabase instantly.
 6. **Live GitHub Actions & CI Check Runs:** Real CI check runs (e.g. Vercel Preview Comments, GitHub Actions) fetched directly from GitHub commits API, persisted into Supabase `check_runs`, and rendered with live statuses and external GitHub logs links.
 7. **Full Commit History Timeline:** Commits on the PR branch are retrieved from GitHub, cached into Supabase `pull_request_commits`, and displayed with author avatars, commit SHAs, and relative timestamps in `ActivityTimeline`.
+8. **Stale-While-Revalidate (SWR) Browser Storage Caching:** `lib/client-cache.ts` persists PR lists and per-PR diff details into `localStorage` & `sessionStorage`. On page refresh or revisits, real PR data renders in 0ms without layout shift or mock data flicker.
+9. **Diff Shimmer Skeleton (`DiffSkeleton`):** Replaced premature 'No file diffs to display' placeholder with an authentic dark-themed GitHub diff skeleton (line number gutters, additions/deletions tint, shimmering code lines) during lazy diff hydration.
+10. **Realtime PR Auto-Prepend:** Listens for database `INSERT` events via Supabase Realtime channel and window focus / 30s background reconciliation, automatically prepending newly arrived PRs to the top of the inbox.
 
 ---
 

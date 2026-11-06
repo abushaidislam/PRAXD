@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from "react"
 import { Search, Filter, ChevronDown, X, PanelLeftClose, RefreshCw, Check, RotateCcw } from "lucide-react";
 import { PullRequest, PRState } from "@/types/pr";
 import { PullRequestListItem } from "./pull-request-list-item";
+import { PRSidebarSkeleton } from "./pr-sidebar-skeleton";
 import { BrandLogo } from "../ui/brand-logo";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +18,7 @@ interface PullRequestSidebarProps {
   totalCount?: number | null;
   onSync?: () => Promise<void> | void;
   isSyncing?: boolean;
+  isLoading?: boolean;
 }
 
 type TabType = "all" | "reviewing" | "authored";
@@ -50,6 +52,7 @@ export function PullRequestSidebar({
   totalCount = null,
   onSync,
   isSyncing = false,
+  isLoading = false,
 }: PullRequestSidebarProps) {
   const [activeTab, setActiveTab] = useState<TabType>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -695,7 +698,9 @@ export function PullRequestSidebar({
         }}
         className="flex-1 overflow-y-auto p-2 space-y-1 focus:outline-none"
       >
-        {filteredPrs.length === 0 ? (
+        {isLoading && filteredPrs.length === 0 ? (
+          <PRSidebarSkeleton count={6} />
+        ) : filteredPrs.length === 0 ? (
           <div className="p-6 text-center text-praxd-text-muted space-y-1.5">
             <p className="text-[13px] font-medium text-praxd-text-secondary">No pull requests found</p>
             <p className="text-[11px]">

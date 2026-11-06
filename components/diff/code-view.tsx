@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { PullRequest, ChangedFile } from "@/types/pr";
 import { DiffViewer } from "./diff-viewer";
+import { DiffSkeleton } from "./diff-skeleton";
 import { DiffSplitToggle } from "../ui/diff-split-toggle";
 import { FileTreeDropdown } from "./file-tree-dropdown";
 import { useCollapsibleFiles } from "@/hooks/use-collapsible-files";
@@ -18,6 +19,7 @@ import { cn } from "@/lib/utils";
 
 interface CodeViewProps {
   pr: PullRequest;
+  isLoadingDiff?: boolean;
 }
 
 /**
@@ -63,7 +65,7 @@ function CollapseLinesIcon({ isAllExpanded }: { isAllExpanded: boolean }) {
 }
 
 
-export function CodeView({ pr }: CodeViewProps) {
+export function CodeView({ pr, isLoadingDiff = false }: CodeViewProps) {
   const files = useMemo(() => (Array.isArray(pr.files) ? pr.files : []), [pr.files]);
   const [selectedFile, setSelectedFile] = useState<ChangedFile>(
     files[0] || {
@@ -217,8 +219,13 @@ export function CodeView({ pr }: CodeViewProps) {
             <span className="text-praxd-text-muted truncate">{pr.baseRef}</span>
           </div>
 
-          {/* Circular Review Progress Indicator */}
-          {files.length > 0 && (
+          {/* Circular Review Progress Indicator or Loading Badge */}
+          {isLoadingDiff ? (
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#161616] border border-praxd-border-soft text-[11px] font-mono text-neutral-400 select-none shrink-0">
+              <span className="w-2 h-2 rounded-full bg-praxd-blue animate-pulse" />
+              <span>Loading diff...</span>
+            </div>
+          ) : files.length > 0 ? (
             <div
               className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#161616] border border-praxd-border-soft text-[11px] font-mono select-none shrink-0"
               title={`${viewedCount} of ${files.length} files reviewed`}
@@ -258,7 +265,7 @@ export function CodeView({ pr }: CodeViewProps) {
               </span>
               <span className="text-[10px] text-neutral-500 whitespace-nowrap hidden sm:inline">viewed</span>
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* Right: Clean Icon-Only Action Toolbar matching reference screenshot */}
@@ -438,11 +445,13 @@ export function CodeView({ pr }: CodeViewProps) {
 
       {/* GitHub-Style Vertical Collapsible Diff Stream */}
       <div className="flex-1 overflow-y-auto divide-y divide-praxd-border-soft divide-solid bg-[#0e0e0e]">
-        {files.length === 0 ? (
+        {isLoadingDiff ? (
+          <DiffSkeleton />
+        ) : files.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center p-8 text-praxd-text-muted space-y-2">
             <p className="text-[14px] font-medium text-praxd-text-secondary">No file diffs to display</p>
             <p className="text-[12px] text-neutral-500 max-w-sm text-center">
-              This pull request does not have any changed files or the diff details are being loaded.
+              This pull request does not have any changed files.
             </p>
           </div>
         ) : (

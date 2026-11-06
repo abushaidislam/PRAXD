@@ -35,13 +35,15 @@ import { ActivityTimeline } from "./activity-timeline";
 import { MarkdownContent } from "../markdown/markdown-content";
 import { CheckoutCommandDropdown } from "../diff/checkout-command-dropdown";
 import { CopyIcon } from "../ui/copy-icon";
+import { SummarySkeleton } from "./summary-skeleton";
 
 interface SummaryViewProps {
   pr: PullRequest;
   onUpdatePr?: (updates: Partial<PullRequest>) => void;
+  isLoading?: boolean;
 }
 
-export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
+export function SummaryView({ pr, onUpdatePr, isLoading = false }: SummaryViewProps) {
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(true);
 
   // In-place title edit state
@@ -235,6 +237,10 @@ export function SummaryView({ pr, onUpdatePr }: SummaryViewProps) {
       textarea.setSelectionRange(selStart, selEnd);
     }, 0);
   };
+
+  if (isLoading) {
+    return <SummarySkeleton />;
+  }
 
   return (
     <div className="h-full overflow-y-auto px-4 md:px-8 py-6 select-text">
