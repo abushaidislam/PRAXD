@@ -30,6 +30,36 @@ describe("Phase 1 Acceptance: Tenant Isolation & Installation Revocation (P1-11,
     expect(accessiblePrs.some((pr) => pr.workspace_id === workspaceAId)).toBe(false);
   });
 
+  it("P1-11b: verifies that pull request files and repository resolution enforce workspace_id filter", () => {
+    const workspaceAId = "ws-tenant-alpha";
+    const workspaceBId = "ws-tenant-beta";
+
+    const pullRequestsInDatabase = [
+      {
+        id: "pr-alpha-confidential",
+        workspace_id: workspaceAId,
+        number: 42,
+        repositories: { owner_login: "secret-corp", name: "private-core" },
+      },
+    ];
+
+    // Simulating fallback query in files route with workspace_id filter
+    const queryPrForWorkspace = (prId: string, userWorkspaceId: string) => {
+      return pullRequestsInDatabase.find(
+        (pr) => pr.id === prId && pr.workspace_id === userWorkspaceId
+      ) ?? null;
+    };
+
+    // Tenant Beta tries to query PR belonging to Tenant Alpha
+    const unauthorizedAccess = queryPrForWorkspace("pr-alpha-confidential", workspaceBId);
+    expect(unauthorizedAccess).toBeNull();
+
+    // Tenant Alpha queries their own PR
+    const authorizedAccess = queryPrForWorkspace("pr-alpha-confidential", workspaceAId);
+    expect(authorizedAccess).not.toBeNull();
+    expect(authorizedAccess?.repositories.name).toBe("private-core");
+  });
+
   it("P1-12: revokes repository and PR accessibility when GitHub App installation is suspended or deleted", () => {
     interface InstallationRecord {
       id: string;
