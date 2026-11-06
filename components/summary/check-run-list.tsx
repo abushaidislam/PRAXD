@@ -6,6 +6,25 @@ interface CheckRunListProps {
   checks: CheckRun[];
 }
 
+/**
+ * Validates and sanitizes check details URL.
+ * Only permits safe web schemes (http, https) to prevent javascript: or data: XSS attacks.
+ */
+function sanitizeCheckUrl(url?: string): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  const normalized = trimmed.replace(/[\u0000-\u001F\u007F\s]+/g, "");
+  const schemeMatch = normalized.match(/^([a-zA-Z0-9+.-]+):/);
+  if (schemeMatch) {
+    const scheme = schemeMatch[1].toLowerCase();
+    if (scheme === "http" || scheme === "https") {
+      return trimmed;
+    }
+    return null;
+  }
+  return null;
+}
+
 export function CheckRunList({ checks }: CheckRunListProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
@@ -55,18 +74,21 @@ export function CheckRunList({ checks }: CheckRunListProps) {
                 <span className="text-praxd-text-muted text-[11px] capitalize">
                   {check.conclusion === "success" ? "Passed" : check.conclusion || "Pending"}
                 </span>
-                {check.detailsUrl && (
-                  <a
-                    href={check.detailsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-1 rounded hover:bg-[#252525] text-praxd-text-muted hover:text-praxd-text transition-colors"
-                    title="View check details on GitHub"
-                    aria-label={`View details for ${check.name}`}
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                )}
+                {(() => {
+                  const safeUrl = sanitizeCheckUrl(check.detailsUrl);
+                  return safeUrl ? (
+                    <a
+                      href={safeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1 rounded hover:bg-[#252525] text-praxd-text-muted hover:text-praxd-text transition-colors"
+                      title="View check details on GitHub"
+                      aria-label={`View details for ${check.name}`}
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  ) : null;
+                })()}
               </div>
             </div>
           ))}
