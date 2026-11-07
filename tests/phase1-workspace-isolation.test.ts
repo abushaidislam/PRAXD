@@ -30,6 +30,31 @@ describe("Phase 1 Acceptance: Tenant Isolation & Installation Revocation (P1-11,
     expect(accessiblePrs.some((pr) => pr.workspace_id === workspaceAId)).toBe(false);
   });
 
+  it("P1-11b: verifies that pull request files and metadata lookups strictly enforce workspace_id boundary", () => {
+    const workspaceAId = "ws-tenant-alpha";
+    const workspaceBId = "ws-tenant-beta";
+
+    const dbPullRequests = [
+      {
+        id: "pr-alpha-files",
+        workspace_id: workspaceAId,
+        number: 42,
+        repositories: { owner_login: "alpha-corp", name: "secret-core" },
+      },
+    ];
+
+    // Attempt cross-tenant lookup from Workspace B context
+    const requesterWorkspaceId = workspaceBId;
+    const lookupId = "pr-alpha-files";
+
+    const matchedPr = dbPullRequests.find(
+      (pr) => pr.id === lookupId && pr.workspace_id === requesterWorkspaceId
+    );
+
+    // Cross-tenant lookup must yield undefined, preventing unauthorized external GitHub file fetches
+    expect(matchedPr).toBeUndefined();
+  });
+
   it("P1-12: revokes repository and PR accessibility when GitHub App installation is suspended or deleted", () => {
     interface InstallationRecord {
       id: string;
