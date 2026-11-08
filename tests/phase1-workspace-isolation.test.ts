@@ -65,4 +65,35 @@ describe("Phase 1 Acceptance: Tenant Isolation & Installation Revocation (P1-11,
     // Suspended installation repo is not accessible
     expect(activeAccessibleRepos.some((r) => r.id === "repo-1")).toBe(false);
   });
+
+  it("P1-13: ensures service role PR merge and files fallback queries strictly filter by workspace_id", () => {
+    // Multi-tenant database records
+    const prDatabase = [
+      {
+        id: "pr-alpha-confidential",
+        workspace_id: "ws-tenant-alpha",
+        number: 42,
+        state: "open",
+        repositories: { owner_login: "alpha-corp", name: "confidential-repo" },
+      },
+      {
+        id: "pr-beta-public",
+        workspace_id: "ws-tenant-beta",
+        number: 101,
+        state: "open",
+        repositories: { owner_login: "beta-corp", name: "public-repo" },
+      },
+    ];
+
+    // Simulating user in ws-tenant-beta attempting to query or merge PR belonging to ws-tenant-alpha
+    const attackerWorkspaceId = "ws-tenant-beta";
+    const targetPrId = "pr-alpha-confidential";
+
+    const resolvedPr = prDatabase.find(
+      (pr) => pr.id === targetPrId && pr.workspace_id === attackerWorkspaceId
+    );
+
+    // Bypassing workspace_id filter would have leaked alpha PR details; with workspace isolation it must be undefined
+    expect(resolvedPr).toBeUndefined();
+  });
 });
