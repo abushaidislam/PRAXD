@@ -65,7 +65,7 @@ async function handleMerge(
       }
     }
 
-    // 2. Resolve from Supabase database PR record
+    // 2. Resolve from Supabase database PR record (enforce workspace isolation)
     if ((!owner || !repo || !pullNumber) && !pullRequestId.startsWith("pr-")) {
       const { data: rawDbPr } = await (supabase
         .from("pull_requests")
@@ -80,6 +80,7 @@ async function handleMerge(
           )
         `)
         .eq("id", pullRequestId)
+        .eq("workspace_id", auth.workspaceId)
         .maybeSingle() as any);
 
       if (rawDbPr) {
@@ -139,13 +140,15 @@ async function handleMerge(
           merged_at: nowIso,
           head_sha: mergedSha,
         })
-        .eq("id", dbPrId) as any);
+        .eq("id", dbPrId)
+        .eq("workspace_id", auth.workspaceId) as any);
     } else {
       const { data: repoData } = await (supabase
         .from("repositories")
         .select("id")
         .eq("owner_login", owner)
         .eq("name", repo)
+        .eq("workspace_id", auth.workspaceId)
         .maybeSingle() as any);
 
       if (repoData?.id) {
@@ -157,7 +160,8 @@ async function handleMerge(
             head_sha: mergedSha,
           })
           .eq("repository_id", repoData.id)
-          .eq("number", pullNumber) as any);
+          .eq("number", pullNumber)
+          .eq("workspace_id", auth.workspaceId) as any);
       }
     }
 

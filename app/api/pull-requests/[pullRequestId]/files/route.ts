@@ -43,10 +43,12 @@ export async function GET(
   }
 
   // Fallback: If DB files table hasn't been populated yet, fetch directly from GitHub
+  // Ensure workspace_id is verified to enforce multi-tenant isolation
   const { data: rawPr } = await supabase
     .from("pull_requests")
     .select("number, repositories(owner_login, name)")
     .eq("id", pullRequestId)
+    .eq("workspace_id", auth.workspaceId)
     .maybeSingle();
 
   const pr = rawPr as any;
