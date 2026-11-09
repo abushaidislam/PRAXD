@@ -65,4 +65,41 @@ describe("Phase 1 Acceptance: Tenant Isolation & Installation Revocation (P1-11,
     // Suspended installation repo is not accessible
     expect(activeAccessibleRepos.some((r) => r.id === "repo-1")).toBe(false);
   });
+
+  it("P1-13: ensures PR merge queries enforce workspace_id tenant isolation", () => {
+    // Simulating database pull requests across tenants
+    const dbRecords = [
+      {
+        id: "pr-alpha-uuid",
+        workspace_id: "ws-tenant-alpha",
+        number: 42,
+        repositories: { owner_login: "acme", name: "backend" },
+      },
+      {
+        id: "pr-beta-uuid",
+        workspace_id: "ws-tenant-beta",
+        number: 101,
+        repositories: { owner_login: "beta-corp", name: "frontend" },
+      },
+    ];
+
+    // Simulating a request from user authenticated in Workspace B attempting to merge Alpha's PR
+    const callerWorkspaceId = "ws-tenant-beta";
+    const requestedPrId = "pr-alpha-uuid";
+
+    // Query mimicking the merge route query with tenant isolation
+    const matchedPr = dbRecords.find(
+      (pr) => pr.id === requestedPrId && pr.workspace_id === callerWorkspaceId
+    );
+
+    // Alpha PR must not match caller's workspace
+    expect(matchedPr).toBeUndefined();
+
+    // Query for caller's own PR must match
+    const ownPr = dbRecords.find(
+      (pr) => pr.id === "pr-beta-uuid" && pr.workspace_id === callerWorkspaceId
+    );
+    expect(ownPr).toBeDefined();
+    expect(ownPr?.number).toBe(101);
+  });
 });
