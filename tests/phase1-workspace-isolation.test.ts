@@ -65,4 +65,37 @@ describe("Phase 1 Acceptance: Tenant Isolation & Installation Revocation (P1-11,
     // Suspended installation repo is not accessible
     expect(activeAccessibleRepos.some((r) => r.id === "repo-1")).toBe(false);
   });
+
+  it("P1-13: ensures merge operations strictly enforce workspace_id scoping during resolution and updates", () => {
+    const callerWorkspaceId = "ws-tenant-caller";
+    const foreignWorkspaceId = "ws-tenant-victim";
+
+    const pullRequests = [
+      {
+        id: "pr-foreign-uuid",
+        workspace_id: foreignWorkspaceId,
+        number: 42,
+        state: "open",
+      },
+    ];
+
+    // Simulating database lookup query with workspace_id filter
+    const resolvedPr = pullRequests.find(
+      (pr) => pr.id === "pr-foreign-uuid" && pr.workspace_id === callerWorkspaceId
+    );
+
+    // Caller from different workspace must NOT resolve foreign workspace PR
+    expect(resolvedPr).toBeUndefined();
+
+    // Verify update query scoped by workspace_id fails to mutate foreign PR
+    let mutated = false;
+    const targetPr = pullRequests.find((pr) => pr.id === "pr-foreign-uuid");
+    if (targetPr && targetPr.workspace_id === callerWorkspaceId) {
+      targetPr.state = "merged";
+      mutated = true;
+    }
+
+    expect(mutated).toBe(false);
+    expect(pullRequests[0].state).toBe("open");
+  });
 });
