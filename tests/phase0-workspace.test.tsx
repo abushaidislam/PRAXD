@@ -174,4 +174,29 @@ describe("Phase 0 — PR Workspace & Visual Contract Acceptance Tests", () => {
     fireEvent.keyDown(window, { key: "b", ctrlKey: true });
     expect(screen.queryByPlaceholderText("Search pull requests")).not.toBeInTheDocument();
   });
+
+  it("P0-10: displays accessible active filter chips and allows dismissing individually and clearing all", () => {
+    render(<PRWorkspace />);
+
+    // Open filter popover
+    const filterButton = screen.getByRole("button", { name: "Filter pull requests" });
+    fireEvent.click(filterButton);
+
+    // Select "Open" state filter
+    const openStateButton = screen.getByRole("button", { name: "Open" });
+    fireEvent.click(openStateButton);
+
+    // Filter chip should be visible with accessible label and title
+    const removeStateButton = screen.getByRole("button", { name: "Remove open state filter" });
+    expect(removeStateButton).toBeInTheDocument();
+    expect(removeStateButton).toHaveAttribute("title", "Remove open state filter");
+
+    const clearButton = screen.getByRole("button", { name: "Clear all active filters" });
+    expect(clearButton).toBeInTheDocument();
+    expect(clearButton).toHaveAttribute("title", "Clear all active filters");
+
+    // Click remove state chip
+    fireEvent.click(removeStateButton);
+    expect(screen.queryByRole("button", { name: "Remove open state filter" })).not.toBeInTheDocument();
+  });
 });
