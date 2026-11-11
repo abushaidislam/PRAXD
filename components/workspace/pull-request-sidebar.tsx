@@ -585,7 +585,9 @@ export function PullRequestSidebar({
                 <button
                   type="button"
                   onClick={() => setFilterState("all")}
-                  className="hover:text-red-400 text-praxd-text-muted"
+                  aria-label={`Remove ${filterState} state filter`}
+                  title={`Remove ${filterState} state filter`}
+                  className="rounded hover:text-red-400 text-praxd-text-muted transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-praxd-blue"
                 >
                   <X className="w-2.5 h-2.5" />
                 </button>
@@ -597,7 +599,9 @@ export function PullRequestSidebar({
                 <button
                   type="button"
                   onClick={() => setFilterRepo("all")}
-                  className="hover:text-red-400 text-praxd-text-muted"
+                  aria-label={`Remove repository filter: ${filterRepo}`}
+                  title={`Remove repository filter: ${filterRepo}`}
+                  className="rounded hover:text-red-400 text-praxd-text-muted transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-praxd-blue"
                 >
                   <X className="w-2.5 h-2.5" />
                 </button>
@@ -615,7 +619,9 @@ export function PullRequestSidebar({
                 <button
                   type="button"
                   onClick={() => setSortBy("updated")}
-                  className="hover:text-red-400 text-praxd-text-muted"
+                  aria-label="Reset sort order filter"
+                  title="Reset sort order filter"
+                  className="rounded hover:text-red-400 text-praxd-text-muted transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-praxd-blue"
                 >
                   <X className="w-2.5 h-2.5" />
                 </button>
@@ -624,7 +630,9 @@ export function PullRequestSidebar({
             <button
               type="button"
               onClick={handleResetFilters}
-              className="text-[10px] text-praxd-text-muted hover:text-praxd-text underline ml-0.5"
+              aria-label="Clear all active filters"
+              title="Clear all active filters"
+              className="text-[10px] text-praxd-text-muted hover:text-praxd-text underline ml-0.5 rounded px-1 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-praxd-blue"
             >
               Clear
             </button>
